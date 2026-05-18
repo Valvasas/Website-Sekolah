@@ -1,0 +1,34 @@
+# Environment
+.env
+.env.local
+.env.production
+
+# Database files
+data/
+*.bin
+*.db
+*.sqlite
+*.sqlite3
+
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.sublime-project
+*.sublime-workspace

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teknik Bisnis Sepeda Motor | SMKN 1 Terisi</title>
+    <link rel="icon" type="image/png" href="asset/Logo SMK.png">
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- NAVBAR (Sama seperti index.html) -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="brand">
+    <img src="asset/Logo SMK.png" alt="Logo SMKN 1 Terisi" class="logo-sekolah">
+            <div class="brand-text">
+                    <span>SMK NEGERI 1 TERISI</span><small>TERISI</small></div>
+            </a>
+            <div class="menu-toggle" id="mobile-menu">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">Beranda</a></li>
+                <li><a href="akademik.html" class="nav-link active">Akademik</a></li>
+                <li><button id="darkModeToggle" class="dark-mode-btn"><i class="fas fa-moon"></i></button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION OUT OF THE BOX -->
+    <header class="major-hero hero-jurusan hero-tbsm" style="background-image: url('asset/tbsm.jpg');">
+        <div class="major-title">Astra Honda Motor</div> <!-- Teks raksasa di background -->
+        <div class="container relative">
+            <div class="major-content reveal-text">
+                <div class="major-badge"><i class="fas fa-star"></i> Kelas Industri Unggulan</div>
+                <h1 style="color: white; font-size: 3.5rem; margin-bottom: 20px;">Teknik Bisnis <br><span class="highlight">Sepeda Motor</span></h1>
+                <p style="color: #cbd5e1; font-size: 1.1rem; margin-bottom: 30px;">Lebih dari sekadar mekanik. Kami mendidik teknisi analitik, ahli diagnosa sistem injeksi cerdas (PGM-FI), dan calon mekanik handal bengkel masa depan dengan standarisasi langsung dari Astra Honda Motor (AHM)</p>
+                <div style="display: flex; gap: 15px;">
+                    <a href="#skill-tree" class="btn btn-primary"><i class="fas fa-scroll"></i> Lihat Kurikulum</a>
+                    <a href="#galeri" class="btn btn-outline">Lihat Fasilitas</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- SISTEM PEMBELAJARAN (3D ISOMETRIC) -->
+    <section class="section bg-dark">
+        <div class="container text-center reveal">
+            <h4 class="sub-title">Metode Edukasi</h4>
+            <h2 style="color: white;">Sistem Pembelajaran <span class="highlight">Revolusioner</span></h2>
+            <p style="color: #cbd5e1; max-width: 600px; margin: 20px auto 0;">Siswa tidak hanya belajar teori di kelas, melainkan dilebur langsung ke dalam ekosistem kerja nyata</p>
+        </div>
+        
+        <div class="container iso-container reveal">
+            <!-- Card 1 -->
+            <div class="iso-card">
+                <i class="fas fa-cogs"></i>
+                <h3>Teaching Factory (TEFA)</h3>
+                <p>Bengkel sekolah difungsikan sebagai bengkel resmi AHASS. Siswa praktek langsung dengan motor nyata, melakukan servis, di bawah pengawasan instruktur</p>
+            </div>
+            <!-- Card 2 -->
+            <div class="iso-card" style="transform: translateY(30px);">
+                <i class="fas fa-laptop-medical"></i>
+                <h3>Smart Diagnosis System</h3>
+                <p>Meninggalkan cara kuno. Siswa dilatih menggunakan scanner digital dan software diagnosa terkomputerisasi untuk mencari trouble di kelistrikan motor injeksi</p>
+            </div>
+            <!-- Card 3 -->
+            <div class="iso-card">
+                <i class="fas fa-store-alt"></i>
+                <h3>Manajemen Bengkel</h3>
+                <p>Selain keahlian mekanik (Hard Skill), siswa dibekali ilmu kewirausahaan, pembukuan sparepart, hingga etika pelayanan konsumen (Soft Skill)</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- MATERI YANG DIAJARKAN (STICKY SKILL TREE) -->
+    <section class="section bg-light" id="skill-tree">
+        <div class="container">
+            <div class="skill-tree-section">
+                <!-- Sisi Kiri: Sticky Teks -->
+                <div class="skill-sticky reveal">
+                    <h4 class="sub-title">Peta Kompetensi</h4>
+                    <h2 style="font-size: 2.5rem; margin-bottom: 20px;">Apa Saja yang <br><span class="highlight">Akan Dipelajari?</span></h2>
+                    <p style="color: #64748b; font-size: 1.05rem;">Kurikulum sinkronisasi dirancang seperti menaiki anak tangga (Leveling). Siswa harus menguasai dasar sebelum membedah teknologi mutakhir</p>
+                    <a href="ppdb.html" class="btn btn-primary" style="margin-top: 20px;">Daftar Jurusan Ini</a>
+                </div>
+
+                <!-- Sisi Kanan: Timeline Path -->
+                <div class="skill-path reveal">
+                    <div class="skill-node">
+                        <h3 style="color: var(--primary); margin-bottom: 10px;">Level 1: Basic Mechanical (Kelas X)</h3>
+                        <p style="color: #555;">Pengenalan alat ukur presisi (Jangka sorong, mikrometer), gambar teknik otomotif, K3LH, dan dasar-dasar kerja mesin</p>
+                    </div>
+                    <div class="skill-node">
+                        <h3 style="color: var(--primary); margin-bottom: 10px;">Level 2: Engine & Electrical (Kelas XI)</h3>
+                        <p style="color: #555;">Pembongkaran total (Overhaul) mesin, perakitan transmisi otomatis (CVT), serta bedah total sistem kelistrikan, starter, dan pengisian daya baterai</p>
+                    </div>
+                    <div class="skill-node">
+                        <h3 style="color: var(--primary); margin-bottom: 10px;">Level 3: PGM-FI & Troubleshooting (Kelas XII)</h3>
+                        <p style="color: #555;">Fokus pada pemecahan masalah (Troubleshooting) kendaraan injeksi tingkat lanjut, pemetaan ECU, uji emisi, dan praktik kerja lapangan (PKL) di industri</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- GALERI BENTO 4 FOTO -->
+    <section class="section bg-white" id="galeri">
+        <div class="container">
+            <div class="section-header center reveal">
+                <h4 class="sub-title">Dokumentasi Visual</h4>
+                <h2>Fasilitas & Praktik <span class="highlight">TBSM</span></h2>
+                <div class="line"></div>
+            </div>
+
+            <div class="gallery-4-grid reveal">
+                <!-- Foto 1 (Besar Kiri) -->
+                <div class="g4-item large">
+                    <img src="https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="Praktik Bengkel AHASS">
+                    <div class="g4-overlay">
+                        <h3>Fasilitas Bengkel Standar AHASS</h3>
+                        <p style="color: #fff;">Area workshop utama dengan hydraulic lift khusus motor</p>
+                    </div>
+                </div>
+                <!-- Foto 2 (Atas Kanan) -->
+                <div class="g4-item">
+                    <img src="https://images.unsplash.com/photo-1574629810360-7efbb1925536?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Praktik Mesin">
+                    <div class="g4-overlay">
+                        <h3>Overhaul Mesin</h3>
+                        <p style="color: #fff;">Siswa membedah transmisi</p>
+                    </div>
+                </div>
+                <!-- Foto 3 (Bawah Kanan) -->
+                <div class="g4-item">
+                    <img src="https://images.unsplash.com/photo-1530635398299-4d6f44d9f783?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Diagnosa Digital">
+                    <div class="g4-overlay">
+                        <h3>Diagnosa PGM-FI</h3>
+                        <p style="color: #fff;">Pengecekan menggunakan scanner digital</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <h2 style="color:var(--secondary); font-family:'Playfair Display', serif; font-size: 1.8rem;">SMK NEGERI 1 TERISI</h2>
+                    <p style="margin-top: 15px; color:#a0aec0;">Membentuk generasi unggul, berkarakter, dan siap berkompetisi pada era industri digital</p>
+                    <div class="socials">
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                    </div>
+                </div>
+                <div class="footer-links">
+                    <h3 style="color:#fff; margin-bottom: 20px;">Jelajahi</h3>
+                    <ul>
+                        <li><a href="profil.html">Sejarah & Visi Misi</a></li>
+                        <li><a href="akademik.html">Program Keahlian</a></li>
+                        <li><a href="fasilitas.html">Sarana Prasarana</a></li>
+                        <li><a href="ppdb.html">Pendaftaran Siswa Baru</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h3 style="color:#fff; margin-bottom: 20px;">Tautan Resmi</h3>
+                    <ul>
+                        <!-- FITUR TAMBAHAN: Link EduGate -->
+                        <li><a href="https://edugate.smkn1terisi.sch.id" target="_blank" rel="noopener noreferrer">Portal Kedisiplinan (EduGate)</a></li>
+                        <li><a href="https://kemdikbud.go.id" target="_blank">Kementerian Pendidikan</a></li>
+                        <li><a href="https://dapo.kemdikbud.go.id/" target="_blank">Dapodikdasmen</a></li>
+                        <li><a href="#">E-Raport Sekolah</a></li>
+                        <li><a href="#">LMS Pembelajaran</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 SMK Negeri 1 Terisi - Indramayu. Dikembangkan dengan <i class="fas fa-heart" style="color:red;"></i> oleh IT Club SMKN 1 Terisi.</p>
+            </div>
+        </div>
+    <script src="script.js"></script>
+    <script>
+        // JS Khusus Halaman Detail Jurusan: Efek Parallax Teks Raksasa
+        window.addEventListener('scroll', () => {
+            const scroll = window.pageYOffset;
+            const title = document.querySelector('.major-title');
+            if(title) {
+                // Teks raksasa akan bergeser saat di scroll (Parallax effect out of the box)
+                title.style.transform = `rotate(-90deg) translateX(${scroll * 0.5}px)`;
+            }
+        });
+    </script>
+</body>
+</html>

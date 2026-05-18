@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel — CBT SMKN 1 Terisi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+        <div class="logo-icon"><i class="fas fa-shield-alt"></i></div>
+        <div>
+            <span class="logo-title">CBT Admin</span>
+            <span class="logo-sub">SMKN 1 Terisi</span>
+        </div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-page="dashboard" onclick="switchPage(this, 'dashboard')">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a>
+        <a href="#" class="nav-item" data-page="students" onclick="switchPage(this, 'students')">
+            <i class="fas fa-users"></i> Siswa Aktif
+            <span class="nav-badge" id="nav-count">0</span>
+        </a>
+        <a href="#" class="nav-item" data-page="camera" onclick="switchPage(this, 'camera')">
+            <i class="fas fa-video"></i> Live Camera
+        </a>
+        <a href="#" class="nav-item" data-page="map" onclick="switchPage(this, 'map')">
+            <i class="fas fa-map-marked-alt"></i> Peta Lokasi
+        </a>
+        <a href="#" class="nav-item" data-page="violations" onclick="switchPage(this, 'violations')">
+            <i class="fas fa-exclamation-triangle"></i> Pelanggaran
+            <span class="nav-badge danger" id="nav-viol">0</span>
+        </a>
+        <a href="#" class="nav-item" data-page="results" onclick="switchPage(this, 'results')">
+            <i class="fas fa-chart-bar"></i> Hasil Ujian
+        </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="server-status">
+            <span class="dot" id="ws-dot"></span>
+            <span id="ws-status-text">Menghubungkan...</span>
+        </div>
+        <div class="sidebar-time" id="sidebar-time"></div>
+    </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="main-content">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+        <button class="sidebar-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="topbar-title" id="topbar-title">Dashboard Pengawas</div>
+        <div class="topbar-actions">
+            <button class="topbar-btn" onclick="broadcastMessage()"><i class="fas fa-bullhorn"></i> Broadcast</button>
+            <button class="topbar-btn danger" onclick="confirmEndAll()"><i class="fas fa-stop-circle"></i> Akhiri Semua</button>
+        </div>
+    </header>
+
+    <!-- ===================== PAGE: DASHBOARD ===================== -->
+    <section class="page active" id="page-dashboard">
+        <div class="stats-grid">
+            <div class="stat-card blue">
+                <i class="fas fa-users"></i>
+                <div class="stat-val" id="stat-total">0</div>
+                <div class="stat-lbl">Siswa Aktif</div>
+            </div>
+            <div class="stat-card green">
+                <i class="fas fa-check-circle"></i>
+                <div class="stat-val" id="stat-done">0</div>
+                <div class="stat-lbl">Selesai</div>
+            </div>
+            <div class="stat-card orange">
+                <i class="fas fa-flag"></i>
+                <div class="stat-val" id="stat-ragu">0</div>
+                <div class="stat-lbl">Ragu-ragu</div>
+            </div>
+            <div class="stat-card red">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div class="stat-val" id="stat-viol">0</div>
+                <div class="stat-lbl">Pelanggaran</div>
+            </div>
+        </div>
+
+        <!-- Progress per mapel -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-book-open"></i> Progress Per Mata Pelajaran
+            </div>
+            <div class="card-body">
+                <div id="mapel-progress-list">
+                    <div class="empty-state"><i class="fas fa-satellite-dish"></i> Menunggu siswa masuk...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log aktivitas terbaru -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-stream"></i> Log Aktivitas Real-Time
+            </div>
+            <div class="card-body">
+                <div class="activity-log" id="activity-log">
+                    <div class="empty-state"><i class="fas fa-stream"></i> Belum ada aktivitas.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== PAGE: STUDENTS ===================== -->
+    <section class="page" id="page-students">
+        <div class="page-toolbar">
+            <input type="text" class="search-input" id="search-student" placeholder="Cari NISN / nama..." oninput="filterStudents()">
+            <select class="filter-select" id="filter-mapel" onchange="filterStudents()">
+                <option value="">Semua Mapel</option>
+                <option value="matematika">Matematika</option>
+                <option value="bindo">Bahasa Indonesia</option>
+                <option value="basing">Bahasa Inggris</option>
+                <option value="pkk">PKK</option>
+                <option value="sejarah">Sejarah</option>
+                <option value="produktif">Kompetensi Keahlian</option>
+            </select>
+        </div>
+        <div class="students-table-wrap">
+            <table class="data-table" id="students-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>NISN</th>
+                        <th>Mata Pelajaran</th>
+                        <th>Device</th>
+                        <th>Baterai</th>
+                        <th>Kecepatan Net</th>
+                        <th>Jawaban</th>
+                        <th>Pelanggaran</th>
+                        <th>Status</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="students-tbody">
+                    <tr><td colspan="10" class="empty-cell"><i class="fas fa-users"></i> Belum ada siswa terdaftar.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ===================== PAGE: CAMERA ===================== -->
+    <section class="page" id="page-camera">
+        <div class="camera-toolbar">
+            <span class="cam-info"><i class="fas fa-video"></i> Live Feed Semua Siswa</span>
+            <select class="filter-select" id="cam-layout" onchange="changeCamLayout()">
+                <option value="grid-3">3 Kolom</option>
+                <option value="grid-4">4 Kolom</option>
+                <option value="grid-2">2 Kolom</option>
+            </select>
+        </div>
+        <div class="camera-grid grid-3" id="camera-grid">
+            <div class="empty-state full-empty"><i class="fas fa-video-slash"></i><br>Belum ada kamera terhubung.</div>
+        </div>
+    </section>
+
+    <!-- ===================== PAGE: MAP ===================== -->
+    <section class="page" id="page-map">
+        <div class="card full-card">
+            <div class="card-header">
+                <i class="fas fa-map-marked-alt"></i> Peta Lokasi Siswa (Real-Time)
+            </div>
+            <div class="card-body no-pad">
+                <div id="map-frame-wrap">
+                    <div class="map-placeholder" id="map-placeholder">
+                        <i class="fas fa-map"></i>
+                        <p>Peta akan ditampilkan saat siswa mengaktifkan GPS</p>
+                    </div>
+                    <div id="map-pins-list" class="map-pins-list hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><i class="fas fa-list"></i> Daftar Koordinat Siswa</div>
+            <div class="card-body">
+                <table class="data-table">
+                    <thead><tr><th>NISN</th><th>Latitude</th><th>Longitude</th><th>Update Terakhir</th><th>Aksi</th></tr></thead>
+                    <tbody id="location-tbody">
+                        <tr><td colspan="5" class="empty-cell">Belum ada data lokasi.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== PAGE: VIOLATIONS ===================== -->
+    <section class="page" id="page-violations">
+        <div class="violations-list" id="violations-list">
+            <div class="empty-state"><i class="fas fa-check-shield"></i><br>Tidak ada pelanggaran tercatat.</div>
+        </div>
+    </section>
+
+    <!-- ===================== PAGE: RESULTS ===================== -->
+    <section class="page" id="page-results">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-chart-bar"></i> Rekap Hasil Ujian
+                <button class="btn-export" onclick="exportCSV()"><i class="fas fa-download"></i> Export CSV</button>
+            </div>
+            <div class="card-body">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>NISN</th><th>Mapel</th><th>Benar</th><th>Salah</th><th>Kosong</th><th>Nilai</th><th>Status</th><th>Waktu Selesai</th></tr>
+                    </thead>
+                    <tbody id="results-tbody">
+                        <tr><td colspan="8" class="empty-cell">Belum ada hasil ujian.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<!-- MODAL: Detail Siswa -->
+<div class="modal-overlay" id="modal-student">
+    <div class="modal-box large">
+        <div class="modal-header">
+            <h3 id="modal-student-title">Detail Siswa</h3>
+            <button class="modal-close" onclick="closeModal('modal-student')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" id="modal-student-body"></div>
+    </div>
+</div>
+
+<!-- MODAL: Broadcast -->
+<div class="modal-overlay" id="modal-broadcast">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Broadcast Pesan ke Semua Siswa</h3>
+            <button class="modal-close" onclick="closeModal('modal-broadcast')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <textarea id="broadcast-msg" placeholder="Tulis pesan untuk semua siswa..." rows="4"></textarea>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('modal-broadcast')">Batal</button>
+                <button class="btn-primary" onclick="sendBroadcast()"><i class="fas fa-paper-plane"></i> Kirim</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Konfirmasi Akhiri Semua -->
+<div class="modal-overlay" id="modal-endall">
+    <div class="modal-box">
+        <div class="modal-header"><h3>Akhiri Semua Ujian?</h3>
+            <button class="modal-close" onclick="closeModal('modal-endall')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <p>Semua siswa yang masih mengerjakan ujian akan dikumpulkan secara paksa.</p>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('modal-endall')">Batal</button>
+                <button class="btn-danger" onclick="endAllExams()"><i class="fas fa-stop-circle"></i> Ya, Akhiri Semua</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast notifikasi -->
+<div id="toast" class="toast"></div>
+
+<script src="admin.js"></script>
+</body>
+</html>

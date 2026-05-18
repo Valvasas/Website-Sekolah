@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin — Portal EduGate SMKN 1 Terisi</title>
+    <link rel="icon" type="image/png" href="/asset/Logo SMK.png">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --navy:#002244; --navy-d:#001529; --navy-l:#003366;
+            --gold:#D4AF37; --gold-d:#B5952F;
+            --green:#10b981; --red:#ef4444; --orange:#f59e0b;
+            --blue:#3b82f6; --purple:#8b5cf6;
+            --white:#ffffff; --light:#f0f4f8; --light2:#e8edf3;
+            --muted:#64748b; --border:#e2e8f0;
+            --sidebar-w:250px;
+            --radius:12px; --radius-lg:18px;
+            --shadow:0 4px 16px rgba(0,0,0,0.08);
+            --trans:all 0.28s cubic-bezier(0.25,1,0.5,1);
+        }
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Sora',sans-serif;background:var(--light);color:var(--navy);display:flex;min-height:100vh;overflow-x:hidden;}
+
+        /* ── SIDEBAR ── */
+        .sidebar{
+            width:var(--sidebar-w); background:var(--navy-d);
+            min-height:100vh; position:fixed; left:0; top:0; bottom:0;
+            display:flex; flex-direction:column; z-index:300;
+            transition:transform 0.3s ease;
+        }
+        .sb-logo{
+            padding:20px 18px 16px; display:flex; align-items:center; gap:12px;
+            border-bottom:1px solid rgba(255,255,255,0.06);
+        }
+        .sb-logo-icon{width:38px;height:38px;border-radius:10px;background:var(--gold);color:var(--navy-d);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+        .sb-logo-title{font-weight:800;font-size:0.9rem;color:var(--white);display:block;}
+        .sb-logo-sub{font-size:0.68rem;color:rgba(255,255,255,0.35);}
+
+        /* User card di sidebar */
+        .sb-user{
+            margin:14px 12px 8px; padding:12px 14px;
+            background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07);
+            border-radius:var(--radius); display:flex; align-items:center; gap:10px;
+        }
+        .sb-user-avatar{
+            width:36px;height:36px;border-radius:50%;
+            background:var(--gold);color:var(--navy-d);
+            font-weight:800;font-size:0.9rem;font-family:'Playfair Display',serif;
+            display:flex;align-items:center;justify-content:center;flex-shrink:0;
+        }
+        .sb-user-name{font-size:0.82rem;font-weight:700;color:var(--white);display:block;}
+        .sb-user-role{font-size:0.68rem;color:rgba(255,255,255,0.35);}
+        .sb-user-badge{
+            margin-left:auto;padding:2px 8px;border-radius:50px;
+            font-size:0.62rem;font-weight:700;
+        }
+        .badge-admin{background:rgba(212,175,55,0.2);color:var(--gold);}
+        .badge-guru {background:rgba(59,130,246,0.2);color:#93c5fd;}
+        .badge-tu   {background:rgba(16,185,129,0.2);color:#6ee7b7;}
+        .badge-kepsek{background:rgba(139,92,246,0.2);color:#c4b5fd;}
+
+        /* Nav */
+        .sb-nav{flex:1;padding:10px 10px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;}
+        .sb-section-label{font-size:0.62rem;font-weight:700;color:rgba(255,255,255,0.2);text-transform:uppercase;letter-spacing:1px;padding:10px 14px 4px;}
+        .nav-item{
+            display:flex;align-items:center;gap:11px;
+            padding:10px 13px;border-radius:9px;
+            color:rgba(255,255,255,0.5);font-size:0.82rem;font-weight:600;
+            text-decoration:none;transition:var(--trans);cursor:pointer;
+            background:none;border:none;width:100%;text-align:left;
+        }
+        .nav-item i{width:16px;text-align:center;font-size:0.85rem;}
+        .nav-item:hover{background:rgba(255,255,255,0.07);color:var(--white);}
+        .nav-item.active{background:rgba(212,175,55,0.15);color:var(--gold);}
+        .nav-item .nav-badge{margin-left:auto;padding:2px 7px;border-radius:50px;font-size:0.6rem;font-weight:700;}
+        .nav-badge.blue{background:var(--blue);color:white;}
+        .nav-badge.red{background:var(--red);color:white;}
+        .nav-divider{border:none;border-top:1px solid rgba(255,255,255,0.06);margin:8px 0;}
+
+        .sb-footer{padding:14px 16px;border-top:1px solid rgba(255,255,255,0.06);}
+        .sb-time{font-size:0.68rem;color:rgba(255,255,255,0.25);}
+
+        /* ── MAIN ── */
+        .main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh;min-width:0;}
+
+        /* Topbar */
+        .topbar{
+            position:sticky;top:0;z-index:200;
+            background:var(--white);border-bottom:1px solid var(--border);
+            padding:0 24px;height:58px;
+            display:flex;align-items:center;gap:14px;
+            box-shadow:0 2px 8px rgba(0,0,0,0.05);
+        }
+        .sidebar-toggle{display:none;background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--navy);padding:6px;}
+        .topbar-title{font-weight:700;font-size:0.95rem;color:var(--navy);flex:1;}
+        .topbar-actions{display:flex;align-items:center;gap:10px;}
+        .topbar-icon{background:none;border:none;cursor:pointer;font-size:1rem;color:var(--muted);padding:8px;border-radius:8px;transition:var(--trans);}
+        .topbar-icon:hover{background:var(--light);color:var(--navy);}
+        .topbar-user{display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:50px;background:var(--light);border:1px solid var(--border);cursor:pointer;}
+        .topbar-avatar{width:28px;height:28px;border-radius:50%;background:var(--navy);color:var(--gold);font-weight:800;font-size:0.78rem;display:flex;align-items:center;justify-content:center;}
+        .topbar-user span{font-size:0.82rem;font-weight:600;color:var(--navy);}
+
+        /* Content */
+        .content{padding:24px;display:flex;flex-direction:column;gap:20px;}
+
+        /* ── STAT CARDS ── */
+        .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
+        .stat-card{
+            background:var(--white);border-radius:var(--radius);
+            padding:18px 16px;box-shadow:var(--shadow);
+            border-left:3px solid transparent;
+            display:flex;flex-direction:column;gap:6px;
+            transition:var(--trans);
+        }
+        .stat-card:hover{transform:translateY(-2px);}
+        .stat-card.blue  {border-color:var(--blue);}
+        .stat-card.green {border-color:var(--green);}
+        .stat-card.gold  {border-color:var(--gold);}
+        .stat-card.red   {border-color:var(--red);}
+        .stat-card.purple{border-color:var(--purple);}
+        .stat-icon{font-size:1.3rem;margin-bottom:2px;}
+        .stat-card.blue   .stat-icon{color:var(--blue);}
+        .stat-card.green  .stat-icon{color:var(--green);}
+        .stat-card.gold   .stat-icon{color:var(--gold);}
+        .stat-card.red    .stat-icon{color:var(--red);}
+        .stat-card.purple .stat-icon{color:var(--purple);}
+        .stat-val{font-size:1.9rem;font-weight:800;color:var(--navy);line-height:1;}
+        .stat-lbl{font-size:0.73rem;color:var(--muted);font-weight:500;}
+
+        /* ── CARD ── */
+        .card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
+        .card-header{
+            padding:15px 20px;border-bottom:1px solid var(--border);
+            display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+        }
+        .card-title{font-size:0.85rem;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:8px;}
+        .card-title i{color:var(--gold);}
+        .card-body{padding:16px 20px;}
+
+        /* ── TABLE ── */
+        .table-wrap{overflow-x:auto;}
+        .data-table{width:100%;border-collapse:collapse;font-size:0.8rem;}
+        .data-table thead tr{background:var(--navy-d);color:var(--white);}
+        .data-table th{padding:11px 14px;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.4px;white-space:nowrap;}
+        .data-table td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
+        .data-table tbody tr:last-child td{border-bottom:none;}
+        .data-table tbody tr:hover{background:var(--light);}
+        .empty-cell{text-align:center;color:var(--muted);padding:40px!important;}
+
+        /* Badges */
+        .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:50px;font-size:0.68rem;font-weight:700;white-space:nowrap;}
+        .badge-active  {background:#d1fae5;color:#065f46;}
+        .badge-inactive{background:#fee2e2;color:#991b1b;}
+        .badge-verified{background:#dbeafe;color:#1e40af;}
+        .badge-unverified{background:#fef3c7;color:#92400e;}
+        .role-badge{padding:3px 9px;border-radius:50px;font-size:0.68rem;font-weight:700;}
+        .role-super_admin   {background:#fce7f3;color:#9d174d;}
+        .role-kepala_sekolah{background:#ede9fe;color:#4c1d95;}
+        .role-guru          {background:#dbeafe;color:#1e40af;}
+        .role-tata_usaha    {background:#d1fae5;color:#065f46;}
+        .role-siswa         {background:#f0f9ff;color:#0c4a6e;}
+        .role-wali_murid    {background:#fef3c7;color:#92400e;}
+        .role-calon_siswa   {background:#f1f5f9;color:#475569;}
+
+        /* Action buttons */
+        .btn-act{
+            display:inline-flex;align-items:center;gap:4px;
+            padding:5px 10px;border-radius:7px;font-size:0.7rem;font-weight:600;
+            cursor:pointer;border:1.5px solid var(--border);background:var(--white);
+            color:var(--navy);transition:var(--trans);font-family:'Sora',sans-serif;
+        }
+        .btn-act:hover{background:var(--light2);}
+        .btn-act.edit  {border-color:var(--blue);color:var(--blue);}
+        .btn-act.del   {border-color:var(--red);color:var(--red);}
+        .btn-act.active{border-color:var(--green);color:var(--green);}
+
+        /* Toolbar */
+        .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+        .search-input{
+            padding:8px 12px;border:1.5px solid var(--border);border-radius:9px;
+            font-family:'Sora',sans-serif;font-size:0.8rem;color:var(--navy);
+            outline:none;transition:var(--trans);flex:1;min-width:200px;
+        }
+        .search-input:focus{border-color:var(--gold);}
+        .filter-select{
+            padding:8px 12px;border:1.5px solid var(--border);border-radius:9px;
+            font-family:'Sora',sans-serif;font-size:0.8rem;color:var(--navy);
+            outline:none;background:var(--white);cursor:pointer;
+        }
+        .btn-primary{
+            padding:8px 16px;background:var(--navy);color:var(--gold);
+            border:none;border-radius:9px;font-family:'Sora',sans-serif;
+            font-size:0.8rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:var(--trans);
+        }
+        .btn-primary:hover{background:var(--navy-l);}
+        .btn-export{
+            padding:8px 14px;background:var(--green);color:var(--white);
+            border:none;border-radius:9px;font-family:'Sora',sans-serif;
+            font-size:0.75rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:var(--trans);
+        }
+        .btn-export:hover{opacity:0.88;}
+
+        /* Pagination */
+        .pagination{display:flex;align-items:center;gap:6px;justify-content:center;padding:14px 0 0;}
+        .page-btn{
+            width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);
+            background:var(--white);color:var(--muted);font-size:0.78rem;font-weight:600;
+            cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans);
+        }
+        .page-btn:hover{border-color:var(--navy);color:var(--navy);}
+        .page-btn.active{background:var(--navy);color:var(--gold);border-color:var(--navy);}
+        .page-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+        /* ── MODAL ── */
+        .modal-overlay{
+            position:fixed;inset:0;z-index:1000;
+            background:rgba(0,0,0,0.5);backdrop-filter:blur(5px);
+            display:flex;align-items:center;justify-content:center;padding:20px;
+            opacity:0;visibility:hidden;transition:opacity 0.3s,visibility 0.3s;
+        }
+        .modal-overlay.open{opacity:1;visibility:visible;}
+        .modal-box{
+            background:var(--white);border-radius:var(--radius-lg);
+            max-width:520px;width:100%;max-height:90vh;overflow-y:auto;
+            transform:scale(0.94) translateY(-10px);
+            transition:transform 0.3s cubic-bezier(0.25,1,0.5,1);
+            box-shadow:0 20px 60px rgba(0,0,0,0.2);
+        }
+        .modal-overlay.open .modal-box{transform:scale(1) translateY(0);}
+        .modal-header{
+            padding:18px 22px;border-bottom:1px solid var(--border);
+            display:flex;align-items:center;justify-content:space-between;
+            font-weight:700;font-size:0.95rem;color:var(--navy);
+            position:sticky;top:0;background:var(--white);z-index:1;
+        }
+        .modal-close{background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:4px;border-radius:6px;transition:var(--trans);}
+        .modal-close:hover{background:var(--light);color:var(--red);}
+        .modal-body{padding:22px;}
+        .modal-footer{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
+
+        /* Form inside modal */
+        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+        .form-group{display:flex;flex-direction:column;gap:6px;}
+        .form-group label{font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;}
+        .form-group input,.form-group select{
+            padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;
+            font-family:'Sora',sans-serif;font-size:0.85rem;color:var(--navy);
+            outline:none;transition:var(--trans);
+        }
+        .form-group input:focus,.form-group select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,175,55,0.15);}
+        .form-group.full{grid-column:1/-1;}
+
+        /* Alert inside modal */
+        .modal-alert{
+            display:flex;align-items:center;gap:9px;
+            padding:10px 14px;border-radius:9px;font-size:0.8rem;margin-bottom:14px;
+        }
+        .modal-alert.error  {background:#fef2f2;border:1px solid #fca5a5;color:var(--red);}
+        .modal-alert.success{background:#f0fdf4;border:1px solid #86efac;color:#166534;}
+        .modal-alert.hidden {display:none;}
+
+        /* Confirm modal */
+        .confirm-icon{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.6rem;margin:0 auto 16px;}
+        .confirm-icon.danger{background:#fee2e2;color:var(--red);}
+        .confirm-icon.warning{background:#fef3c7;color:var(--orange);}
+
+        /* Audit log */
+        .log-item{
+            display:flex;align-items:flex-start;gap:12px;
+            padding:10px 0;border-bottom:1px solid var(--border);
+        }
+        .log-item:last-child{border-bottom:none;}
+        .log-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:6px;}
+        .log-dot.login    {background:var(--green);}
+        .log-dot.logout   {background:var(--muted);}
+        .log-dot.register {background:var(--blue);}
+        .log-dot.update   {background:var(--orange);}
+        .log-dot.delete   {background:var(--red);}
+        .log-dot.other    {background:var(--purple);}
+        .log-info strong{display:block;font-size:0.8rem;color:var(--navy);}
+        .log-info span{font-size:0.73rem;color:var(--muted);}
+        .log-time{margin-left:auto;font-size:0.7rem;color:var(--muted);white-space:nowrap;}
+
+        /* Toast */
+        .toast-wrap{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;}
+        .toast{
+            padding:12px 18px;border-radius:12px;font-size:0.82rem;font-weight:600;
+            color:var(--white);display:flex;align-items:center;gap:10px;
+            box-shadow:0 8px 24px rgba(0,0,0,0.2);
+            animation:toastIn 0.35s cubic-bezier(0.25,1,0.5,1);
+        }
+        .toast.success{background:var(--green);}
+        .toast.error  {background:var(--red);}
+        .toast.warning{background:var(--orange);}
+        @keyframes toastIn{from{opacity:0;transform:translateX(40px);}to{opacity:1;transform:translateX(0);}}
+
+        /* Pages */
+        .page{display:none;}
+        .page.active{display:block;}
+
+        /* Responsive */
+        @media(max-width:900px){
+            .stats-row{grid-template-columns:repeat(3,1fr);}
+        }
+        @media(max-width:768px){
+            .sidebar{transform:translateX(-100%);}
+            .sidebar.open{transform:translateX(0);}
+            .main{margin-left:0;}
+            .sidebar-toggle{display:block;}
+            .stats-row{grid-template-columns:repeat(2,1fr);}
+            .form-row{grid-template-columns:1fr;}
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+        <div class="sb-logo-icon"><i class="fas fa-shield-alt"></i></div>
+        <div>
+            <span class="sb-logo-title">EduGate Admin</span>
+            <span class="sb-logo-sub">SMKN 1 Terisi</span>
+        </div>
+    </div>
+
+    <!-- User card -->
+    <div class="sb-user">
+        <div class="sb-user-avatar" id="sbAvatar">A</div>
+        <div>
+            <span class="sb-user-name" id="sbName">Administrator</span>
+            <span class="sb-user-role" id="sbRole">super_admin</span>
+        </div>
+        <span class="sb-user-badge badge-admin" id="sbBadge">Admin</span>
+    </div>
+
+    <nav class="sb-nav">
+        <span class="sb-section-label">Utama</span>
+        <button class="nav-item active" onclick="switchPage('dashboard', this)">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </button>
+        <button class="nav-item" onclick="switchPage('users', this)">
+            <i class="fas fa-users"></i> Manajemen User
+            <span class="nav-badge blue" id="navUserCount">0</span>
+        </button>
+        <button class="nav-item" onclick="switchPage('auditlog', this)">
+            <i class="fas fa-history"></i> Audit Log
+        </button>
+
+        <hr class="nav-divider">
+        <span class="sb-section-label">Konten</span>
+        <button class="nav-item" onclick="window.location.href='/admin.html'">
+            <i class="fas fa-chalkboard"></i> Panel CBT
+        </button>
+        <button class="nav-item" onclick="window.location.href='/index.html'">
+            <i class="fas fa-globe"></i> Lihat Website
+        </button>
+
+        <hr class="nav-divider">
+        <button class="nav-item" onclick="handleLogout()">
+            <i class="fas fa-sign-out-alt"></i> Keluar
+        </button>
+    </nav>
+
+    <div class="sb-footer">
+        <div class="sb-time" id="sbTime"></div>
+    </div>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+    <!-- Topbar -->
+    <header class="topbar">
+        <button class="sidebar-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="topbar-title" id="topbarTitle">Dashboard</div>
+        <div class="topbar-actions">
+            <button class="topbar-icon" title="Refresh data" onclick="loadCurrentPage()">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <div class="topbar-user" onclick="switchPage('users', null)">
+                <div class="topbar-avatar" id="topbarAvatar">A</div>
+                <span id="topbarName">Admin</span>
+                <i class="fas fa-chevron-down" style="font-size:0.65rem;color:var(--muted)"></i>
+            </div>
+        </div>
+    </header>
+
+    <!-- ══ PAGE: DASHBOARD ══ -->
+    <div class="content page active" id="page-dashboard">
+
+        <!-- Stats -->
+        <div class="stats-row" id="statsRow">
+            <div class="stat-card blue"><i class="fas fa-users stat-icon"></i><div class="stat-val" id="statTotal">-</div><div class="stat-lbl">Total User</div></div>
+            <div class="stat-card green"><i class="fas fa-user-check stat-icon"></i><div class="stat-val" id="statAktif">-</div><div class="stat-lbl">User Aktif</div></div>
+            <div class="stat-card gold"><i class="fas fa-chalkboard-teacher stat-icon"></i><div class="stat-val" id="statGuru">-</div><div class="stat-lbl">Guru</div></div>
+            <div class="stat-card purple"><i class="fas fa-user-graduate stat-icon"></i><div class="stat-val" id="statSiswa">-</div><div class="stat-lbl">Siswa</div></div>
+            <div class="stat-card red"><i class="fas fa-user-times stat-icon"></i><div class="stat-val" id="statNonaktif">-</div><div class="stat-lbl">Nonaktif</div></div>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-bolt"></i> Aksi Cepat</div>
+            </div>
+            <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn-primary" onclick="openCreateModal()"><i class="fas fa-user-plus"></i> Tambah User</button>
+                <button class="btn-export" onclick="exportUsers()"><i class="fas fa-download"></i> Export CSV</button>
+                <button class="btn-primary" style="background:var(--blue);" onclick="switchPage('auditlog', null)"><i class="fas fa-history"></i> Lihat Audit Log</button>
+            </div>
+        </div>
+
+        <!-- Statistik per role -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-chart-bar"></i> Distribusi User per Role</div>
+            </div>
+            <div class="card-body">
+                <div id="roleDistribution" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;">
+                    <div style="text-align:center;color:var(--muted);padding:20px;">Memuat...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Logs -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-stream"></i> Aktivitas Terbaru</div>
+                <button class="btn-act" onclick="switchPage('auditlog', null)">Lihat Semua</button>
+            </div>
+            <div class="card-body" style="max-height:280px;overflow-y:auto;" id="recentLogs">
+                <div style="text-align:center;color:var(--muted);padding:20px;">Memuat...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ PAGE: USERS ══ -->
+    <div class="content page" id="page-users">
+        <!-- Toolbar -->
+        <div class="card">
+            <div class="card-body">
+                <div class="toolbar">
+                    <input type="text" class="search-input" id="searchInput"
+                           placeholder="Cari nama, email, NISN, NIP..."
+                           oninput="debounce(loadUsers, 400)()">
+                    <select class="filter-select" id="filterRole" onchange="loadUsers()">
+                        <option value="">Semua Role</option>
+                        <option value="super_admin">Super Admin</option>
+                        <option value="kepala_sekolah">Kepala Sekolah</option>
+                        <option value="guru">Guru</option>
+                        <option value="tata_usaha">Tata Usaha</option>
+                        <option value="siswa">Siswa</option>
+                        <option value="wali_murid">Wali Murid</option>
+                        <option value="calon_siswa">Calon Siswa</option>
+                    </select>
+                    <select class="filter-select" id="filterActive" onchange="loadUsers()">
+                        <option value="">Semua Status</option>
+                        <option value="1">Aktif</option>
+                        <option value="0">Nonaktif</option>
+                    </select>
+                    <button class="btn-primary" onclick="openCreateModal()"><i class="fas fa-user-plus"></i> Tambah User</button>
+                    <button class="btn-export" onclick="exportUsers()"><i class="fas fa-download"></i> Export</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-users"></i> Daftar User</div>
+                <span id="userCountLabel" style="font-size:0.78rem;color:var(--muted);">-</span>
+            </div>
+            <div class="table-wrap">
+                <table class="data-table" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nama</th>
+                            <th>Email / NISN</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Verifikasi</th>
+                            <th>Login Terakhir</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTbody">
+                        <tr><td colspan="8" class="empty-cell"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination" id="userPagination"></div>
+        </div>
+    </div>
+
+    <!-- ══ PAGE: AUDIT LOG ══ -->
+    <div class="content page" id="page-auditlog">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-history"></i> Audit Log Aktivitas</div>
+                <div style="display:flex;gap:8px;">
+                    <input type="text" class="search-input" id="logSearch" placeholder="Filter aksi..." style="min-width:150px;flex:none;" oninput="debounce(loadAuditLogs, 400)()">
+                    <button class="btn-export" onclick="exportAuditLogs()"><i class="fas fa-download"></i> Export</button>
+                </div>
+            </div>
+            <div class="card-body" style="max-height:600px;overflow-y:auto;" id="auditLogContainer">
+                <div style="text-align:center;color:var(--muted);padding:40px;"><i class="fas fa-spinner fa-spin"></i> Memuat...</div>
+            </div>
+            <div class="pagination" id="logPagination"></div>
+        </div>
+    </div>
+
+</main>
+
+<!-- ══ MODAL: CREATE / EDIT USER ══ -->
+<div class="modal-overlay" id="userModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span id="modalTitle">Tambah User Baru</span>
+            <button class="modal-close" onclick="closeModal('userModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-alert hidden" id="modalAlert">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="modalAlertMsg"></span>
+            </div>
+            <form id="userForm" onsubmit="submitUserForm(event)">
+                <input type="hidden" id="editUserId">
+                <div class="form-row">
+                    <div class="form-group full">
+                        <label>Nama Lengkap *</label>
+                        <input type="text" id="fNama" placeholder="Nama lengkap" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="fEmail" placeholder="email@domain.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Role *</label>
+                        <select id="fRole" required onchange="onRoleChange()">
+                            <option value="">-- Pilih Role --</option>
+                            <option value="siswa">Siswa</option>
+                            <option value="calon_siswa">Calon Siswa</option>
+                            <option value="wali_murid">Wali Murid</option>
+                            <option value="guru">Guru</option>
+                            <option value="tata_usaha">Tata Usaha</option>
+                            <option value="kepala_sekolah">Kepala Sekolah</option>
+                            <option value="super_admin">Super Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="nisnGroup" style="display:none">
+                        <label>NISN (10 digit)</label>
+                        <input type="text" id="fNisn" placeholder="0012345678" maxlength="10">
+                    </div>
+                    <div class="form-group" id="nipGroup" style="display:none">
+                        <label>NIP (18 digit)</label>
+                        <input type="text" id="fNip" placeholder="198001012005011001" maxlength="18">
+                    </div>
+                    <div class="form-group">
+                        <label>No. HP / WhatsApp</label>
+                        <input type="tel" id="fHp" placeholder="08xxxxxxxxxx">
+                    </div>
+                    <div class="form-group" id="passwordGroup">
+                        <label id="passwordLabel">Password *</label>
+                        <input type="password" id="fPassword" placeholder="Min. 8 karakter, huruf kapital, angka">
+                    </div>
+                    <div class="form-group" id="confirmPwGroup">
+                        <label>Konfirmasi Password *</label>
+                        <input type="password" id="fConfirmPassword" placeholder="Ulangi password">
+                    </div>
+                </div>
+                <input type="hidden" id="formMode" value="create">
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-act" onclick="closeModal('userModal')">Batal</button>
+            <button class="btn-primary" onclick="document.getElementById('userForm').requestSubmit()" id="submitUserBtn">
+                <i class="fas fa-save"></i> Simpan
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ MODAL: CONFIRM ══ -->
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal-box" style="max-width:380px;">
+        <div class="modal-body" style="text-align:center;padding:30px 24px;">
+            <div class="confirm-icon danger" id="confirmIcon">
+                <i class="fas fa-exclamation-triangle" id="confirmIconI"></i>
+            </div>
+            <h3 style="color:var(--navy);font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:10px;" id="confirmTitle">Konfirmasi Aksi</h3>
+            <p style="color:var(--muted);font-size:0.85rem;line-height:1.6;margin-bottom:24px;" id="confirmMsg">Apakah Anda yakin?</p>
+            <div style="display:flex;gap:10px;justify-content:center;">
+                <button class="btn-act" onclick="closeModal('confirmModal')">Batal</button>
+                <button class="btn-primary" id="confirmOkBtn" style="background:var(--red);">
+                    <i class="fas fa-check"></i> Ya, Lanjutkan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ══════════════════════════════════════════
+   CONFIG & STATE
+══════════════════════════════════════════ */
+const API   = '/api';
+let token   = localStorage.getItem('accessToken');
+let userData= JSON.parse(localStorage.getItem('userData') || '{}');
+let currentPage = 1;
+let logPage     = 1;
+let currentSection = 'dashboard';
+
+/* ══════════════════════════════════════════
+   AUTH GUARD — redirect jika belum login
+══════════════════════════════════════════ */
+(function authGuard() {
+    if (!token) return redirectToLogin();
+    fetch(`${API}/auth/check`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.success) return redirectToLogin();
+            const allowedRoles = ['super_admin','kepala_sekolah','guru','tata_usaha'];
+            if (!allowedRoles.includes(d.user.role)) {
+                alert('Anda tidak memiliki akses ke halaman ini.');
+                return redirectToLogin();
+            }
+            initDashboard(d.user);
+        })
+        .catch(redirectToLogin);
+})();
+
+function redirectToLogin() {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userData');
+    window.location.href = '/admin-panel/login.html';
+}
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+function initDashboard(user) {
+    userData = user;
+    // Update sidebar user info
+    document.getElementById('sbAvatar').textContent    = user.nama?.charAt(0) || 'A';
+    document.getElementById('sbName').textContent      = user.nama?.split(' ')[0] || 'Admin';
+    document.getElementById('sbRole').textContent      = user.role;
+    document.getElementById('topbarAvatar').textContent= user.nama?.charAt(0) || 'A';
+    document.getElementById('topbarName').textContent  = user.nama?.split(' ')[0] || 'Admin';
+
+    const roleLabels = {
+        super_admin:'Admin', kepala_sekolah:'Kepsek',
+        guru:'Guru', tata_usaha:'Staff TU'
+    };
+    const badgeClasses = {
+        super_admin:'badge-admin', kepala_sekolah:'badge-kepsek',
+        guru:'badge-guru', tata_usaha:'badge-tu'
+    };
+    document.getElementById('sbBadge').textContent  = roleLabels[user.role] || user.role;
+    document.getElementById('sbBadge').className    = `sb-user-badge ${badgeClasses[user.role] || 'badge-admin'}`;
+
+    // Sembunyikan menu yang tidak perlu
+    if (user.role !== 'super_admin') {
+        // Super admin features hanya untuk super admin
+    }
+
+    loadDashboard();
+    startClock();
+}
+
+/* ══════════════════════════════════════════
+   PAGE SWITCHER
+══════════════════════════════════════════ */
+function switchPage(name, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+    document.getElementById(`page-${name}`)?.classList.add('active');
+    if (btn) btn.classList.add('active');
+
+    currentSection = name;
+    const titles = { dashboard:'Dashboard', users:'Manajemen User', auditlog:'Audit Log' };
+    document.getElementById('topbarTitle').textContent = titles[name] || 'Dashboard';
+
+    if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
+
+    // Load data untuk page
+    if (name === 'users')    loadUsers();
+    if (name === 'auditlog') loadAuditLogs();
+    if (name === 'dashboard') loadDashboard();
+}
+
+function loadCurrentPage() {
+    switchPage(currentSection, null);
+}
+
+/* ══════════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════════ */
+async function loadDashboard() {
+    try {
+        const [statsRes, logsRes] = await Promise.all([
+            apiFetch('/users/stats'),
+            apiFetch('/users/audit-logs?limit=10')
+        ]);
+
+        if (statsRes.success) {
+            const stats = statsRes.data;
+            document.getElementById('statTotal').textContent    = stats.total;
+            document.getElementById('navUserCount').textContent = stats.total;
+
+            let aktif = 0, nonaktif = 0, guru = 0, siswa = 0;
+            stats.byRole.forEach(r => {
+                aktif    += r.aktif    || 0;
+                nonaktif += r.nonaktif || 0;
+                if (r.role === 'guru')  guru  = r.total;
+                if (r.role === 'siswa') siswa = r.total;
+            });
+            document.getElementById('statAktif').textContent   = aktif;
+            document.getElementById('statNonaktif').textContent= nonaktif;
+            document.getElementById('statGuru').textContent    = guru;
+            document.getElementById('statSiswa').textContent   = siswa;
+
+            // Role distribution cards
+            const roleIcons = {
+                super_admin:'fas fa-crown',kepala_sekolah:'fas fa-user-tie',
+                guru:'fas fa-chalkboard-teacher',tata_usaha:'fas fa-briefcase',
+                siswa:'fas fa-user-graduate',wali_murid:'fas fa-users',calon_siswa:'fas fa-user-clock'
+            };
+            const roleColors = {
+                super_admin:'#9d174d',kepala_sekolah:'#4c1d95',guru:'#1e40af',
+                tata_usaha:'#065f46',siswa:'#0c4a6e',wali_murid:'#92400e',calon_siswa:'#475569'
+            };
+            document.getElementById('roleDistribution').innerHTML = stats.byRole.map(r => `
+                <div style="background:var(--light);border-radius:12px;padding:16px;text-align:center;border:1px solid var(--border);">
+                    <i class="${roleIcons[r.role]||'fas fa-user'}" style="font-size:1.4rem;color:${roleColors[r.role]||'var(--navy)'};margin-bottom:8px;display:block;"></i>
+                    <div style="font-size:1.4rem;font-weight:800;color:var(--navy);">${r.total}</div>
+                    <div style="font-size:0.72rem;color:var(--muted);margin-top:3px;">${formatRole(r.role)}</div>
+                    <div style="font-size:0.68rem;color:var(--green);margin-top:2px;">${r.aktif} aktif</div>
+                </div>
+            `).join('');
+        }
+
+        if (logsRes.success) {
+            renderRecentLogs(logsRes.data.logs);
+        }
+
+    } catch (err) {
+        console.error('Dashboard error:', err);
+    }
+}
+
+function renderRecentLogs(logs) {
+    if (!logs.length) {
+        document.getElementById('recentLogs').innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">Belum ada aktivitas.</p>';
+        return;
+    }
+    document.getElementById('recentLogs').innerHTML = logs.map(l => `
+        <div class="log-item">
+            <div class="log-dot ${getLogClass(l.action)}"></div>
+            <div class="log-info">
+                <strong>${formatAction(l.action)}</strong>
+                <span>${l.nama_lengkap || 'System'} · ${l.ip_address || '-'}</span>
+            </div>
+            <div class="log-time">${formatTime(l.created_at)}</div>
+        </div>
+    `).join('');
+}
+
+/* ══════════════════════════════════════════
+   USERS TABLE
+══════════════════════════════════════════ */
+async function loadUsers(page = currentPage) {
+    currentPage = page;
+    const search = document.getElementById('searchInput')?.value || '';
+    const role   = document.getElementById('filterRole')?.value   || '';
+    const active = document.getElementById('filterActive')?.value || '';
+
+    const params = new URLSearchParams({ page, limit: 15 });
+    if (search) params.set('search', search);
+    if (role)   params.set('role', role);
+    if (active !== '') params.set('is_active', active);
+
+    const tbody = document.getElementById('usersTbody');
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-cell"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
+
+    try {
+        const data = await apiFetch(`/users?${params}`);
+        if (!data.success) return;
+
+        const { users, pagination } = data.data;
+        document.getElementById('userCountLabel').textContent = `Total: ${pagination.total} user`;
+
+        if (!users.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-cell">Tidak ada data user.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = users.map((u, i) => `
+            <tr>
+                <td style="color:var(--muted);font-size:0.75rem;">${(page-1)*15 + i + 1}</td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:32px;height:32px;border-radius:50%;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.82rem;flex-shrink:0;">
+                            ${u.nama_lengkap.charAt(0)}
+                        </div>
+                        <div>
+                            <div style="font-weight:700;font-size:0.83rem;">${u.nama_lengkap}</div>
+                            <div style="font-size:0.7rem;color:var(--muted);">${u.no_hp || '-'}</div>
+                        </div>
+                    </div>
+                </td>
+                <td style="font-size:0.78rem;">
+                    ${u.email || ''}
+                    ${u.nisn  ? `<div style="color:var(--muted);font-size:0.7rem;">NISN: ${u.nisn}</div>` : ''}
+                    ${u.nip   ? `<div style="color:var(--muted);font-size:0.7rem;">NIP: ${u.nip}</div>` : ''}
+                </td>
+                <td><span class="role-badge role-${u.role}">${formatRole(u.role)}</span></td>
+                <td><span class="badge ${u.is_active ? 'badge-active' : 'badge-inactive'}">${u.is_active ? 'Aktif' : 'Nonaktif'}</span></td>
+                <td><span class="badge ${u.is_verified ? 'badge-verified' : 'badge-unverified'}">${u.is_verified ? 'Terverifikasi' : 'Belum'}</span></td>
+                <td style="font-size:0.75rem;color:var(--muted);">${u.last_login ? formatTime(u.last_login) : 'Belum pernah'}</td>
+                <td>
+                    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                        <button class="btn-act edit" onclick="openEditModal('${u.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        ${u.is_active
+                            ? `<button class="btn-act del" onclick="confirmDeactivate('${u.id}', '${u.nama_lengkap}')"><i class="fas fa-ban"></i></button>`
+                            : `<button class="btn-act active" onclick="confirmActivate('${u.id}', '${u.nama_lengkap}')"><i class="fas fa-check"></i></button>`
+                        }
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+
+        renderPagination('userPagination', pagination, loadUsers);
+
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-cell">Gagal memuat data: ${err.message}</td></tr>`;
+    }
+}
+
+/* ══════════════════════════════════════════
+   AUDIT LOG
+══════════════════════════════════════════ */
+async function loadAuditLogs(page = logPage) {
+    logPage = page;
+    const action = document.getElementById('logSearch')?.value || '';
+
+    const params = new URLSearchParams({ page, limit: 30 });
+    if (action) params.set('action', action);
+
+    const container = document.getElementById('auditLogContainer');
+    container.innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin"></i></div>';
+
+    try {
+        const data = await apiFetch(`/users/audit-logs?${params}`);
+        if (!data.success) return;
+
+        const { logs, pagination } = data.data;
+
+        if (!logs.length) {
+            container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px;">Belum ada log.</p>';
+            return;
+        }
+
+        container.innerHTML = logs.map(l => `
+            <div class="log-item">
+                <div class="log-dot ${getLogClass(l.action)}"></div>
+                <div class="log-info" style="flex:1;">
+                    <strong>${formatAction(l.action)}</strong>
+                    <span>
+                        ${l.nama_lengkap ? `<b>${l.nama_lengkap}</b> (${formatRole(l.role)})` : 'System'}
+                        · IP: ${l.ip_address || '-'}
+                        ${l.detail ? `· ${l.detail.slice(0, 60)}` : ''}
+                    </span>
+                </div>
+                <div class="log-time">${formatTime(l.created_at)}</div>
+            </div>
+        `).join('');
+
+        renderPagination('logPagination', pagination, loadAuditLogs);
+
+    } catch (err) {
+        container.innerHTML = `<p style="color:var(--red);text-align:center;padding:20px;">Error: ${err.message}</p>`;
+    }
+}
+
+/* ══════════════════════════════════════════
+   CREATE / EDIT USER MODAL
+══════════════════════════════════════════ */
+function openCreateModal() {
+    document.getElementById('modalTitle').textContent   = 'Tambah User Baru';
+    document.getElementById('formMode').value           = 'create';
+    document.getElementById('editUserId').value         = '';
+    document.getElementById('userForm').reset();
+    document.getElementById('passwordLabel').textContent= 'Password *';
+    document.getElementById('fPassword').required       = true;
+    document.getElementById('fConfirmPassword').required= true;
+    document.getElementById('passwordGroup').style.display = '';
+    document.getElementById('confirmPwGroup').style.display= '';
+    hideModalAlert();
+    openModal('userModal');
+}
+
+async function openEditModal(userId) {
+    document.getElementById('modalTitle').textContent   = 'Edit User';
+    document.getElementById('formMode').value           = 'edit';
+    document.getElementById('editUserId').value         = userId;
+    document.getElementById('passwordLabel').textContent= 'Password Baru (kosongkan jika tidak diganti)';
+    document.getElementById('fPassword').required       = false;
+    document.getElementById('fConfirmPassword').required= false;
+    hideModalAlert();
+
+    try {
+        const data = await apiFetch(`/users/${userId}`);
+        if (!data.success) return;
+        const u = data.data;
+
+        document.getElementById('fNama').value  = u.nama_lengkap;
+        document.getElementById('fEmail').value = u.email   || '';
+        document.getElementById('fRole').value  = u.role;
+        document.getElementById('fNisn').value  = u.nisn    || '';
+        document.getElementById('fNip').value   = u.nip     || '';
+        document.getElementById('fHp').value    = u.no_hp   || '';
+        document.getElementById('fPassword').value        = '';
+        document.getElementById('fConfirmPassword').value = '';
+        onRoleChange();
+        openModal('userModal');
+    } catch (err) {
+        showToast('Gagal memuat data user.', 'error');
+    }
+}
+
+function onRoleChange() {
+    const role = document.getElementById('fRole').value;
+    const staffRoles = ['guru','tata_usaha','kepala_sekolah','super_admin'];
+    document.getElementById('nisnGroup').style.display = ['siswa','calon_siswa'].includes(role) ? '' : 'none';
+    document.getElementById('nipGroup').style.display  = staffRoles.includes(role) ? '' : 'none';
+}
+
+async function submitUserForm(e) {
+    e.preventDefault();
+    hideModalAlert();
+
+    const mode     = document.getElementById('formMode').value;
+    const editId   = document.getElementById('editUserId').value;
+    const password = document.getElementById('fPassword').value;
+    const confirm  = document.getElementById('fConfirmPassword').value;
+
+    if (password && password !== confirm) {
+        showModalAlert('error', 'Konfirmasi password tidak cocok.');
+        return;
+    }
+
+    const payload = {
+        nama_lengkap: document.getElementById('fNama').value.trim(),
+        email:        document.getElementById('fEmail').value.trim() || null,
+        role:         document.getElementById('fRole').value,
+        nisn:         document.getElementById('fNisn').value.trim() || null,
+        nip:          document.getElementById('fNip').value.trim()  || null,
+        no_hp:        document.getElementById('fHp').value.trim()   || null,
+    };
+    if (password) payload.password = password;
+
+    const btn = document.getElementById('submitUserBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+
+    try {
+        let data;
+        if (mode === 'create') {
+            data = await apiFetch('/users', 'POST', payload);
+        } else {
+            data = await apiFetch(`/users/${editId}`, 'PUT', payload);
+        }
+
+        if (data.success) {
+            closeModal('userModal');
+            showToast(data.message, 'success');
+            loadUsers();
+            loadDashboard();
+        } else {
+            const errMsg = data.errors
+                ? data.errors.map(e => e.message).join(' • ')
+                : data.message;
+            showModalAlert('error', errMsg);
+        }
+    } catch (err) {
+        showModalAlert('error', 'Koneksi gagal.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Simpan';
+    }
+}
+
+/* ══════════════════════════════════════════
+   CONFIRM ACTIONS
+══════════════════════════════════════════ */
+function confirmDeactivate(id, nama) {
+    document.getElementById('confirmTitle').textContent = 'Nonaktifkan User?';
+    document.getElementById('confirmMsg').textContent   = `Akun "${nama}" akan dinonaktifkan. Semua sesi aktif akan dihapus.`;
+    document.getElementById('confirmOkBtn').style.background = 'var(--red)';
+    document.getElementById('confirmOkBtn').onclick = async () => {
+        closeModal('confirmModal');
+        const data = await apiFetch(`/users/${id}`, 'DELETE');
+        if (data.success) { showToast(data.message, 'success'); loadUsers(); loadDashboard(); }
+        else showToast(data.message, 'error');
+    };
+    openModal('confirmModal');
+}
+
+function confirmActivate(id, nama) {
+    document.getElementById('confirmTitle').textContent = 'Aktifkan User?';
+    document.getElementById('confirmMsg').textContent   = `Akun "${nama}" akan diaktifkan kembali.`;
+    document.getElementById('confirmOkBtn').style.background = 'var(--green)';
+    document.getElementById('confirmOkBtn').onclick = async () => {
+        closeModal('confirmModal');
+        const data = await apiFetch(`/users/${id}/activate`, 'PATCH');
+        if (data.success) { showToast(data.message, 'success'); loadUsers(); loadDashboard(); }
+        else showToast(data.message, 'error');
+    };
+    openModal('confirmModal');
+}
+
+/* ══════════════════════════════════════════
+   LOGOUT
+══════════════════════════════════════════ */
+async function handleLogout() {
+    const refreshToken = localStorage.getItem('refreshToken');
+    await apiFetch('/auth/logout', 'POST', { refreshToken }).catch(() => {});
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userData');
+    window.location.href = '/admin-panel/login.html';
+}
+
+/* ══════════════════════════════════════════
+   EXPORT
+══════════════════════════════════════════ */
+async function exportUsers() {
+    showToast('Mengunduh data user...', 'warning');
+    try {
+        const data = await apiFetch('/users?limit=9999');
+        if (!data.success) return;
+        const users = data.data.users;
+        const header = ['Nama','Email','NISN','NIP','Role','Status','Verifikasi','Login Terakhir'];
+        const rows = users.map(u => [
+            u.nama_lengkap, u.email||'', u.nisn||'', u.nip||'',
+            u.role, u.is_active?'Aktif':'Nonaktif',
+            u.is_verified?'Ya':'Belum', u.last_login||'-'
+        ]);
+        downloadCSV([header, ...rows], `users_${new Date().toISOString().slice(0,10)}.csv`);
+        showToast('Export berhasil!', 'success');
+    } catch (err) {
+        showToast('Gagal export data.', 'error');
+    }
+}
+
+async function exportAuditLogs() {
+    showToast('Mengunduh audit log...', 'warning');
+    try {
+        const data = await apiFetch('/users/audit-logs?limit=9999');
+        if (!data.success) return;
+        const logs = data.data.logs;
+        const header = ['Waktu','Aksi','User','Role','IP'];
+        const rows = logs.map(l => [
+            l.created_at, l.action, l.nama_lengkap||'System',
+            l.role||'-', l.ip_address||'-'
+        ]);
+        downloadCSV([header, ...rows], `audit_log_${new Date().toISOString().slice(0,10)}.csv`);
+        showToast('Export berhasil!', 'success');
+    } catch (err) {
+        showToast('Gagal export log.', 'error');
+    }
+}
+
+function downloadCSV(rows, filename) {
+    const csv  = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' });
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+/* ══════════════════════════════════════════
+   HELPERS & UTILITIES
+══════════════════════════════════════════ */
+async function apiFetch(endpoint, method='GET', body=null) {
+    const opts = {
+        method,
+        headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` }
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res  = await fetch(`${API}${endpoint}`, opts);
+    const data = await res.json();
+    if (res.status === 401) redirectToLogin();
+    return data;
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function showModalAlert(type, msg) {
+    const el = document.getElementById('modalAlert');
+    document.getElementById('modalAlertMsg').textContent = msg;
+    el.className = `modal-alert ${type}`;
+}
+function hideModalAlert() {
+    document.getElementById('modalAlert').className = 'modal-alert hidden';
+}
+
+function showToast(msg, type='success') {
+    const wrap = document.getElementById('toastWrap');
+    const t    = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':type==='error'?'times-circle':'bell'}"></i> ${msg}`;
+    wrap.appendChild(t);
+    setTimeout(() => {
+        t.style.opacity   = '0';
+        t.style.transform = 'translateX(40px)';
+        t.style.transition= '0.3s';
+        setTimeout(() => t.remove(), 300);
+    }, 3000);
+}
+
+function renderPagination(containerId, pagination, loadFn) {
+    const el = document.getElementById(containerId);
+    if (pagination.totalPages <= 1) { el.innerHTML=''; return; }
+    const { page, totalPages } = pagination;
+    let html = `<button class="page-btn" onclick="${loadFn.name}(${page-1})" ${page<=1?'disabled':''}><i class="fas fa-chevron-left"></i></button>`;
+    for (let p = Math.max(1, page-2); p <= Math.min(totalPages, page+2); p++) {
+        html += `<button class="page-btn ${p===page?'active':''}" onclick="${loadFn.name}(${p})">${p}</button>`;
+    }
+    html += `<button class="page-btn" onclick="${loadFn.name}(${page+1})" ${page>=totalPages?'disabled':''}><i class="fas fa-chevron-right"></i></button>`;
+    el.innerHTML = html;
+}
+
+function formatRole(role) {
+    const m = {
+        super_admin:'Super Admin', kepala_sekolah:'Kepala Sekolah',
+        guru:'Guru', tata_usaha:'Tata Usaha', siswa:'Siswa',
+        wali_murid:'Wali Murid', calon_siswa:'Calon Siswa'
+    };
+    return m[role] || role;
+}
+
+function formatAction(action) {
+    const m = {
+        USER_LOGIN:'Login', USER_LOGOUT:'Logout', USER_REGISTER:'Registrasi',
+        USER_CREATED:'Buat User', USER_UPDATED:'Update User',
+        USER_DEACTIVATED:'Nonaktifkan User', USER_ACTIVATED:'Aktifkan User',
+        PASSWORD_RESET_REQUEST:'Request Reset Password', PASSWORD_RESET_SUCCESS:'Reset Password Berhasil',
+        PASSWORD_CHANGED:'Ganti Password', EMAIL_VERIFIED:'Verifikasi Email',
+        GOOGLE_LOGIN:'Login Google', ACCOUNT_LOCKED:'Akun Dikunci'
+    };
+    return m[action] || action;
+}
+
+function getLogClass(action) {
+    if (action?.includes('LOGIN'))  return 'login';
+    if (action?.includes('LOGOUT')) return 'logout';
+    if (action?.includes('REGISTER')||action?.includes('CREATE')) return 'register';
+    if (action?.includes('UPDATE')||action?.includes('CHANGE'))   return 'update';
+    if (action?.includes('DELETE')||action?.includes('DEACTIVATE')||action?.includes('LOCK')) return 'delete';
+    return 'other';
+}
+
+function formatTime(iso) {
+    if (!iso) return '-';
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = (now - d) / 1000;
+    if (diff < 60)   return 'Baru saja';
+    if (diff < 3600) return `${Math.floor(diff/60)} menit lalu`;
+    if (diff < 86400)return `${Math.floor(diff/3600)} jam lalu`;
+    return d.toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
+}
+
+let debounceTimer;
+function debounce(fn, delay) {
+    return function(...args) {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => fn(...args), delay);
+    };
+}
+
+function startClock() {
+    const el = document.getElementById('sbTime');
+    function update() {
+        el.textContent = new Date().toLocaleString('id-ID', {
+            weekday:'short', day:'2-digit', month:'short',
+            hour:'2-digit', minute:'2-digit', second:'2-digit'
+        });
+    }
+    update();
+    setInterval(update, 1000);
+}
+
+// Tutup modal jika klik di luar
+document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('open');
+    });
+});
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+    }
+});
+</script>
+</body>
+</html>

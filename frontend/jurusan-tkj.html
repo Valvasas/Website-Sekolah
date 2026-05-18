@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teknik Bisnis Sepeda Motor | SMKN 1 Terisi</title>
+    <link rel="icon" type="image/png" href="asset/Logo SMK.png">
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- NAVBAR (Sama seperti index.html) -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="brand">
+    <img src="asset/Logo SMK.png" alt="Logo SMKN 1 Terisi" class="logo-sekolah">
+            <div class="brand-text">
+                    <span>SMK NEGERI 1 TERISI</span><small>TERISI</small></div>
+            </a>
+            <div class="menu-toggle" id="mobile-menu">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">Beranda</a></li>
+                <li><a href="akademik.html" class="nav-link active">Akademik</a></li>
+                <li><button id="darkModeToggle" class="dark-mode-btn"><i class="fas fa-moon"></i></button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION OUT OF THE BOX -->
+    <!-- HERO SECTION TKJ -->
+    <header class="major-hero hero-jurusan hero-tkj" style="background-image: url('asset/ujikom.jpeg');">
+        <div class="major-title">MikroTik Academy</div>
+        <div class="container relative">
+            <div class="major-content reveal-text">
+                <div class="major-badge"><i class="fas fa-network-wired"></i> Teknologi Informasi</div>
+                <h1 style="color: white; font-size: 3.5rem; margin-bottom: 20px;">Teknik Komputer <br><span class="highlight">dan Jaringan</span></h1>
+                <p style="color: #cbd5e1; font-size: 1.1rem; margin-bottom: 30px;">Mencetak Network Engineer handal. Kami fokus pada arsitektur jaringan, administrasi server, keamanan siber (Cyber Security), dan konfigurasi ethernet serta fiber optik berstandar industri</p>
+                <div style="display: flex; gap: 15px;">
+                    <a href="#skill-tree" class="btn btn-primary"><i class="fas fa-scroll"></i> Lihat Kurikulum</a>
+                    <a href="#galeri" class="btn btn-outline">Lihat Fasilitas</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- SISTEM PEMBELAJARAN TKJ -->
+    <section class="section bg-dark">
+        <div class="container text-center reveal">
+            <h4 class="sub-title">Metode Edukasi</h4>
+            <h2 style="color: white;">Fokus Keahlian <span class="highlight">Digital</span></h2>
+            <p style="color: #cbd5e1; max-width: 600px; margin: 20px auto 0;">Siswa dipersiapkan menghadapi tantangan era Web 3.0 dan Internet of Things (IoT)</p>
+        </div>
+        
+        <div class="container iso-container reveal">
+            <div class="iso-card">
+                <i class="fas fa-project-diagram"></i>
+                <h3>Infrastruktur Jaringan</h3>
+                <p>Praktik langsung perancangan topologi jaringan (LAN/WAN), instalasi kabel ethernet dan Fiber Optic (Splicing), dan konfigurasi Router/Switch (Cisco & MikroTik)</p>
+            </div>
+            <div class="iso-card" style="transform: translateY(30px);">
+                <i class="fas fa-server"></i>
+                <h3>Administrasi Server</h3>
+                <p>Membangun dan mengelola web server, database, DNS, dan mail server menggunakan sistem operasi berbasis Linux (Debian/Ubuntu)</p>
+            </div>
+            <div class="iso-card">
+                <i class="fas fa-shield-alt"></i>
+                <h3>Keamanan Jaringan</h3>
+                <p>Mempelajari implementasi Firewall, enkripsi data, manajemen bandwidth, serta teknik dasar penetrasi untuk mengamankan jaringan komputer</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- MATERI TKJ -->
+    <section class="section bg-light" id="skill-tree">
+        <div class="container">
+            <div class="skill-tree-section">
+                <div class="skill-sticky reveal">
+                    <h4 class="sub-title">Peta Kompetensi</h4>
+                    <h2 style="font-size: 2.5rem; margin-bottom: 20px;">Apa Saja yang <br><span class="highlight">Akan Dipelajari?</span></h2>
+                    <p style="color: #64748b; font-size: 1.05rem;">Pembelajaran bertahap dari perakitan hardware hingga konfigurasi routing kompleks skala bisnis</p>
+                    <a href="ppdb.html" class="btn btn-primary" style="margin-top: 20px;">Daftar Jurusan Ini</a>
+                </div>
+
+                <div class="skill-path reveal">
+                    <div class="skill-node">
+                        <h3 style="color: var(--primary); margin-bottom: 10px;">Level 1: Pengenalan Hardware dan Software Komputer (Kelas X)</h3>
+                        <p style="color: #555;">Mengenal lebih dalam ke komponen hardware dan software komputer, mengenal internet dan sistem jaringan, dan dasar-dasar troubleshooting</p>
+                    </div>
+                    <div class="skill-node">
+                        <h3 style="color: var(--primary); margin-bottom: 10px;">Level 2: Routing, Switching dan pengenalan Jaringan Internet (Kelas XI)</h3>
+                        <p style="color: #555;">Konfigurasi VLAN, perutean statis/dinamis (OSPF, BGP) di MikroTik, instalasi kabel Ethernet (RJ45), Pembuatan Topologi di Cisco Packet Tracer, dan pengelolaan WLAN (Hotspot)</p>
+                    </div>
+                    <div class="skill-node">
+                        <h3 style="color: var(--primary); margin-bottom: 10px;">Level 3: Konfigurasi topologi jaringan mandiri dengan alat alat praktik TKJ (Kelas XII)</h3>
+                        <p style="color: #555;">Pembuatan sistem jaringan mandiri mulai dari pembuatan kabel sampai ke konfigurasi beberapa alat networking lengkap dengan ip dan servernya, ujian tes Kompetensi, dan Praktik Kerja Lapangan (PKL)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- GALERI TKJ -->
+    <section class="section bg-white" id="galeri">
+        <div class="container">
+            <div class="section-header center reveal">
+                <h4 class="sub-title">Dokumentasi Visual</h4>
+                <h2>Fasilitas & Praktik <span class="highlight">TKJ</span></h2>
+                <div class="line"></div>
+            </div>
+
+            <div class="gallery-4-grid reveal">
+                <div class="g4-item large">
+                    <img src="ASSET/tkj.jpg" alt="Lab Komputer Server">
+                    <div class="g4-overlay">
+                        <h3>Laboratorium Jaringan & Server</h3>
+                        <p style="color: #fff;">Fasilitas Lab Komputer dengan standar Profesional dan jaringan yang proper</p>
+                    </div>
+                </div>
+                <div class="g4-item">
+                    <img src="asset/alat-alat-web.jpg" alt="Fiber Optic" loading="lazy">
+                    <div class="g4-overlay">
+                        <h3>Alat Praktik</h3>
+                        <p style="color: #fff;">Alat praktek networking</p>
+                    </div>
+                </div>
+                <div class="g4-item">
+                    <img src="asset/html.jpg" alt="Konfigurasi">
+                    <div class="g4-overlay">
+                        <h3>Sistem dan development</h3>
+                        <p style="color: #fff;">Siswa memprogram sebuah HTML Kompleks</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <h2 style="color:var(--secondary); font-family:'Playfair Display', serif; font-size: 1.8rem;">SMK NEGERI 1 TERISI</h2>
+                    <p style="margin-top: 15px; color:#a0aec0;">Membentuk generasi unggul, berkarakter, dan siap berkompetisi pada era industri digital</p>
+                    <div class="socials">
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                    </div>
+                </div>
+                <div class="footer-links">
+                    <h3 style="color:#fff; margin-bottom: 20px;">Jelajahi</h3>
+                    <ul>
+                        <li><a href="profil.html">Sejarah & Visi Misi</a></li>
+                        <li><a href="akademik.html">Program Keahlian</a></li>
+                        <li><a href="fasilitas.html">Sarana Prasarana</a></li>
+                        <li><a href="ppdb.html">Pendaftaran Siswa Baru</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h3 style="color:#fff; margin-bottom: 20px;">Tautan Resmi</h3>
+                    <ul>
+                        <!-- FITUR TAMBAHAN: Link EduGate -->
+                        <li><a href="https://edugate.smkn1terisi.sch.id" target="_blank" rel="noopener noreferrer">Portal Kedisiplinan (EduGate)</a></li>
+                        <li><a href="https://kemdikbud.go.id" target="_blank">Kementerian Pendidikan</a></li>
+                        <li><a href="https://dapo.kemdikbud.go.id/" target="_blank">Dapodikdasmen</a></li>
+                        <li><a href="#">E-Raport Sekolah</a></li>
+                        <li><a href="#">LMS Pembelajaran</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 SMK Negeri 1 Terisi - Indramayu. Dikembangkan dengan <i class="fas fa-heart" style="color:red;"></i> oleh IT Club SMKN 1 Terisi.</p>
+            </div>
+        </div>
+
+    <script src="script.js"></script>
+    <script>
+        // JS Khusus Halaman Detail Jurusan: Efek Parallax Teks Raksasa
+        window.addEventListener('scroll', () => {
+            const scroll = window.pageYOffset;
+            const title = document.querySelector('.major-title');
+            if(title) {
+                // Teks raksasa akan bergeser saat di scroll (Parallax effect out of the box)
+                title.style.transform = `rotate(-90deg) translateX(${scroll * 0.5}px)`;
+            }
+        });
+    </script>
+</body>
+</html>

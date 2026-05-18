@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="LMS SMKN 1 Terisi — Platform Belajar Digital">
+    <title>LMS | SMK Negeri 1 Terisi</title>
+    <link rel="icon" type="image/png" href="asset/Logo SMK.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="lms.css">
+</head>
+<body>
+
+    <!-- ============================
+         SCREEN: LOGIN
+         ============================ -->
+    <div id="lms-login" class="lms-screen active">
+        <div class="lms-login-bg">
+            <div class="login-shape s1"></div>
+            <div class="login-shape s2"></div>
+            <div class="login-shape s3"></div>
+        </div>
+
+        <div class="lms-login-container">
+            <div class="lms-brand-panel">
+                <div class="brand-logo-wrap">
+                    <img src="asset/Logo SMK.png" alt="Logo" class="brand-logo-img" onerror="this.style.display='none'">
+                    <div class="brand-logo-fallback"><i class="fas fa-school"></i></div>
+                </div>
+                <h2>SMK Negeri 1 Terisi</h2>
+                <p>Platform Pembelajaran Digital Terpadu</p>
+
+                <div class="brand-stats">
+                    <div class="bs-item"><span>750+</span><label>Siswa Aktif</label></div>
+                    <div class="bs-item"><span>40+</span><label>Mata Pelajaran</label></div>
+                    <div class="bs-item"><span>4</span><label>Jurusan</label></div>
+                </div>
+            </div>
+
+            <div class="lms-form-panel">
+                <a href="index.html" class="lms-back"><i class="fas fa-arrow-left"></i> Kembali</a>
+                <h3>Selamat Datang</h3>
+                <p class="form-sub">Masuk ke portal belajarmu</p>
+
+                <!-- Role Tabs -->
+                <div class="role-selector">
+                    <button class="role-btn active" data-role="siswa" onclick="setRole('siswa',this)">
+                        <i class="fas fa-user-graduate"></i> Siswa
+                    </button>
+                    <button class="role-btn" data-role="guru" onclick="setRole('guru',this)">
+                        <i class="fas fa-chalkboard-teacher"></i> Guru
+                    </button>
+                </div>
+
+                <div class="lms-form">
+                    <div class="lf-group">
+                        <label id="lf-label-user"><i class="fas fa-id-card"></i> NISN</label>
+                        <input type="text" id="lf-user" placeholder="Masukkan NISN kamu">
+                    </div>
+                    <div class="lf-group">
+                        <label><i class="fas fa-lock"></i> Password</label>
+                        <div class="lf-pw">
+                            <input type="password" id="lf-pass" placeholder="Masukkan password">
+                            <button type="button" id="lf-toggle"><i class="fas fa-eye"></i></button>
+                        </div>
+                    </div>
+                    <div class="lf-remember">
+                        <label><input type="checkbox" id="lf-remember"> Ingat saya</label>
+                        <a href="#" class="lf-forgot">Lupa password?</a>
+                    </div>
+                    <button class="lms-login-btn" onclick="lmsLogin()">
+                        <i class="fas fa-sign-in-alt"></i> Masuk ke LMS
+                    </button>
+                    <div id="lms-err" class="lms-err hidden">
+                        <i class="fas fa-circle-exclamation"></i>
+                        <span id="lms-err-msg">Username atau password salah.</span>
+                    </div>
+                </div>
+
+                <p class="lf-hint"><i class="fas fa-info-circle"></i>
+                    Demo: NISN <strong>demo1234</strong> | Password <strong>smkn1terisi</strong>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================
+         SCREEN: DASHBOARD
+         ============================ -->
+    <div id="lms-dashboard" class="lms-screen">
+
+        <!-- Sidebar -->
+        <aside class="lms-sidebar" id="lms-sidebar">
+            <div class="sidebar-brand">
+                <img src="asset/Logo SMK.png" alt="Logo" class="sb-logo" onerror="this.style.display='none'">
+                <span>LMS <strong>SMKN 1</strong></span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="snav-item active" data-page="beranda" onclick="navigate('beranda',this)">
+                    <i class="fas fa-home"></i><span>Beranda</span>
+                </button>
+                <button class="snav-item" data-page="kelas" onclick="navigate('kelas',this)">
+                    <i class="fas fa-book-open"></i><span>Kelas Saya</span>
+                    <span class="snav-badge">4</span>
+                </button>
+                <button class="snav-item" data-page="tugas" onclick="navigate('tugas',this)">
+                    <i class="fas fa-tasks"></i><span>Tugas</span>
+                    <span class="snav-badge red">3</span>
+                </button>
+                <button class="snav-item" data-page="materi" onclick="navigate('materi',this)">
+                    <i class="fas fa-folder-open"></i><span>Materi</span>
+                </button>
+                <button class="snav-item" data-page="forum" onclick="navigate('forum',this)">
+                    <i class="fas fa-comments"></i><span>Forum Diskusi</span>
+                </button>
+                <button class="snav-item" data-page="nilai" onclick="navigate('nilai',this)">
+                    <i class="fas fa-chart-bar"></i><span>Nilai Saya</span>
+                </button>
+                <hr class="snav-hr">
+                <button class="snav-item" onclick="lmsLogout()">
+                    <i class="fas fa-sign-out-alt"></i><span>Keluar</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Overlay mobile -->
+        <div class="sidebar-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+
+        <!-- Main Content -->
+        <div class="lms-main" id="lms-main">
+
+            <!-- Top Bar -->
+            <header class="lms-topbar">
+                <div class="topbar-left">
+                    <button class="tb-menu" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                    <div class="tb-breadcrumb">
+                        <span id="tb-page-name">Beranda</span>
+                    </div>
+                </div>
+                <div class="topbar-right">
+                    <button class="tb-icon" id="notif-btn" onclick="toggleNotif()">
+                        <i class="fas fa-bell"></i>
+                        <span class="tb-dot"></span>
+                    </button>
+                    <div class="tb-avatar" onclick="toggleProfile()">
+                        <div class="avatar-circle" id="tb-avatar-circle">S</div>
+                        <span id="tb-user-name">Siswa</span>
+                        <i class="fas fa-chevron-down" style="font-size:0.7rem;"></i>
+                    </div>
+                </div>
+
+                <!-- Notif Dropdown -->
+                <div class="notif-dropdown" id="notif-dropdown">
+                    <div class="nd-header"><h4>Notifikasi</h4><button onclick="toggleNotif()">✕</button></div>
+                    <div class="nd-list">
+                        <div class="nd-item unread">
+                            <i class="fas fa-tasks" style="color:#3b82f6;"></i>
+                            <div><strong>Tugas baru:</strong> Laporan PKK Minggu Ini<span>2 jam lalu</span></div>
+                        </div>
+                        <div class="nd-item unread">
+                            <i class="fas fa-comment" style="color:#10b981;"></i>
+                            <div><strong>Guru membalas</strong> diskusimu di Forum TKJ<span>5 jam lalu</span></div>
+                        </div>
+                        <div class="nd-item">
+                            <i class="fas fa-star" style="color:#f59e0b;"></i>
+                            <div><strong>Nilai kuis</strong> Matematika sudah keluar: 85<span>Kemarin</span></div>
+                        </div>
+                        <div class="nd-item">
+                            <i class="fas fa-calendar" style="color:#8b5cf6;"></i>
+                            <div><strong>Jadwal PKL</strong> Kelas XII dirilis<span>2 hari lalu</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Dropdown -->
+                <div class="profile-dropdown" id="profile-dropdown">
+                    <div class="pd-head">
+                        <div class="pd-avatar" id="pd-avatar">S</div>
+                        <div><strong id="pd-name">Nama Siswa</strong><span id="pd-role">Siswa Aktif</span></div>
+                    </div>
+                    <hr>
+                    <button class="pd-item"><i class="fas fa-user-edit"></i> Edit Profil</button>
+                    <button class="pd-item"><i class="fas fa-key"></i> Ganti Password</button>
+                    <hr>
+                    <button class="pd-item red" onclick="lmsLogout()"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+                </div>
+            </header>
+
+            <!-- Page: BERANDA -->
+            <div class="page-content active" id="page-beranda">
+                <div class="welcome-banner">
+                    <div class="wb-text">
+                        <h2 id="wb-greeting">Selamat Datang 👋</h2>
+                        <p>Yuk lanjutkan belajar hari ini. Kamu punya <strong>3 tugas</strong> yang menunggu!</p>
+                    </div>
+                    <div class="wb-illustration"><i class="fas fa-graduation-cap"></i></div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stat-cards">
+                    <div class="sc-card">
+                        <div class="sc-icon blue"><i class="fas fa-book-open"></i></div>
+                        <div><span class="sc-val">4</span><label>Mata Pelajaran</label></div>
+                    </div>
+                    <div class="sc-card">
+                        <div class="sc-icon orange"><i class="fas fa-tasks"></i></div>
+                        <div><span class="sc-val">3</span><label>Tugas Aktif</label></div>
+                    </div>
+                    <div class="sc-card">
+                        <div class="sc-icon green"><i class="fas fa-check-circle"></i></div>
+                        <div><span class="sc-val">12</span><label>Tugas Selesai</label></div>
+                    </div>
+                    <div class="sc-card">
+                        <div class="sc-icon purple"><i class="fas fa-star"></i></div>
+                        <div><span class="sc-val">82</span><label>Rata-rata Nilai</label></div>
+                    </div>
+                </div>
+
+                <!-- Grid Beranda -->
+                <div class="beranda-grid">
+                    <!-- Kelas Terbaru -->
+                    <div class="card-section">
+                        <div class="cs-header">
+                            <h3><i class="fas fa-book-open"></i> Kelas Saya</h3>
+                            <button onclick="navigate('kelas', document.querySelector('[data-page=kelas]'))">Lihat semua</button>
+                        </div>
+                        <div class="mini-kelas-list" id="mini-kelas-list"></div>
+                    </div>
+
+                    <!-- Tugas Mendatang -->
+                    <div class="card-section">
+                        <div class="cs-header">
+                            <h3><i class="fas fa-calendar-check"></i> Tugas Mendatang</h3>
+                            <button onclick="navigate('tugas', document.querySelector('[data-page=tugas]'))">Lihat semua</button>
+                        </div>
+                        <div class="mini-tugas-list" id="mini-tugas-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page: KELAS -->
+            <div class="page-content" id="page-kelas">
+                <h2 class="page-title">Kelas Saya</h2>
+                <div class="kelas-grid" id="kelas-grid"></div>
+            </div>
+
+            <!-- Page: TUGAS -->
+            <div class="page-content" id="page-tugas">
+                <h2 class="page-title">Daftar Tugas</h2>
+                <div class="tugas-filter">
+                    <button class="tf-btn active" data-filter="semua" onclick="filterTugas('semua',this)">Semua</button>
+                    <button class="tf-btn" data-filter="belum" onclick="filterTugas('belum',this)">Belum Dikumpul</button>
+                    <button class="tf-btn" data-filter="selesai" onclick="filterTugas('selesai',this)">Selesai</button>
+                </div>
+                <div class="tugas-list" id="tugas-list"></div>
+            </div>
+
+            <!-- Page: MATERI -->
+            <div class="page-content" id="page-materi">
+                <h2 class="page-title">Repositori Materi</h2>
+                <div class="materi-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Cari materi..." oninput="searchMateri(this.value)">
+                </div>
+                <div class="materi-list" id="materi-list"></div>
+            </div>
+
+            <!-- Page: FORUM -->
+            <div class="page-content" id="page-forum">
+                <h2 class="page-title">Forum Diskusi</h2>
+                <div class="forum-compose">
+                    <div class="fc-avatar" id="fc-avatar">S</div>
+                    <div class="fc-input-wrap">
+                        <textarea id="forum-input" placeholder="Tulis pertanyaan atau diskusi..."></textarea>
+                        <div class="fc-actions">
+                            <select id="forum-mapel">
+                                <option>TKJ — Jaringan Komputer</option>
+                                <option>TBSM — Teknik Motor</option>
+                                <option>ATPH — Agrikultur</option>
+                                <option>AKL — Akuntansi</option>
+                                <option>Matematika</option>
+                            </select>
+                            <button onclick="postForum()"><i class="fas fa-paper-plane"></i> Kirim</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="forum-list" id="forum-list"></div>
+            </div>
+
+            <!-- Page: NILAI -->
+            <div class="page-content" id="page-nilai">
+                <h2 class="page-title">Rekap Nilai</h2>
+                <div class="nilai-grid" id="nilai-grid"></div>
+            </div>
+
+        </div>
+        <!-- /lms-main -->
+
+        <!-- MODAL: Detail Kelas / Materi Viewer -->
+        <div class="lms-modal-overlay" id="modal-kelas">
+            <div class="lms-modal-box wide">
+                <div class="lmb-header">
+                    <h3 id="modal-kelas-title">Nama Kelas</h3>
+                    <button onclick="closeModal('modal-kelas')"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="lmb-body" id="modal-kelas-body">
+                    <!-- Diisi JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: Submit Tugas -->
+        <div class="lms-modal-overlay" id="modal-tugas">
+            <div class="lms-modal-box">
+                <div class="lmb-header">
+                    <h3 id="modal-tugas-title">Kumpulkan Tugas</h3>
+                    <button onclick="closeModal('modal-tugas')"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="lmb-body">
+                    <div class="lf-group" style="margin-bottom:16px;">
+                        <label style="font-weight:600;margin-bottom:8px;display:block;"><i class="fas fa-align-left"></i> Jawaban / Keterangan</label>
+                        <textarea id="modal-tugas-text" rows="5" style="width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:10px;font-family:inherit;font-size:0.9rem;resize:vertical;" placeholder="Tuliskan jawaban atau keterangan pengumpulan..."></textarea>
+                    </div>
+                    <div class="lf-group">
+                        <label style="font-weight:600;margin-bottom:8px;display:block;"><i class="fas fa-paperclip"></i> Lampiran File</label>
+                        <div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Klik untuk unggah atau drag & drop</span>
+                            <small>PDF, DOC, JPG — Maks. 10MB</small>
+                            <input type="file" id="file-input" style="display:none" onchange="handleFileUpload(this)">
+                        </div>
+                        <div id="file-preview"></div>
+                    </div>
+                    <button class="lms-submit-btn" id="submit-tugas-btn" onclick="submitTugas()">
+                        <i class="fas fa-paper-plane"></i> Kumpulkan Tugas
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <!-- /lms-dashboard -->
+
+    <script src="lms.js"></script>
+</body>
+</html>

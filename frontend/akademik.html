@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- FITUR TAMBAHAN: SEO & Open Graph -->
+    <meta name="description" content="Website Resmi SMK Negeri 1 Terisi Indramayu. Unggul, Kompeten, dan Berkarakter. Menyelenggarakan pendidikan modern berbasis Teaching Factory (TEFA).">
+    <meta name="keywords" content="SMKN 1 Terisi, SMK Indramayu, TKJ, TBSM, ATPH, Akuntansi, Sekolah Kejuruan, PPDB SMK">
+    <meta name="author" content="IT Club SMKN 1 Terisi">
+    <meta property="og:title" content="SMK Negeri 1 Terisi | Unggul & Berkarakter">
+    <meta property="og:description" content="Portal informasi resmi SMK Negeri 1 Terisi. Jelajahi program keahlian, fasilitas, dan pendaftaran siswa baru.">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80">
+    <meta property="og:url" content="https://smkn1terisi.sch.id">
+    <meta property="og:type" content="website">
+    <title>Akademik & Program Keahlian | SMK Negeri 1 Terisi</title>
+    <link rel="icon" type="image/png" href="asset/Logo SMK.png">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="page-loader">
+        <div class="loader-logo">
+            <div class="loader-ring"></div>
+            <div class="loader-dot"></div>
+        </div>
+    </div>
+
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="brand">
+               <a href="index.html" class="brand">
+    <img src="asset/Logo SMK.png" alt="Logo SMKN 1 Terisi" class="logo-sekolah">
+    <div class="brand-text">
+                    <span>SMK NEGERI 1 TERISI</span>
+                    <small>TERISI - INDRAMAYU</small>
+                </div>
+            </a>
+            
+            <div class="menu-toggle" id="mobile-menu">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">Beranda</a></li>
+                <li><a href="profil.html" class="nav-link">Profil</a></li>
+                <li><a href="akademik.html" class="nav-link active">Akademik</a></li>
+                <li><a href="fasilitas.html" class="nav-link">Fasilitas</a></li>
+                <li><a href="kesiswaan.html" class="nav-link">Kesiswaan</a></li>
+                <li><a href="galeri.html" class="nav-link">Galeri</a></li>
+                <li><a href="login.html" class="nav-link"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+                <li><a href="ppdb.html" class="btn-nav">PPDB Online</a></li>
+                <li>
+                    <button id="darkModeToggle" class="dark-mode-btn" aria-label="Aktifkan Dark Mode">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <header class="page-hero hero-akademik" style="background-image: url('asset/siswa\ akademik.jpg');">
+        <div class="overlay"></div>
+        <div class="container hero-content reveal-text" style="text-align: center;">
+            <span class="badge">Standar Industri Nasional</span>
+            <h1>Akademik & <span class="highlight">Program Keahlian</span></h1>
+            <p>Penerapan Kurikulum Merdeka dengan metode pembelajaran praktis yang selaras dengan kebutuhan industri untuk mencetak lulusan siap kerja</p>
+        </div>
+    </header>
+
+    <!-- SISTEM PEMBELAJARAN (Kurikulum) -->
+    <section class="section bg-light">
+        <div class="container">
+            <div class="section-header center reveal">
+                <h4 class="sub-title">Pendekatan Edukasi</h4>
+                <h2>Sistem Pembelajaran Terapan</h2>
+                <div class="line"></div>
+            </div>
+            
+            <div class="kurikulum-grid reveal">
+                <div class="kuri-card">
+                    <div class="kuri-icon"><i class="fas fa-cogs"></i></div>
+                    <h3>Teaching Factory (TEFA)</h3>
+                    <p>Siswa belajar dalam suasana dan standar operasional pabrik/industri nyata, menghasilkan produk dan jasa berkualitas.</p>
+                </div>
+                <div class="kuri-card">
+                    <div class="kuri-icon"><i class="fas fa-laptop-code"></i></div>
+                    <h3>Digitalisasi Kurikulum</h3>
+                    <p>Integrasi LMS (Learning Management System), Cozy Library, dan pemanfaatan AI untuk mendukung riset siswa secara komprehensif.</p>
+                </div>
+                <div class="kuri-card">
+                    <div class="kuri-icon"><i class="fas fa-award"></i></div>
+                    <h3>Sertifikasi Profesi (BNSP)</h3>
+                    <p>Lulusan dibekali ijazah kompetensi resmi berskala nasional dan lisensi langsung dari mitra industri (Honda, CDN, dll).</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- DETAIL JURUSAN (ZIG-ZAG SHOWCASE) -->
+    <section class="section bg-dark">
+        <div class="container">
+            <div class="section-header center reveal light-text">
+                <h4 class="sub-title">Eksplorasi Mendalam</h4>
+                <h2 style="color:white;">Detail Program Keahlian</h2>
+                <div class="line"></div>
+            </div>
+
+            <!-- Jurusan 1: TBSM -->
+            <div class="showcase-item reveal">
+                <div class="showcase-img">
+                    <img src="asset/11.jpeg" alt="TBSM">
+                    <div class="img-badge"><i class="fas fa-motorcycle"></i></div>
+                </div>
+                <div class="showcase-content">
+                    <h3>Teknik Bisnis Sepeda Motor <span class="highlight">(TBSM)</span></h3>
+                    <p>Kelas unggulan yang bekerja sama langsung dengan Astra Honda Motor. Mencetak mekanik handal, teknisi ahli, hingga wirausahawan bengkel yang memahami manajemen otomotif modern.</p>
+                    <ul class="kompetensi-list">
+                        <li><i class="fas fa-check"></i> Overhaul Mesin & Transmisi</li>
+                        <li><i class="fas fa-check"></i> Kelistrikan & Sistem Injeksi (PGM-FI)</li>
+                        <li><i class="fas fa-check"></i> Manajemen Bengkel (AHASS)</li>
+                        <!-- CONTOH UNTUK TBSM (Lakukan hal yang sama untuk jurusan lain dengan href yang sesuai) -->
+<a href="jurusan-tbsm.html" class="btn btn-primary" style="margin-top: 25px; border-radius: 50px;">
+    <i class="fas fa-vr-cardboard"></i> Tur Virtual Jurusan
+</a>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Jurusan 2: TKJ -->
+            <div class="showcase-item reveal">
+                <div class="showcase-img">
+                    <img src="asset/2.jpeg" alt="TKJ">
+                    <div class="img-badge"><i class="fas fa-network-wired"></i></div>
+                </div>
+                <div class="showcase-content">
+                    <h3>Teknik Komputer & Jaringan <span class="highlight">(TKJ)</span></h3>
+                    <p>Menjawab tantangan revolusi industri 4.0. Program ini berfokus pada arsitektur jaringan skala besar, konfigurasi server, serta implementasi keamanan siber (Cyber Security).</p>
+                    <ul class="kompetensi-list">
+                        <li><i class="fas fa-check"></i> Instalasi & Splicing Ethernet dan Fiber Optik</li>
+                        <li><i class="fas fa-check"></i> Administrasi Server Linux & Windows</li>
+                        <li><i class="fas fa-check"></i> Mikrotik & Cisco Networking</li>
+                        <!-- CONTOH UNTUK TBSM (Lakukan hal yang sama untuk jurusan lain dengan href yang sesuai) -->
+<a href="jurusan-tkj.html" class="btn btn-primary" style="margin-top: 25px; border-radius: 50px;">
+    <i class="fas fa-vr-cardboard"></i> Tur Virtual Jurusan
+</a>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Jurusan 3: ATPH -->
+            <div class="showcase-item reveal">
+                <div class="showcase-img">
+                    <img src="asset/10.jpeg" alt="ATPH">
+                    <div class="img-badge"><i class="fas fa-seedling"></i></div>
+                </div>
+                <div class="showcase-content">
+                    <h3>Agribisnis Tanaman Pangan <span class="highlight">(ATPH)</span></h3>
+                    <p>mencetak lulusan petani pintar yang mampu memadukan ilmu agrikultur tradisional dengan teknologi pertanian modern berbasis teknologi dan kultur jaringan tingkat lanjut.</p>
+                    <ul class="kompetensi-list">
+                        <li><i class="fas fa-check"></i> Hidroponik & Green House System</li>
+                        <li><i class="fas fa-check"></i> Pemuliaan Benih & Kultur Jaringan</li>
+                        <li><i class="fas fa-check"></i> Pemasaran Agribisnis tradisional dan digital</li>
+                        <!-- CONTOH UNTUK TBSM (Lakukan hal yang sama untuk jurusan lain dengan href yang sesuai) -->
+<a href="jurusan-atph.html" class="btn btn-primary" style="margin-top: 25px; border-radius: 50px;">
+    <i class="fas fa-vr-cardboard"></i> Tur Virtual Jurusan
+</a>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Jurusan 4: AKL -->
+            <div class="showcase-item reveal">
+                <div class="showcase-img">
+                    <img src="asset/7.jpeg" alt="AKL">
+                    <div class="img-badge"><i class="fas fa-calculator"></i></div>
+                </div>
+                <div class="showcase-content">
+                    <h3>Akuntansi & Keuangan <span class="highlight">(AKL)</span></h3>
+                    <p>Program keahlian elit yang menyiapkan tenaga akuntan berkompeten. Terlatih dalam menganalisis data keuangan, perpajakan, dan penggunaan *software* akuntansi standar industri perbankan.</p>
+                    <ul class="kompetensi-list">
+                        <li><i class="fas fa-check"></i> Komputer Akuntansi (MYOB/Accurate)</li>
+                        <li><i class="fas fa-check"></i> Administrasi Pajak Terapan</li>
+                        <li><i class="fas fa-check"></i> Etika Profesi & Simulasi Bank Mini</li>
+                        <!-- CONTOH UNTUK TBSM (Lakukan hal yang sama untuk jurusan lain dengan href yang sesuai) -->
+<a href="jurusan-akl.html" class="btn btn-primary" style="margin-top: 25px; border-radius: 50px;">
+    <i class="fas fa-vr-cardboard"></i> Tur Virtual Jurusan
+</a>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <h2 style="color:var(--secondary); font-family:'Playfair Display', serif; font-size: 1.8rem;">SMK NEGERI 1 TERISI</h2>
+                    <p style="margin-top: 15px; color:#a0aec0;">Membentuk generasi unggul, berkarakter, dan siap berkompetisi pada era industri digital.</p>
+                    <div class="socials">
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                    </div>
+                </div>
+                <div class="footer-links">
+                    <h3 style="color:#fff; margin-bottom: 20px;">Jelajahi</h3>
+                    <ul>
+                        <li><a href="profil.html">Sejarah & Visi Misi</a></li>
+                        <li><a href="akademik.html">Program Keahlian</a></li>
+                        <li><a href="fasilitas.html">Sarana Prasarana</a></li>
+                        <li><a href="ppdb.html">Pendaftaran Siswa Baru</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h3 style="color:#fff; margin-bottom: 20px;">Tautan Resmi</h3>
+                    <ul>
+                        <li><a href="https://kemdikbud.go.id" target="_blank">Kementerian Pendidikan</a></li>
+                        <li><a href="https://dapo.kemdikbud.go.id/" target="_blank">Dapodikdasmen</a></li>
+                        <li><a href="#">E-Raport Sekolah</a></li>
+                        <li><a href="#">LMS Pembelajaran</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 SMK Negeri 1 Terisi - Indramayu. Dikembangkan dengan <i class="fas fa-heart" style="color:red;"></i> oleh IT Club SMKN 1 Terisi.</p>
+            </div>
+        </div>
+        <!-- FITUR TAMBAHAN: MODAL LOGIN -->
+    <div class="login-modal-overlay" id="loginModal">
+        <div class="login-modal-box">
+            <button class="close-modal" id="closeLoginBtn"><i class="fas fa-times"></i></button>
+            <div class="login-header">
+                <h2>Portal <span class="highlight">EduGate</span></h2>
+                <p>Pilih peran Anda untuk masuk ke sistem</p>
+            </div>
+            
+            <div class="login-tabs">
+                <button class="login-tab active" data-target="form-siswa">Siswa</button>
+                <button class="login-tab" data-target="form-calon">Calon Siswa</button>
+                <button class="login-tab" data-target="form-guru">Guru/Staff</button>
+            </div>
+
+            <!-- Form Siswa -->
+            <form class="login-form active" id="form-siswa">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" placeholder="NISN / Username Siswa" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" placeholder="Password" required>
+                </div>
+                <button type="button" class="btn btn-primary w-100">Login Siswa</button>
+            </form>
+
+            <!-- Form Calon Siswa (PPDB) -->
+            <form class="login-form" id="form-calon">
+                <div class="input-group">
+                    <i class="fas fa-id-card"></i>
+                    <input type="text" placeholder="Nomor Pendaftaran PPDB" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-key"></i>
+                    <input type="password" placeholder="PIN / Password" required>
+                </div>
+                <button type="button" class="btn btn-primary w-100">Cek Status PPDB</button>
+            </form>
+
+            <!-- Form Guru -->
+            <form class="login-form" id="form-guru">
+                <div class="input-group">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <input type="text" placeholder="NIP / Email Guru" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" placeholder="Password" required>
+                </div>
+                <button type="button" class="btn btn-primary w-100">Masuk Dashboard</button>
+            </form>
+        </div>
+    </div>
+    </footer>
+
+    <script src="script.js"></script>
+
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('page-loader')?.classList.add('loaded');
+            }, 600);
+        });
+    </script>
+</body>
+</html>

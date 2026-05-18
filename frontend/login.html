@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal EduGate - SMK Negeri 1 Terisi</title>
+    <link rel="icon" type="image/png" href="asset/Logo SMK.png">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css"> <!-- Mengambil style utama -->
+    <link rel="stylesheet" href="login.css"> <!-- Style khusus login -->
+</head>
+<body class="login-body">
+    <div id="page-loader">
+        <div class="loader-logo">
+            <div class="loader-ring"></div>
+            <div class="loader-dot"></div>
+        </div>
+    </div>
+
+    <!-- Tombol Kembali ke Beranda -->
+    <a href="index.html" class="back-home"><i class="fas fa-arrow-left"></i> Kembali ke Beranda</a>
+
+    <div class="login-container">
+        <!-- Bagian Kiri: Branding -->
+        <div class="login-branding">
+            <div class="brand-logo">
+                <i class="fas fa-graduation-cap"></i>
+            </div>
+            <h2>Portal EduGate</h2>
+            <p>Sistem Informasi Akademik Terpadu<br>SMK Negeri 1 Terisi Indramayu</p>
+        </div>
+
+        <!-- Bagian Kanan: Form -->
+        <div class="login-form-box">
+            
+            <!-- Area Login Utama -->
+            <div id="loginArea">
+                <h3 class="box-title">Selamat Datang</h3>
+                <p class="box-subtitle">Silakan pilih peran Anda untuk masuk ke sistem.</p>
+
+                <!-- TABS Peran Pengguna -->
+                <div class="role-tabs">
+                    <button class="role-btn active" data-target="form-siswa">Siswa</button>
+                    <button class="role-btn" data-target="form-guru">Guru</button>
+                    <button class="role-btn" data-target="form-ortu">Wali</button>
+                    <button class="role-btn" data-target="form-calon">PPDB</button>
+                    <button class="role-btn" data-target="form-admin">Admin</button>
+                </div>
+
+                <!-- FORM 1: SISWA -->
+                <form id="form-siswa" class="role-form active">
+                    <div class="input-group">
+                        <i class="fas fa-id-card"></i>
+                        <input type="text" placeholder="NISN Siswa" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" placeholder="Password" required>
+                    </div>
+                    <div class="form-options">
+                        <label><input type="checkbox"> Ingat saya</label>
+                        <a href="#" class="forgot-link" onclick="toggleView('forgotArea')">Lupa Password?</a>
+                    </div>
+                    <button type="submit" class="btn-login">Login Siswa <i class="fas fa-sign-in-alt"></i></button>
+                </form>
+
+                <!-- FORM 2: GURU / STAFF -->
+                <form id="form-guru" class="role-form">
+                    <div class="input-group">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        <input type="text" placeholder="NIP / Username Guru" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" placeholder="Password" required>
+                    </div>
+                    <div class="form-options">
+                        <label><input type="checkbox"> Ingat saya</label>
+                        <a href="#" class="forgot-link" onclick="toggleView('forgotArea')">Lupa Password?</a>
+                    </div>
+                    <button type="submit" class="btn-login">Login Guru <i class="fas fa-sign-in-alt"></i></button>
+                </form>
+
+                <!-- FORM 3: ORANG TUA / WALI -->
+                <form id="form-ortu" class="role-form">
+                    <div class="input-group">
+                        <i class="fas fa-users"></i>
+                        <input type="text" placeholder="NIS Siswa (Anak)" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-key"></i>
+                        <input type="password" placeholder="PIN Akses Orang Tua" required>
+                    </div>
+                    <button type="submit" class="btn-login">Lihat Laporan Siswa <i class="fas fa-search"></i></button>
+                </form>
+
+                <!-- FORM 4: CALON SISWA (PPDB) -->
+                <form id="form-calon" class="role-form">
+                    <div class="input-group">
+                        <i class="fas fa-file-signature"></i>
+                        <input type="text" placeholder="Nomor Pendaftaran PPDB" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-calendar-alt"></i>
+                        <input type="date" placeholder="Tanggal Lahir" title="Tanggal Lahir" required>
+                    </div>
+                    <button type="submit" class="btn-login">Cek Status PPDB <i class="fas fa-clipboard-check"></i></button>
+                </form>
+
+                <!-- FORM 5: ADMIN / OPERATOR -->
+                <form id="form-admin" class="role-form">
+                    <div class="input-group">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" placeholder="Email Admin" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" placeholder="Password" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-shield-alt"></i>
+                        <input type="text" placeholder="Kode 2FA (Google Authenticator)" required>
+                    </div>
+                    <div class="form-options">
+                        <span></span>
+                        <a href="#" class="forgot-link" onclick="toggleView('forgotArea')">Lupa Password?</a>
+                    </div>
+                    <button type="submit" class="btn-login admin-btn">Login Administrator <i class="fas fa-cogs"></i></button>
+                </form>
+            </div>
+
+            <!-- Area Lupa Password (Awalnya Disembunyikan) -->
+            <div id="forgotArea" style="display: none;">
+                <h3 class="box-title">Reset Password</h3>
+                <p class="box-subtitle">Masukkan Email yang terdaftar di sistem. Kami akan mengirimkan tautan untuk mereset password Anda.</p>
+                
+                <form action="#" id="form-reset">
+                    <div class="input-group">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" placeholder="Alamat Email Aktif" required>
+                    </div>
+                    <button type="submit" class="btn-login">Kirim Link Reset <i class="fas fa-paper-plane"></i></button>
+                </form>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="#" class="forgot-link" onclick="toggleView('loginArea')"><i class="fas fa-arrow-left"></i> Kembali ke Login</a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="login.js"></script>
+
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('page-loader')?.classList.add('loaded');
+            }, 600);
+        });
+    </script>
+
+<script>
+/* ── Integrasi login ke backend API ── */
+const API_BASE_LOGIN = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+
+async function doLogin(form) {
+    const data   = new FormData(form);
+    const role   = document.querySelector('.role-btn.active')?.getAttribute('data-target') || 'form-siswa';
+    const isNisnRole = ['form-siswa','form-calon'].includes(role);
+    const identifier = isNisnRole
+        ? form.querySelector('input[placeholder*="NISN"], input[placeholder*="Nomor Pendaftaran"]')?.value?.trim()
+        : form.querySelector('input[type="text"], input[type="email"]')?.value?.trim();
+    const password = form.querySelector('input[type="password"]')?.value?.trim();
+
+    if (!identifier || !password) { alert('Harap isi semua kolom.'); return; }
+
+    const body = isNisnRole
+        ? { nisn: identifier, password }
+        : { email: identifier, password };
+
+    try {
+        const res  = await fetch(API_BASE_LOGIN + '/api/auth/login', {
+            method : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body   : JSON.stringify(body),
+        });
+        const json = await res.json();
+
+        if (!res.ok) { alert(json.message || 'Login gagal.'); return; }
+
+        localStorage.setItem('smkn_token',   json.data.accessToken);
+        localStorage.setItem('smkn_user',    JSON.stringify(json.data.user));
+        localStorage.setItem('smkn_refresh', json.data.refreshToken);
+
+        const role2 = json.data.user.role;
+        if (['super_admin','kepala_sekolah','guru','tata_usaha'].includes(role2)) {
+            window.location.href = '/admin-panel/dashboard.html';
+        } else if (role2 === 'siswa' || role2 === 'wali_murid') {
+            window.location.href = '/DATA.html';
+        } else {
+            window.location.href = '/ppdb.html';
+        }
+    } catch(e) {
+        alert('Server tidak dapat dihubungi. Coba lagi nanti.');
+    }
+}
+
+/* Intercept semua form submit di halaman login */
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.role-form').forEach(form => {
+        form.addEventListener('submit', e => { e.preventDefault(); doLogin(form); });
+        const btn = form.querySelector('button[type="button"]');
+        if (btn) btn.addEventListener('click', () => doLogin(form));
+    });
+});
+</script>
+
+</body>
+</html>

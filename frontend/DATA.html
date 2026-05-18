@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Portal Data Siswa SMKN 1 Terisi — Biodata, Kehadiran, Nilai, dan Rekap Kelas">
+    <title>Data Siswa | SMK Negeri 1 Terisi</title>
+    <link rel="icon" type="image/png" href="asset/Logo SMK.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="DATA.css">
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <aside class="ds-sidebar" id="ds-sidebar">
+        <div class="ds-sidebar-brand">
+            <img src="asset/Logo SMK.png" alt="Logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="brand-fb" style="display:none"><i class="fas fa-school"></i></div>
+            <div class="brand-info">
+                <span>SMKN 1 Terisi</span>
+                <small>Portal Data Siswa</small>
+            </div>
+        </div>
+
+        <div class="ds-user-card" id="sidebar-user-card">
+            <div class="ds-user-avatar" id="sb-avatar">A</div>
+            <div class="ds-user-info">
+                <strong id="sb-nama">Ahmad Farhan</strong>
+                <span id="sb-kelas">XI TKJ 1</span>
+            </div>
+        </div>
+
+        <nav class="ds-nav">
+            <a href="#" class="ds-nav-item active" data-page="beranda" onclick="navTo('beranda',this)">
+                <i class="fas fa-home"></i><span>Dashboard</span>
+            </a>
+            <a href="#" class="ds-nav-item" data-page="biodata" onclick="navTo('biodata',this)">
+                <i class="fas fa-user"></i><span>Biodata Saya</span>
+            </a>
+            <a href="#" class="ds-nav-item" data-page="kehadiran" onclick="navTo('kehadiran',this)">
+                <i class="fas fa-calendar-check"></i><span>Kehadiran</span>
+                <span class="nav-badge orange" id="badge-kehadiran"></span>
+            </a>
+            <a href="#" class="ds-nav-item" data-page="nilai" onclick="navTo('nilai',this)">
+                <i class="fas fa-chart-bar"></i><span>Nilai Akademik</span>
+            </a>
+            <a href="#" class="ds-nav-item" data-page="prestasi" onclick="navTo('prestasi',this)">
+                <i class="fas fa-trophy"></i><span>Prestasi</span>
+            </a>
+            <a href="#" class="ds-nav-item" data-page="jadwal" onclick="navTo('jadwal',this)">
+                <i class="fas fa-clock"></i><span>Jadwal Pelajaran</span>
+            </a>
+            <a href="#" class="ds-nav-item" data-page="surat" onclick="navTo('surat',this)">
+                <i class="fas fa-file-alt"></i><span>Surat & Dokumen</span>
+                <span class="nav-badge red" id="badge-surat">1</span>
+            </a>
+            <div class="nav-divider"></div>
+            <a href="#" class="ds-nav-item logout" onclick="doLogout()">
+                <i class="fas fa-sign-out-alt"></i><span>Keluar</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="tahun-ajaran"><i class="fas fa-calendar"></i> TA 2025/2026</div>
+        </div>
+    </aside>
+
+    <!-- OVERLAY MOBILE -->
+    <div class="sidebar-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+
+    <!-- MAIN -->
+    <div class="ds-main" id="ds-main">
+
+        <!-- TOPBAR -->
+        <header class="ds-topbar">
+            <button class="topbar-menu" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+            <div class="topbar-breadcrumb">
+                <i class="fas fa-home" style="color:#94a3b8;font-size:0.8rem;"></i>
+                <i class="fas fa-chevron-right" style="color:#cbd5e1;font-size:0.7rem;"></i>
+                <span id="topbar-page-name">Dashboard</span>
+            </div>
+            <div class="topbar-right">
+                <div class="topbar-search" id="topbar-search-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Cari..." id="global-search" oninput="globalSearch(this.value)">
+                </div>
+                <button class="topbar-notif-btn" id="notif-btn" onclick="toggleNotif()">
+                    <i class="fas fa-bell"></i>
+                    <span class="notif-dot"></span>
+                </button>
+                <div class="topbar-avatar" onclick="navTo('biodata', document.querySelector('[data-page=biodata]'))">
+                    <div class="ta-circle" id="topbar-avatar">A</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- NOTIF PANEL -->
+        <div class="notif-panel" id="notif-panel">
+            <div class="notif-panel-header">
+                <h4><i class="fas fa-bell"></i> Notifikasi</h4>
+                <button onclick="toggleNotif()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="notif-list" id="notif-list">
+                <!-- diisi JS -->
+            </div>
+        </div>
+
+        <!-- ===================== PAGE: LOGIN ===================== -->
+        <div class="page active" id="page-login">
+            <div class="login-fullscreen">
+                <div class="login-card-ds">
+                    <div class="lcd-header">
+                        <img src="asset/Logo SMK.png" alt="Logo" class="lcd-logo" onerror="this.style.display='none'">
+                        <h2>Portal <em>Data Siswa</em></h2>
+                        <p>Masuk dengan akun siswa SMKN 1 Terisi</p>
+                    </div>
+
+                    <div class="lcd-body">
+                        <div class="lcd-field">
+                            <label><i class="fas fa-id-card"></i> NISN</label>
+                            <input type="text" id="l-nisn" placeholder="10 digit NISN" maxlength="10" inputmode="numeric">
+                        </div>
+                        <div class="lcd-field">
+                            <label><i class="fas fa-lock"></i> Password</label>
+                            <div class="lcd-pw">
+                                <input type="password" id="l-pass" placeholder="Password akun siswa">
+                                <button type="button" id="l-toggle"><i class="fas fa-eye"></i></button>
+                            </div>
+                        </div>
+                        <div class="lcd-remember">
+                            <label><input type="checkbox" id="l-remember"> Ingat saya</label>
+                            <a href="#">Lupa password?</a>
+                        </div>
+
+                        <div class="login-err hidden" id="l-err"><i class="fas fa-exclamation-circle"></i> <span id="l-err-msg">Login gagal.</span></div>
+
+                        <button class="btn-login-ds" onclick="doLogin()">
+                            <i class="fas fa-sign-in-alt"></i> Masuk
+                        </button>
+
+                        <p class="lcd-hint"><i class="fas fa-info-circle"></i> Demo: NISN <strong>0012345678</strong> / password <strong>smkn123</strong></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== PAGE: BERANDA / DASHBOARD ===================== -->
+        <div class="page" id="page-beranda">
+            <div class="page-inner">
+
+                <!-- Welcome Banner -->
+                <div class="welcome-ds" id="welcome-ds">
+                    <div class="wd-text">
+                        <p class="wd-greeting" id="wd-greeting">Selamat Pagi</p>
+                        <h1 id="wd-nama">Ahmad Farhan</h1>
+                        <p class="wd-sub" id="wd-sub">XI TKJ 1 · Semester Genap · TA 2025/2026</p>
+                    </div>
+                    <div class="wd-stats">
+                        <div class="wd-stat"><span id="wd-kehadiran">94%</span><small>Kehadiran</small></div>
+                        <div class="wd-stat"><span id="wd-nilai">87</span><small>Nilai Rata²</small></div>
+                        <div class="wd-stat"><span id="wd-rank">#3</span><small>Ranking Kelas</small></div>
+                    </div>
+                </div>
+
+                <!-- Stat Cards -->
+                <div class="ds-stat-cards">
+                    <div class="ds-sc" data-color="blue">
+                        <div class="ds-sc-icon"><i class="fas fa-calendar-check"></i></div>
+                        <div><span class="ds-sc-val" id="sc-hadir">142</span><label>Hari Hadir</label></div>
+                        <div class="ds-sc-trend up"><i class="fas fa-arrow-up"></i> 98%</div>
+                    </div>
+                    <div class="ds-sc" data-color="gold">
+                        <div class="ds-sc-icon"><i class="fas fa-star"></i></div>
+                        <div><span class="ds-sc-val" id="sc-nilai">87.4</span><label>Nilai Rata²</label></div>
+                        <div class="ds-sc-trend up"><i class="fas fa-arrow-up"></i> +2.1</div>
+                    </div>
+                    <div class="ds-sc" data-color="green">
+                        <div class="ds-sc-icon"><i class="fas fa-trophy"></i></div>
+                        <div><span class="ds-sc-val" id="sc-prestasi">3</span><label>Prestasi</label></div>
+                        <div class="ds-sc-trend"><i class="fas fa-medal"></i> Aktif</div>
+                    </div>
+                    <div class="ds-sc" data-color="red">
+                        <div class="ds-sc-icon"><i class="fas fa-times-circle"></i></div>
+                        <div><span class="ds-sc-val" id="sc-absen">4</span><label>Total Absen</label></div>
+                        <div class="ds-sc-trend down"><i class="fas fa-arrow-down"></i> Rendah</div>
+                    </div>
+                </div>
+
+                <!-- Grid Dua Kolom -->
+                <div class="ds-two-col">
+
+                    <!-- Chart Kehadiran -->
+                    <div class="ds-card">
+                        <div class="ds-card-header">
+                            <h3><i class="fas fa-chart-line"></i> Grafik Kehadiran Bulanan</h3>
+                            <span class="card-badge green">Semester Ini</span>
+                        </div>
+                        <div class="attendance-chart" id="attendance-chart">
+                            <!-- diisi JS -->
+                        </div>
+                    </div>
+
+                    <!-- Nilai Per Mapel -->
+                    <div class="ds-card">
+                        <div class="ds-card-header">
+                            <h3><i class="fas fa-chart-bar"></i> Nilai Per Mata Pelajaran</h3>
+                        </div>
+                        <div class="nilai-bars" id="nilai-bars">
+                            <!-- diisi JS -->
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Jadwal Hari Ini -->
+                <div class="ds-card">
+                    <div class="ds-card-header">
+                        <h3><i class="fas fa-clock"></i> Jadwal Hari Ini</h3>
+                        <span class="card-badge blue" id="hari-ini-badge">Senin</span>
+                    </div>
+                    <div class="jadwal-today" id="jadwal-today">
+                        <!-- diisi JS -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ===================== PAGE: BIODATA ===================== -->
+        <div class="page" id="page-biodata">
+            <div class="page-inner">
+                <div class="biodata-wrap">
+
+                    <!-- Profile Card -->
+                    <div class="biodata-profile-card">
+                        <div class="bpc-bg"></div>
+                        <div class="bpc-content">
+                            <div class="bpc-avatar" id="bpc-avatar">A</div>
+                            <h2 id="bpc-nama">Ahmad Farhan Maulana</h2>
+                            <p id="bpc-kelas">XI TKJ 1 · SMKN 1 Terisi</p>
+                            <div class="bpc-tags">
+                                <span class="bpc-tag"><i class="fas fa-id-card"></i> <span id="bpc-nisn">0012345678</span></span>
+                                <span class="bpc-tag"><i class="fas fa-graduation-cap"></i> <span id="bpc-jurusan">TKJ</span></span>
+                            </div>
+                            <button class="btn-edit-foto" onclick="showToastDs('Fitur ubah foto akan segera tersedia!','blue')">
+                                <i class="fas fa-camera"></i> Ubah Foto
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Detail Biodata -->
+                    <div class="biodata-detail">
+                        <div class="bd-section">
+                            <h3 class="bd-section-title"><i class="fas fa-user"></i> Data Pribadi</h3>
+                            <div class="bd-grid" id="bd-pribadi">
+                                <!-- diisi JS -->
+                            </div>
+                        </div>
+                        <div class="bd-section">
+                            <h3 class="bd-section-title"><i class="fas fa-users"></i> Data Orang Tua / Wali</h3>
+                            <div class="bd-grid" id="bd-ortu">
+                                <!-- diisi JS -->
+                            </div>
+                        </div>
+                        <div class="bd-section">
+                            <h3 class="bd-section-title"><i class="fas fa-map-marker-alt"></i> Alamat</h3>
+                            <div class="bd-grid" id="bd-alamat">
+                                <!-- diisi JS -->
+                            </div>
+                        </div>
+
+                        <button class="btn-request-edit" onclick="requestEdit()">
+                            <i class="fas fa-edit"></i> Ajukan Perubahan Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== PAGE: KEHADIRAN ===================== -->
+        <div class="page" id="page-kehadiran">
+            <div class="page-inner">
+
+                <!-- Summary Kehadiran -->
+                <div class="kehadiran-summary">
+                    <div class="kh-sum-item hadir"><span id="kh-hadir">142</span><label><i class="fas fa-check"></i> Hadir</label></div>
+                    <div class="kh-sum-item sakit"><span id="kh-sakit">3</span><label><i class="fas fa-procedures"></i> Sakit</label></div>
+                    <div class="kh-sum-item izin"><span id="kh-izin">2</span><label><i class="fas fa-envelope"></i> Izin</label></div>
+                    <div class="kh-sum-item alpha"><span id="kh-alpha">1</span><label><i class="fas fa-times"></i> Alfa</label></div>
+                    <div class="kh-sum-item persen"><span id="kh-persen">97%</span><label><i class="fas fa-percent"></i> Persentase</label></div>
+                </div>
+
+                <!-- Kalender Kehadiran -->
+                <div class="ds-card">
+                    <div class="ds-card-header">
+                        <h3><i class="fas fa-calendar-alt"></i> Kalender Kehadiran</h3>
+                        <div class="month-nav">
+                            <button onclick="prevMonth()"><i class="fas fa-chevron-left"></i></button>
+                            <span id="month-label">April 2026</span>
+                            <button onclick="nextMonth()"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div class="attendance-calendar" id="attendance-calendar">
+                        <!-- diisi JS -->
+                    </div>
+                    <div class="cal-legend">
+                        <span><span class="cal-dot hadir"></span> Hadir</span>
+                        <span><span class="cal-dot sakit"></span> Sakit</span>
+                        <span><span class="cal-dot izin"></span> Izin</span>
+                        <span><span class="cal-dot alpha"></span> Alfa</span>
+                        <span><span class="cal-dot libur"></span> Libur/Minggu</span>
+                    </div>
+                </div>
+
+                <!-- Riwayat -->
+                <div class="ds-card">
+                    <div class="ds-card-header">
+                        <h3><i class="fas fa-list"></i> Riwayat Kehadiran Terbaru</h3>
+                        <button class="btn-export" onclick="exportKehadiran()"><i class="fas fa-download"></i> Export</button>
+                    </div>
+                    <div class="kehadiran-table-wrap">
+                        <table class="ds-table" id="kehadiran-table">
+                            <thead>
+                                <tr><th>Tanggal</th><th>Hari</th><th>Status</th><th>Keterangan</th></tr>
+                            </thead>
+                            <tbody id="kehadiran-tbody">
+                                <!-- diisi JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== PAGE: NILAI ===================== -->
+        <div class="page" id="page-nilai">
+            <div class="page-inner">
+
+                <!-- Filter Semester -->
+                <div class="filter-row">
+                    <button class="filter-chip active" data-sem="genap" onclick="filterNilai('genap',this)">Semester Genap</button>
+                    <button class="filter-chip" data-sem="ganjil" onclick="filterNilai('ganjil',this)">Semester Ganjil</button>
+                </div>
+
+                <!-- Ringkasan Nilai -->
+                <div class="nilai-summary-cards">
+                    <div class="nsc-item">
+                        <div class="nsc-icon" style="background:#dbeafe;color:#2563eb"><i class="fas fa-calculator"></i></div>
+                        <div><span id="nsc-rata">87.40</span><label>Rata-rata</label></div>
+                    </div>
+                    <div class="nsc-item">
+                        <div class="nsc-icon" style="background:#d1fae5;color:#059669"><i class="fas fa-arrow-up"></i></div>
+                        <div><span id="nsc-tertinggi">95</span><label>Nilai Tertinggi</label></div>
+                    </div>
+                    <div class="nsc-item">
+                        <div class="nsc-icon" style="background:#fef3c7;color:#d97706"><i class="fas fa-arrow-down"></i></div>
+                        <div><span id="nsc-terendah">78</span><label>Nilai Terendah</label></div>
+                    </div>
+                    <div class="nsc-item">
+                        <div class="nsc-icon" style="background:#ede9fe;color:#7c3aed"><i class="fas fa-medal"></i></div>
+                        <div><span id="nsc-rank">#3</span><label>Ranking Kelas</label></div>
+                    </div>
+                </div>
+
+                <!-- Tabel Nilai -->
+                <div class="ds-card">
+                    <div class="ds-card-header">
+                        <h3><i class="fas fa-table"></i> Detail Nilai Per Mata Pelajaran</h3>
+                        <button class="btn-export" onclick="exportNilai()"><i class="fas fa-download"></i> Export</button>
+                    </div>
+                    <div class="kehadiran-table-wrap">
+                        <table class="ds-table" id="nilai-table">
+                            <thead>
+                                <tr><th>Mata Pelajaran</th><th>UH</th><th>UTS</th><th>UAS</th><th>Tugas</th><th>Final</th><th>Status</th></tr>
+                            </thead>
+                            <tbody id="nilai-tbody">
+                                <!-- diisi JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Grafik Perkembangan -->
+                <div class="ds-card">
+                    <div class="ds-card-header">
+                        <h3><i class="fas fa-chart-line"></i> Perkembangan Nilai (Semester ke Semester)</h3>
+                    </div>
+                    <div class="nilai-trend-chart" id="nilai-trend-chart">
+                        <!-- diisi JS -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ===================== PAGE: PRESTASI ===================== -->
+        <div class="page" id="page-prestasi">
+            <div class="page-inner">
+                <div class="ds-card-header" style="margin-bottom:20px;padding:0;">
+                    <h2 style="font-family:'Playfair Display',serif;color:#002244;"><i class="fas fa-trophy" style="color:#D4AF37;"></i> Riwayat Prestasi</h2>
+                </div>
+                <div class="prestasi-grid" id="prestasi-grid">
+                    <!-- diisi JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== PAGE: JADWAL ===================== -->
+        <div class="page" id="page-jadwal">
+            <div class="page-inner">
+                <div class="jadwal-tabs">
+                    <button class="jt active" data-hari="senin"   onclick="filterJadwal('senin',this)">Sen</button>
+                    <button class="jt" data-hari="selasa"  onclick="filterJadwal('selasa',this)">Sel</button>
+                    <button class="jt" data-hari="rabu"    onclick="filterJadwal('rabu',this)">Rab</button>
+                    <button class="jt" data-hari="kamis"   onclick="filterJadwal('kamis',this)">Kam</button>
+                    <button class="jt" data-hari="jumat"   onclick="filterJadwal('jumat',this)">Jum</button>
+                </div>
+                <div class="jadwal-list" id="jadwal-list">
+                    <!-- diisi JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== PAGE: SURAT ===================== -->
+        <div class="page" id="page-surat">
+            <div class="page-inner">
+
+                <!-- Request Surat -->
+                <div class="ds-card">
+                    <div class="ds-card-header">
+                        <h3><i class="fas fa-plus-circle"></i> Ajukan Surat Baru</h3>
+                    </div>
+                    <div class="surat-form">
+                        <div class="surat-form-row">
+                            <div class="sf-field">
+                                <label>Jenis Surat</label>
+                                <select id="surat-jenis">
+                                    <option value="">— Pilih Jenis Surat —</option>
+                                    <option value="aktif">Surat Keterangan Aktif</option>
+                                    <option value="pindah">Surat Keterangan Pindah</option>
+                                    <option value="magang">Surat Pengantar Magang/PKL</option>
+                                    <option value="beasiswa">Surat Rekomendasi Beasiswa</option>
+                                    <option value="izin">Surat Izin Tidak Masuk</option>
+                                    <option value="lainnya">Lainnya</option>
+                                </select>
+                            </div>
+                            <div class="sf-field">
+                                <label>Tujuan / Keperluan</label>
+                                <input type="text" id="surat-tujuan" placeholder="Contoh: Dinas Sosial Kab. Indramayu">
+                            </div>
+                        </div>
+                        <div class="sf-field">
+                            <label>Keterangan Tambahan</label>
+                            <textarea id="surat-ket" rows="3" placeholder="Jelaskan keperluan surat lebih detail..."></textarea>
+                        </div>
+                        <button class="btn-submit-surat" onclick="ajukanSurat()">
+                            <i class="fas fa-paper-plane"></i> Ajukan Permohonan
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Riwayat Surat -->
+                <div class="ds-card">
+                    <div class="ds-card-header">
+                        <h3><i class="fas fa-history"></i> Riwayat Permohonan Surat</h3>
+                    </div>
+                    <div class="surat-list" id="surat-list">
+                        <!-- diisi JS -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+    <!-- /ds-main -->
+
+    <!-- TOAST -->
+    <div class="toast-ds-container" id="toast-ds-container"></div>
+
+    <script src="DATA.js"></script>
+</body>
+</html>

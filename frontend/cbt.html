@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="CBT Online SMKN 1 Terisi — Ujian Berbasis Komputer">
+    <title>CBT Online | SMK Negeri 1 Terisi</title>
+    <link rel="icon" type="image/png" href="asset/Logo SMK.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="cbt.css">
+</head>
+<body>
+
+    <!-- SCREEN 1: LOGIN CBT -->
+    <div id="screen-login" class="screen active">
+        <div class="login-bg">
+            <div class="bg-orb orb-1"></div>
+            <div class="bg-orb orb-2"></div>
+            <div class="bg-orb orb-3"></div>
+        </div>
+
+        <div class="login-wrap">
+            <a href="index.html" class="back-link"><i class="fas fa-arrow-left"></i> Kembali ke Beranda</a>
+
+            <div class="login-card">
+                <div class="login-logo">
+                    <img src="asset/Logo SMK.png" alt="Logo SMKN 1 Terisi" onerror="this.style.display='none'">
+                    <div class="logo-fallback"><i class="fas fa-school"></i></div>
+                </div>
+                <h1 class="login-title">CBT <span>Online</span></h1>
+                <p class="login-sub">SMK Negeri 1 Terisi — Portal Ujian Digital</p>
+
+                <div class="form-group">
+                    <label><i class="fas fa-id-card"></i> NISN Siswa</label>
+                    <input type="text" id="login-nisn" placeholder="Contoh: 0012345678" maxlength="10" inputmode="numeric">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-lock"></i> Token / Password</label>
+                    <div class="input-pw">
+                        <input type="password" id="login-token" placeholder="Masukkan token ujian">
+                        <button type="button" id="toggle-pw"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-book-open"></i> Pilih Mata Pelajaran</label>
+                    <select id="login-mapel">
+                        <option value="">— Pilih Mapel —</option>
+                        <option value="matematika">Matematika</option>
+                        <option value="bindo">Bahasa Indonesia</option>
+                        <option value="basing">Bahasa Inggris</option>
+                        <option value="pkk">Produk Kreatif & Kewirausahaan</option>
+                        <option value="sejarah">Sejarah Indonesia</option>
+                        <option value="produktif">Kompetensi Keahlian</option>
+                    </select>
+                </div>
+
+                <button class="btn-masuk" id="btn-masuk" onclick="handleLogin()">
+                    <span>Mulai Ujian</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+
+                <div id="login-error" class="login-error hidden">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="login-error-msg">NISN atau token tidak valid.</span>
+                </div>
+
+                <p class="login-note"><i class="fas fa-info-circle"></i> Pastikan koneksi internet stabil sebelum memulai ujian.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 2: BRIEFING / INSTRUKSI -->
+    <div id="screen-briefing" class="screen">
+        <div class="briefing-wrap">
+            <div class="briefing-header">
+                <div class="briefing-icon"><i class="fas fa-clipboard-list"></i></div>
+                <h2 id="brief-mapel-name">Matematika</h2>
+                <p id="brief-type">Penilaian Akhir Semester (PAS)</p>
+            </div>
+
+            <div class="brief-info-grid">
+                <div class="brief-info-item">
+                    <i class="fas fa-question-circle"></i>
+                    <span class="val" id="brief-jumlah">40</span>
+                    <span class="lbl">Soal</span>
+                </div>
+                <div class="brief-info-item">
+                    <i class="fas fa-clock"></i>
+                    <span class="val" id="brief-durasi">90</span>
+                    <span class="lbl">Menit</span>
+                </div>
+                <div class="brief-info-item">
+                    <i class="fas fa-star"></i>
+                    <span class="val">70</span>
+                    <span class="lbl">KKM</span>
+                </div>
+            </div>
+
+            <div class="brief-rules">
+                <h3><i class="fas fa-shield-alt"></i> Tata Tertib Ujian</h3>
+                <ul>
+                    <li><i class="fas fa-check"></i> Tidak diperbolehkan membuka tab/aplikasi lain.</li>
+                    <li><i class="fas fa-check"></i> Jawaban disimpan otomatis. Tidak perlu khawatir.</li>
+                    <li><i class="fas fa-check"></i> Gunakan tombol navigasi soal untuk berpindah.</li>
+                    <li><i class="fas fa-check"></i> Centang "Ragu-ragu" jika ingin meninjau ulang soal.</li>
+                    <li><i class="fas fa-check"></i> Tekan "Selesai & Kumpulkan" setelah semua soal dijawab.</li>
+                </ul>
+            </div>
+
+            <div class="brief-actions">
+                <button class="btn-secondary" onclick="showScreen('screen-login')"><i class="fas fa-arrow-left"></i> Batal</button>
+                <button class="btn-primary-cbt" onclick="startExam()"><i class="fas fa-play"></i> Mulai Sekarang</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 3: EXAM -->
+    <div id="screen-exam" class="screen">
+
+        <!-- Header Ujian -->
+        <div class="exam-header">
+            <div class="exam-info">
+                <span class="exam-mapel" id="exam-mapel-label">Matematika</span>
+                <span class="exam-student" id="exam-student-label">Siswa</span>
+            </div>
+            <div class="timer-box" id="timer-box">
+                <i class="fas fa-clock"></i>
+                <span id="timer-display">90:00</span>
+            </div>
+        </div>
+
+        <!-- Body Ujian -->
+        <div class="exam-body">
+
+            <!-- Panel Kiri: Soal -->
+            <div class="question-panel">
+                <div class="q-meta">
+                    <span class="q-num">Soal <span id="q-current">1</span> / <span id="q-total">40</span></span>
+                    <label class="ragu-label">
+                        <input type="checkbox" id="ragu-check" onchange="toggleRagu()">
+                        <span><i class="fas fa-flag"></i> Ragu-ragu</span>
+                    </label>
+                </div>
+
+                <div class="q-text" id="q-text">
+                    <!-- Teks soal diisi oleh JS -->
+                </div>
+
+                <div class="q-options" id="q-options">
+                    <!-- Opsi jawaban diisi oleh JS -->
+                </div>
+
+                <div class="q-nav-btns">
+                    <button class="btn-prev" id="btn-prev" onclick="prevQuestion()">
+                        <i class="fas fa-chevron-left"></i> Sebelumnya
+                    </button>
+                    <button class="btn-next" id="btn-next" onclick="nextQuestion()">
+                        Berikutnya <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Panel Kanan: Navigasi Soal -->
+            <div class="nav-panel" id="nav-panel">
+                <div class="nav-panel-header">
+                    <h3>Navigasi Soal</h3>
+                    <button class="close-nav" id="close-nav" onclick="toggleNavPanel()"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="nav-legend">
+                    <span class="leg answered">Dijawab</span>
+                    <span class="leg ragu">Ragu-ragu</span>
+                    <span class="leg unanswered">Belum</span>
+                </div>
+                <div class="nav-grid" id="nav-grid">
+                    <!-- Tombol nomor diisi JS -->
+                </div>
+                <button class="btn-finish" onclick="confirmFinish()">
+                    <i class="fas fa-paper-plane"></i> Selesai & Kumpulkan
+                </button>
+            </div>
+        </div>
+
+        <!-- Tombol buka nav di mobile -->
+        <button class="fab-nav" id="fab-nav" onclick="toggleNavPanel()">
+            <i class="fas fa-th"></i>
+            <span class="fab-badge" id="fab-badge">0</span>
+        </button>
+
+    </div>
+
+    <!-- SCREEN 4: HASIL -->
+    <div id="screen-result" class="screen">
+        <div class="result-wrap">
+            <div class="result-icon" id="result-icon">
+                <i class="fas fa-trophy"></i>
+            </div>
+            <h2 class="result-title" id="result-title">Selamat, Lulus!</h2>
+            <p class="result-sub" id="result-sub">Hasil ujian kamu berhasil dikumpulkan.</p>
+
+            <div class="result-score-ring">
+                <svg viewBox="0 0 120 120" class="ring-svg">
+                    <circle cx="60" cy="60" r="50" class="ring-bg"/>
+                    <circle cx="60" cy="60" r="50" class="ring-fill" id="ring-fill"/>
+                </svg>
+                <div class="ring-label">
+                    <span class="ring-score" id="ring-score">0</span>
+                    <span class="ring-unit">/ 100</span>
+                </div>
+            </div>
+
+            <div class="result-stats">
+                <div class="rs-item correct">
+                    <i class="fas fa-check-circle"></i>
+                    <span id="res-correct">0</span>
+                    <label>Benar</label>
+                </div>
+                <div class="rs-item wrong">
+                    <i class="fas fa-times-circle"></i>
+                    <span id="res-wrong">0</span>
+                    <label>Salah</label>
+                </div>
+                <div class="rs-item skip">
+                    <i class="fas fa-minus-circle"></i>
+                    <span id="res-skip">0</span>
+                    <label>Kosong</label>
+                </div>
+            </div>
+
+            <div class="result-actions">
+                <a href="index.html" class="btn-secondary"><i class="fas fa-home"></i> Beranda</a>
+                <button class="btn-primary-cbt" onclick="window.print()"><i class="fas fa-print"></i> Cetak Hasil</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Konfirmasi Selesai -->
+    <div class="modal-overlay" id="modal-finish">
+        <div class="modal-box">
+            <div class="modal-icon warn"><i class="fas fa-exclamation-triangle"></i></div>
+            <h3>Kumpulkan Jawaban?</h3>
+            <p id="modal-summary">Kamu masih memiliki <strong>5 soal</strong> yang belum dijawab.</p>
+            <div class="modal-btns">
+                <button class="btn-secondary" onclick="closeModal('modal-finish')">Periksa Lagi</button>
+                <button class="btn-danger" onclick="finishExam()"><i class="fas fa-paper-plane"></i> Ya, Kumpulkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Waktu Habis -->
+    <div class="modal-overlay" id="modal-timeout">
+        <div class="modal-box">
+            <div class="modal-icon danger"><i class="fas fa-hourglass-end"></i></div>
+            <h3>Waktu Habis!</h3>
+            <p>Waktu ujian telah berakhir. Jawaban kamu otomatis dikumpulkan.</p>
+            <div class="modal-btns">
+                <button class="btn-primary-cbt" onclick="finishExam()">Lihat Hasil</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN: PRE-CHECK (Jaringan, Lokasi, Kamera, Browser, Device) -->
+    <div id="screen-precheck" class="screen">
+        <div class="precheck-wrap">
+            <div class="precheck-header">
+                <i class="fas fa-shield-alt"></i>
+                <h2>Persiapan Ujian</h2>
+                <p>Sistem sedang memverifikasi perangkat dan jaringan kamu.</p>
+            </div>
+
+            <div class="precheck-steps">
+                <!-- Step 1: Jaringan -->
+                <div class="precheck-step" id="step-network">
+                    <div class="step-icon pending"><i class="fas fa-wifi"></i></div>
+                    <div class="step-info">
+                        <strong>Tes Kecepatan Jaringan</strong>
+                        <small id="net-test-status">Menunggu...</small>
+                        <div class="net-bar-wrap"><div class="net-bar" id="net-test-bar"></div></div>
+                        <span id="net-test-speed" class="speed-value"></span>
+                    </div>
+                </div>
+
+                <!-- Step 2: Lokasi -->
+                <div class="precheck-step" id="step-location">
+                    <div class="step-icon pending"><i class="fas fa-map-marker-alt"></i></div>
+                    <div class="step-info">
+                        <strong>Verifikasi Lokasi</strong>
+                        <small id="loc-status">Menunggu izin lokasi...</small>
+                    </div>
+                </div>
+
+                <!-- Step 3: Kamera -->
+                <div class="precheck-step" id="step-camera">
+                    <div class="step-icon pending"><i class="fas fa-camera"></i></div>
+                    <div class="step-info">
+                        <strong>Kamera Pengawas (Live)</strong>
+                        <small id="cam-status">Menunggu izin kamera...</small>
+                        <video id="proctor-video" autoplay muted playsinline class="proctor-preview"></video>
+                    </div>
+                </div>
+
+                <!-- Step 4: Browser Info -->
+                <div class="precheck-step" id="step-browser">
+                    <div class="step-icon pending"><i class="fas fa-globe"></i></div>
+                    <div class="step-info">
+                        <strong>Browser yang Digunakan</strong>
+                        <small id="browser-status">Menunggu deteksi browser...</small>
+                    </div>
+                </div>
+
+                <!-- Step 5: Device Info -->
+                <div class="precheck-step" id="step-device">
+                    <div class="step-icon pending"><i class="fas fa-microchip"></i></div>
+                    <div class="step-info">
+                        <strong>Informasi Perangkat</strong>
+                        <div id="device-info-text" class="device-tags"></div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-primary-cbt" id="precheck-next-btn" disabled>
+                Mempersiapkan... <i class="fas fa-spinner fa-spin"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- SCREEN: WARMING UP -->
+    <div id="screen-warmup" class="screen">
+        <div class="warmup-wrap">
+            <div class="warmup-header">
+                <i class="fas fa-dumbbell"></i>
+                <h2>Soal Pemanasan</h2>
+                <p>Jawab 5 soal latihan berikut sebelum ujian dimulai.</p>
+            </div>
+            <div class="warmup-card">
+                <div class="wu-meta"><span id="wu-progress">Soal 1 / 5</span></div>
+                <div class="q-text" id="wu-q-text"></div>
+                <div class="q-options" id="wu-options"></div>
+                <div class="q-nav-btns">
+                    <button class="btn-prev" id="wu-btn-prev"><i class="fas fa-chevron-left"></i> Sebelumnya</button>
+                    <button class="btn-next" id="wu-btn-next">Berikutnya <i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN: HASIL WARMUP -->
+    <div id="screen-warmup-result" class="screen">
+        <div class="wu-result-wrap">
+            <div class="wu-result-icon"><i class="fas fa-dumbbell"></i></div>
+            <h2>Pemanasan Selesai!</h2>
+            <p>Kamu menjawab <strong><span id="wu-result-benar">0</span> / 5</strong> soal dengan benar.</p>
+            <p class="wu-result-sub">Sekarang kamu siap untuk ujian yang sebenarnya.</p>
+            <button class="btn-primary-cbt" onclick="proceedToExam()">
+                <i class="fas fa-play"></i> Mulai Ujian Sekarang
+            </button>
+        </div>
+    </div>
+
+    <!-- Widget kamera mini saat ujian berlangsung -->
+    <div id="proctor-widget" class="proctor-widget hidden">
+        <video id="proctor-video-mini" autoplay muted playsinline></video>
+        <span class="proctor-badge"><i class="fas fa-eye"></i> Diawasi</span>
+    </div>
+
+    <!-- Peringatan Lock -->
+    <div id="lock-warn" class="lock-warn">
+        <i class="fas fa-ban"></i> <span id="lock-warn-msg"></span>
+    </div>
+
+    <!-- Overlay pelanggaran -->
+    <div id="violation-overlay" class="violation-overlay">
+        <i class="fas fa-exclamation-triangle"></i>
+        <p id="violation-msg">Pelanggaran terdeteksi!</p>
+    </div>
+
+    <script src="cbt.js"></script>
+</body>
+</html>

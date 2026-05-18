@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Portal SKL Online SMKN 1 Terisi — Unduh Surat Keterangan Lulus secara digital">
+    <title>Portal SKL | SMK Negeri 1 Terisi</title>
+    <link rel="icon" type="image/png" href="asset/Logo SMK.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="skl.css">
+</head>
+<body>
+
+    <!-- PARTIKEL LATAR -->
+    <div class="particle-bg" id="particle-bg"></div>
+
+    <!-- HEADER NAV -->
+    <nav class="skl-nav">
+        <a href="index.html" class="skl-nav-brand">
+            <img src="asset/Logo SMK.png" alt="Logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="logo-fb" style="display:none"><i class="fas fa-school"></i></div>
+            <div class="brand-txt">
+                <span>SMKN 1 Terisi</span>
+                <small>Portal SKL Digital</small>
+            </div>
+        </a>
+        <div class="skl-nav-right">
+            <span class="nav-badge-secure"><i class="fas fa-shield-alt"></i> SSL Terenkripsi</span>
+            <a href="index.html" class="nav-back-btn"><i class="fas fa-home"></i> <span>Beranda</span></a>
+        </div>
+    </nav>
+
+    <!-- MAIN WRAPPER -->
+    <main class="skl-main">
+
+        <!-- SCREEN 1: FORM PENCARIAN -->
+        <div class="skl-screen active" id="screen-search">
+            <div class="skl-hero">
+                <div class="hero-badge"><i class="fas fa-certificate"></i> Layanan Resmi</div>
+                <h1>Portal <em>Surat Keterangan</em> Lulus</h1>
+                <p>Unduh SKL digital resmi berformat PDF terenkripsi dengan tanda tangan elektronik kepala sekolah.</p>
+
+                <!-- LANGKAH -->
+                <div class="steps-row">
+                    <div class="step-item active" id="step1-ind">
+                        <div class="step-num">1</div>
+                        <span>Verifikasi</span>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step-item" id="step2-ind">
+                        <div class="step-num">2</div>
+                        <span>Konfirmasi</span>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step-item" id="step3-ind">
+                        <div class="step-num">3</div>
+                        <span>Unduh</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FORM CARD -->
+            <div class="form-card" id="form-search-card">
+                <div class="form-card-header">
+                    <div class="fch-icon"><i class="fas fa-search"></i></div>
+                    <div>
+                        <h2>Cari Data Kelulusan</h2>
+                        <p>Masukkan data sesuai dokumen resmi sekolah</p>
+                    </div>
+                </div>
+
+                <div class="form-body-grid">
+                    <div class="field-group">
+                        <label for="inp-nisn"><i class="fas fa-id-card"></i> NISN <span class="req">*</span></label>
+                        <input type="text" id="inp-nisn" maxlength="10" inputmode="numeric"
+                            placeholder="10 digit Nomor Induk Siswa Nasional"
+                            oninput="formatNisn(this)">
+                        <span class="field-hint">Contoh: 0012345678</span>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="inp-nama"><i class="fas fa-user"></i> Nama Lengkap <span class="req">*</span></label>
+                        <input type="text" id="inp-nama" placeholder="Sesuai ijazah / dokumen sekolah"
+                            oninput="this.value = this.value.toUpperCase()">
+                    </div>
+
+                    <div class="field-group">
+                        <label for="inp-ttl"><i class="fas fa-calendar-alt"></i> Tanggal Lahir <span class="req">*</span></label>
+                        <input type="date" id="inp-ttl">
+                    </div>
+
+                    <div class="field-group">
+                        <label for="inp-tahun"><i class="fas fa-graduation-cap"></i> Tahun Lulus <span class="req">*</span></label>
+                        <select id="inp-tahun">
+                            <option value="">— Pilih Tahun —</option>
+                            <option value="2026">2025/2026</option>
+                            <option value="2025">2024/2025</option>
+                            <option value="2024">2023/2024</option>
+                            <option value="2023">2022/2023</option>
+                            <option value="2022">2021/2022</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Captcha Visual Sederhana -->
+                <div class="captcha-box">
+                    <div class="captcha-label"><i class="fas fa-robot"></i> Verifikasi Manusia</div>
+                    <div class="captcha-inner">
+                        <div class="captcha-soal" id="captcha-soal">7 + 3 = ?</div>
+                        <input type="number" id="captcha-ans" placeholder="Jawab" maxlength="3">
+                        <button type="button" class="captcha-refresh" onclick="genCaptcha()" title="Perbarui soal">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-error hidden" id="search-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="search-error-msg">Data tidak ditemukan.</span>
+                </div>
+
+                <button class="btn-cari" id="btn-cari" onclick="cariSKL()">
+                    <i class="fas fa-search"></i>
+                    <span>Cari & Verifikasi Data</span>
+                    <div class="btn-shine"></div>
+                </button>
+
+                <p class="disclaimer"><i class="fas fa-lock"></i> Data Anda dienkripsi dan tidak disimpan di server kami.</p>
+            </div>
+
+            <!-- INFO CARDS -->
+            <div class="info-trio">
+                <div class="info-card">
+                    <i class="fas fa-file-pdf"></i>
+                    <h4>Format PDF</h4>
+                    <p>Dokumen dalam format PDF beresolusi tinggi, siap cetak A4.</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-signature"></i>
+                    <h4>TTD Elektronik</h4>
+                    <p>Dilengkapi tanda tangan digital kepala sekolah yang sah.</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-qrcode"></i>
+                    <h4>QR Verifikasi</h4>
+                    <p>QR Code untuk verifikasi keaslian dokumen secara online.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: KONFIRMASI DATA -->
+        <div class="skl-screen" id="screen-confirm">
+            <div class="confirm-wrap">
+                <div class="confirm-header">
+                    <div class="confirm-avatar" id="conf-avatar">A</div>
+                    <div>
+                        <h2 id="conf-nama">Ahmad Farhan</h2>
+                        <p id="conf-kelas">XI TKJ 1 · Lulus 2025/2026</p>
+                    </div>
+                    <div class="status-lulus"><i class="fas fa-check-circle"></i> Data Ditemukan</div>
+                </div>
+
+                <div class="confirm-grid">
+                    <div class="cg-item"><span>NISN</span><strong id="conf-nisn">0012345678</strong></div>
+                    <div class="cg-item"><span>Jurusan</span><strong id="conf-jurusan">TKJ</strong></div>
+                    <div class="cg-item"><span>Tanggal Lahir</span><strong id="conf-ttl">01 Januari 2008</strong></div>
+                    <div class="cg-item"><span>No. Ijazah</span><strong id="conf-noij">DN-034/SMKN1T/2026</strong></div>
+                    <div class="cg-item"><span>Nilai Rata-rata</span><strong id="conf-nilai" class="val-green">87.40</strong></div>
+                    <div class="cg-item"><span>Status Kelulusan</span><strong class="val-green">LULUS</strong></div>
+                </div>
+
+                <!-- Pilihan Format Unduhan -->
+                <div class="download-options">
+                    <h3><i class="fas fa-download"></i> Pilih Format Unduhan</h3>
+                    <div class="dl-formats">
+                        <label class="dl-format-card selected">
+                            <input type="radio" name="dl-format" value="pdf" checked>
+                            <i class="fas fa-file-pdf"></i>
+                            <span>PDF Resmi</span>
+                            <small>Lengkap + TTD</small>
+                        </label>
+                        <label class="dl-format-card">
+                            <input type="radio" name="dl-format" value="pdf-qr">
+                            <i class="fas fa-qrcode"></i>
+                            <span>PDF + QR</span>
+                            <small>Verifikasi Digital</small>
+                        </label>
+                        <label class="dl-format-card">
+                            <input type="radio" name="dl-format" value="jpg">
+                            <i class="fas fa-image"></i>
+                            <span>Gambar JPG</span>
+                            <small>Share ke sosmed</small>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="confirm-actions">
+                    <button class="btn-back" onclick="backToSearch()">
+                        <i class="fas fa-arrow-left"></i> Kembali
+                    </button>
+                    <button class="btn-download" id="btn-download" onclick="prosesUnduh()">
+                        <i class="fas fa-file-download"></i>
+                        Unduh SKL Sekarang
+                        <div class="btn-shine"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: UNDUH BERHASIL -->
+        <div class="skl-screen" id="screen-done">
+            <div class="done-wrap">
+                <!-- Animasi Centang -->
+                <div class="done-checkmark">
+                    <svg viewBox="0 0 100 100">
+                        <circle class="check-circle" cx="50" cy="50" r="46"/>
+                        <path class="check-path" d="M28 50 L43 65 L72 36"/>
+                    </svg>
+                </div>
+
+                <h2 class="done-title">SKL Berhasil Diunduh!</h2>
+                <p class="done-sub">Dokumen SKL resmi SMK Negeri 1 Terisi telah berhasil diproses dan diunduh ke perangkat Anda.</p>
+
+                <!-- Preview Dokumen Miniatur -->
+                <div class="doc-preview-mini">
+                    <div class="doc-watermark">SMKN 1 TERISI</div>
+                    <div class="doc-header-mini">
+                        <div class="doc-logo-mini"><i class="fas fa-school"></i></div>
+                        <div>
+                            <div class="doc-title-mini">SURAT KETERANGAN LULUS</div>
+                            <div class="doc-sub-mini">SMK Negeri 1 Terisi — Indramayu</div>
+                        </div>
+                    </div>
+                    <div class="doc-body-mini">
+                        <div class="doc-line"></div>
+                        <div class="doc-line short"></div>
+                        <div class="doc-line"></div>
+                        <div class="doc-line medium"></div>
+                    </div>
+                    <div class="doc-qr-mini"><i class="fas fa-qrcode"></i></div>
+                    <div class="doc-seal"><i class="fas fa-stamp"></i></div>
+                </div>
+
+                <!-- Kode Verifikasi -->
+                <div class="verify-code-box">
+                    <span><i class="fas fa-fingerprint"></i> Kode Verifikasi:</span>
+                    <code id="verify-code">SKL-2026-XXXX-YYYY</code>
+                    <button onclick="copyVerifyCode()" title="Salin kode">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+
+                <div class="done-actions">
+                    <button class="btn-another" onclick="resetAll()">
+                        <i class="fas fa-redo"></i> Unduh Lagi
+                    </button>
+                    <a href="index.html" class="btn-home-done">
+                        <i class="fas fa-home"></i> Ke Beranda
+                    </a>
+                </div>
+
+                <!-- Share ke Sosmed -->
+                <div class="share-section">
+                    <p><i class="fas fa-share-alt"></i> Bagikan kelulusan ke:</p>
+                    <div class="share-btns">
+                        <button class="share-btn wa" onclick="shareWA()"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                        <button class="share-btn ig" onclick="shareIG()"><i class="fab fa-instagram"></i> Instagram</button>
+                        <button class="share-btn tw" onclick="shareTW()"><i class="fab fa-twitter"></i> Twitter/X</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- LOADING OVERLAY -->
+    <div class="loading-overlay hidden" id="loading-overlay">
+        <div class="loading-box">
+            <div class="loading-ring">
+                <svg viewBox="0 0 80 80">
+                    <circle class="ring-track" cx="40" cy="40" r="34"/>
+                    <circle class="ring-progress" cx="40" cy="40" r="34" id="ring-prog"/>
+                </svg>
+                <span id="loading-pct">0%</span>
+            </div>
+            <p class="loading-title" id="loading-msg">Memverifikasi Data...</p>
+            <div class="loading-steps">
+                <div class="ls-item" id="ls1"><i class="fas fa-database"></i> Memeriksa database...</div>
+                <div class="ls-item" id="ls2"><i class="fas fa-file-alt"></i> Menyiapkan dokumen...</div>
+                <div class="ls-item" id="ls3"><i class="fas fa-signature"></i> Menambahkan TTD digital...</div>
+                <div class="ls-item" id="ls4"><i class="fas fa-shield-alt"></i> Enkripsi & finalisasi...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="skl.js"></script>
+</body>
+</html>
