@@ -30,15 +30,27 @@ router.get('/me',               authenticate,                                   
 router.get('/check',            authenticate,                                                ctrl.checkAuth);
 
 // Google OAuth — hanya aktif jika credentials dikonfigurasi
-try {
+const googleConfigured = Boolean(
+    process.env.GOOGLE_CLIENT_ID &&
+    process.env.GOOGLE_CLIENT_ID !== 'your_google_client_id_here' &&
+    process.env.GOOGLE_CLIENT_SECRET &&
+    process.env.GOOGLE_CLIENT_SECRET !== 'your_google_client_secret_here'
+);
+
+router.get('/google/status', (_req, res) => {
+    res.json({ success:true, configured:googleConfigured });
+});
+
+if (googleConfigured) {
     const passport = require('passport');
     router.get('/google', passport.authenticate('google', { scope:['profile','email'], session:false }));
     router.get('/google/callback',
-        passport.authenticate('google', { failureRedirect:'/admin-panel/login.html?error=google_failed', session:false }),
+        passport.authenticate('google', { failureRedirect:'/login.html?error=google_failed', session:false }),
         ctrl.googleCallback
     );
-} catch(e) {
-    // Passport google tidak tersedia — skip
+} else {
+    router.get('/google', (_req, res) => res.redirect('/login.html?error=google_not_configured'));
+    router.get('/google/callback', (_req, res) => res.redirect('/login.html?error=google_not_configured'));
 }
 
 module.exports = router;

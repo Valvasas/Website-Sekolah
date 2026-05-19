@@ -16,7 +16,7 @@ const tokenExpiry   = (mins = 15) => new Date(Date.now() + mins * 60_000).toISOS
 const nowISO        = () => new Date().toISOString();
 
 function identifierField(role) {
-    return ['siswa','calon_siswa'].includes(role) ? 'nisn' : 'email';
+    return role === 'siswa' ? 'nisn' : 'email';
 }
 
 /* ── REGISTER ────────────────────────────────────────── */
@@ -375,11 +375,19 @@ async function googleCallback(req, res) {
 
         if (!user || !user.is_active) return res.redirect('/admin-panel/login.html?error=account_disabled');
 
-        const payload     = jwtCfg.createPayload(user);
-        const accessToken = jwtCfg.generateAccessToken(payload);
+        const payload      = jwtCfg.createPayload(user);
+        const accessToken  = jwtCfg.generateAccessToken(payload);
+        const refreshToken = jwtCfg.generateRefreshToken(payload);
+        const refreshExp   = new Date(Date.now() + 7 * 86400_000).toISOString();
+
+        db.prepare(`
+            INSERT INTO refresh_tokens (id,user_id,token,expires_at,created_at)
+            VALUES (:id,:uid,:tok,:exp,:now)
+        `).run({ id:uuidv4(), uid:user.id, tok:refreshToken, exp:refreshExp, now:nowISO() });
+
         log(user.id, 'GOOGLE_LOGIN', 'users', user.id, null, req.ip);
 
-        return res.redirect(`/admin-panel/login.html?token=${accessToken}&role=${user.role}`);
+        return res.redirect(`/login.html?token=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(refreshToken)}&role=${encodeURIComponent(user.role)}`);
     } catch (err) {
         console.error('[GoogleOAuth]', err);
         return res.redirect('/admin-panel/login.html?error=oauth_failed');

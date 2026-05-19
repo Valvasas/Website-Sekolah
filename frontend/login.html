@@ -3,219 +3,1101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal EduGate - SMK Negeri 1 Terisi</title>
-    <link rel="icon" type="image/png" href="asset/Logo SMK.png">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+    <title>Login Portal EduGate | SMK Negeri 1 Terisi</title>
+    <link rel="icon" type="image/png" href="/asset/Logo SMK.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css"> <!-- Mengambil style utama -->
-    <link rel="stylesheet" href="login.css"> <!-- Style khusus login -->
+    <style>
+        :root {
+            --ink: #102033;
+            --navy: #002244;
+            --navy-2: #06345f;
+            --gold: #d4af37;
+            --teal: #0f9f8f;
+            --sky: #2f80ed;
+            --paper: #f7fafc;
+            --line: #d9e2ec;
+            --muted: #63758a;
+            --danger: #dc2626;
+            --success: #0f9f62;
+            --warning: #b7791f;
+            --white: #ffffff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            min-height: 100vh;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background:
+                linear-gradient(120deg, rgba(0, 34, 68, 0.94), rgba(16, 32, 51, 0.86)),
+                url("/asset/gedung-web.jpg") center / cover fixed;
+            color: var(--ink);
+        }
+
+        .page {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: minmax(340px, 0.9fr) minmax(420px, 1.1fr);
+        }
+
+        .brand-side {
+            color: var(--white);
+            padding: 44px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border-right: 1px solid rgba(255,255,255,0.14);
+            background: rgba(0, 20, 40, 0.42);
+            backdrop-filter: blur(8px);
+        }
+
+        .back-home {
+            color: rgba(255,255,255,0.78);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            width: fit-content;
+        }
+
+        .back-home:hover { color: var(--gold); }
+
+        .brand-main { max-width: 470px; }
+
+        .school-mark {
+            width: 82px;
+            height: 82px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.94);
+            padding: 9px;
+            object-fit: contain;
+            box-shadow: 0 18px 38px rgba(0,0,0,0.22);
+            margin-bottom: 26px;
+        }
+
+        .brand-kicker {
+            color: var(--gold);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .brand-title {
+            font-family: "Playfair Display", serif;
+            font-size: clamp(2.2rem, 4vw, 4.2rem);
+            line-height: 1.03;
+            letter-spacing: 0;
+            margin-bottom: 18px;
+        }
+
+        .brand-copy {
+            color: rgba(255,255,255,0.76);
+            line-height: 1.75;
+            font-size: 1rem;
+        }
+
+        .brand-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        .metric {
+            border: 1px solid rgba(255,255,255,0.16);
+            background: rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .metric strong {
+            display: block;
+            color: var(--gold);
+            font-size: 1.32rem;
+            margin-bottom: 4px;
+        }
+
+        .metric span {
+            color: rgba(255,255,255,0.64);
+            font-size: 0.74rem;
+            font-weight: 700;
+        }
+
+        .brand-footer {
+            color: rgba(255,255,255,0.58);
+            font-size: 0.82rem;
+            line-height: 1.6;
+        }
+
+        .work-side {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px;
+            background: rgba(247,250,252,0.94);
+        }
+
+        .auth-shell {
+            width: min(100%, 760px);
+            background: var(--white);
+            border: 1px solid rgba(16,32,51,0.1);
+            border-radius: 8px;
+            box-shadow: 0 28px 70px rgba(6, 52, 95, 0.22);
+            overflow: hidden;
+        }
+
+        .auth-top {
+            padding: 28px 30px 18px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .auth-top h1 {
+            font-size: 1.42rem;
+            color: var(--navy);
+            margin-bottom: 7px;
+        }
+
+        .auth-top p {
+            color: var(--muted);
+            line-height: 1.55;
+            font-size: 0.9rem;
+        }
+
+        .server-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 8px 11px;
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 800;
+            white-space: nowrap;
+            background: #f8fbfd;
+        }
+
+        .server-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--warning);
+        }
+
+        .server-pill.online .server-dot { background: var(--success); }
+        .server-pill.offline .server-dot { background: var(--danger); }
+
+        .auth-body { padding: 26px 30px 30px; }
+
+        .mode-tabs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 22px;
+            background: #eef4f8;
+            padding: 6px;
+            border-radius: 8px;
+        }
+
+        .mode-tab,
+        .role-tab,
+        .btn,
+        .icon-btn {
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .mode-tab {
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--muted);
+            min-height: 42px;
+            font-size: 0.86rem;
+            font-weight: 800;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mode-tab.active {
+            background: var(--white);
+            color: var(--navy);
+            box-shadow: 0 6px 16px rgba(16,32,51,0.08);
+        }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        .role-tabs {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+
+        .role-tab {
+            border: 1px solid var(--line);
+            background: #fbfdff;
+            color: var(--muted);
+            border-radius: 8px;
+            padding: 12px 8px;
+            min-height: 58px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            font-size: 0.76rem;
+            font-weight: 800;
+        }
+
+        .role-tab i { font-size: 1rem; color: var(--sky); }
+
+        .role-tab.active {
+            border-color: rgba(15,159,143,0.45);
+            background: rgba(15,159,143,0.1);
+            color: var(--navy);
+        }
+
+        .role-tab.active i { color: var(--teal); }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+        }
+
+        .field {
+            margin-bottom: 15px;
+        }
+
+        .field label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: var(--navy);
+            margin-bottom: 7px;
+        }
+
+        .field label i { color: var(--teal); }
+
+        .field input,
+        .field select {
+            width: 100%;
+            min-height: 46px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 0 13px;
+            outline: none;
+            color: var(--ink);
+            background: #fbfdff;
+            font: inherit;
+            font-size: 0.92rem;
+        }
+
+        .field input:focus,
+        .field select:focus {
+            border-color: var(--teal);
+            box-shadow: 0 0 0 3px rgba(15,159,143,0.13);
+        }
+
+        .password-wrap { position: relative; }
+        .password-wrap input { padding-right: 46px; }
+
+        .icon-btn {
+            position: absolute;
+            right: 7px;
+            top: 7px;
+            width: 32px;
+            height: 32px;
+            border: 0;
+            background: transparent;
+            color: var(--muted);
+            border-radius: 6px;
+        }
+
+        .icon-btn:hover { color: var(--teal); background: #eef7f6; }
+
+        .inline-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 4px 0 18px;
+            color: var(--muted);
+            font-size: 0.84rem;
+        }
+
+        .inline-row label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .inline-row input { accent-color: var(--teal); }
+
+        .text-link {
+            color: var(--navy-2);
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .text-link:hover { color: var(--teal); }
+
+        .btn {
+            border: 0;
+            border-radius: 8px;
+            min-height: 48px;
+            padding: 0 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-weight: 900;
+            text-decoration: none;
+            transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+        }
+
+        .btn:disabled {
+            opacity: 0.64;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: var(--navy);
+            color: var(--white);
+            box-shadow: 0 12px 22px rgba(0,34,68,0.22);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            background: var(--navy-2);
+        }
+
+        .btn-google {
+            width: 100%;
+            background: var(--white);
+            border: 1px solid var(--line);
+            color: var(--ink);
+            margin-top: 12px;
+        }
+
+        .btn-google:hover:not(:disabled) {
+            background: #f8fbfd;
+            box-shadow: 0 8px 18px rgba(16,32,51,0.08);
+        }
+
+        .btn-google img {
+            width: 18px;
+            height: 18px;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #94a3b8;
+            margin: 18px 0 6px;
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: "";
+            height: 1px;
+            background: var(--line);
+            flex: 1;
+        }
+
+        .alert {
+            display: none;
+            align-items: flex-start;
+            gap: 10px;
+            border-radius: 8px;
+            padding: 12px 13px;
+            line-height: 1.45;
+            font-size: 0.84rem;
+            margin-bottom: 15px;
+            border: 1px solid transparent;
+        }
+
+        .alert.show { display: flex; }
+        .alert.error { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
+        .alert.success { color: #065f46; background: #ecfdf5; border-color: #a7f3d0; }
+        .alert.warning { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+        .alert.info { color: #1e3a8a; background: #eff6ff; border-color: #bfdbfe; }
+
+        .hint {
+            color: var(--muted);
+            font-size: 0.78rem;
+            line-height: 1.55;
+            margin-top: 10px;
+        }
+
+        .strength {
+            display: none;
+            margin-top: -4px;
+            margin-bottom: 14px;
+        }
+
+        .strength-track {
+            height: 5px;
+            background: #e6edf3;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .strength-bar {
+            width: 0;
+            height: 100%;
+            background: var(--danger);
+            transition: width .2s ease, background .2s ease;
+        }
+
+        .strength span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.75rem;
+            margin-top: 5px;
+            font-weight: 700;
+        }
+
+        .form-note {
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.82rem;
+            margin-top: 16px;
+            line-height: 1.55;
+        }
+
+        .ppdb-result {
+            display: none;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 14px;
+            margin-top: 14px;
+            background: #fbfdff;
+        }
+
+        .ppdb-result.show { display: block; }
+
+        .ppdb-result h3 {
+            font-size: 1rem;
+            color: var(--navy);
+            margin-bottom: 8px;
+        }
+
+        .ppdb-result dl {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 0.84rem;
+        }
+
+        .ppdb-result dd { color: var(--ink); font-weight: 700; }
+
+        .loading .btn-label { display: none; }
+        .btn-spinner { display: none; }
+        .loading .btn-spinner { display: inline-block; animation: spin .75s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 960px) {
+            .page { grid-template-columns: 1fr; }
+            .brand-side {
+                min-height: auto;
+                padding: 28px;
+                gap: 28px;
+            }
+            .brand-footer { display: none; }
+            .work-side {
+                min-height: auto;
+                padding: 22px;
+            }
+        }
+
+        @media (max-width: 620px) {
+            .auth-top {
+                flex-direction: column;
+                padding: 24px 22px 16px;
+            }
+            .auth-body { padding: 22px; }
+            .mode-tabs,
+            .role-tabs,
+            .grid-2,
+            .brand-metrics {
+                grid-template-columns: 1fr;
+            }
+            .inline-row {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
-<body class="login-body">
-    <div id="page-loader">
-        <div class="loader-logo">
-            <div class="loader-ring"></div>
-            <div class="loader-dot"></div>
-        </div>
-    </div>
+<body>
+    <main class="page">
+        <section class="brand-side">
+            <a href="/index.html" class="back-home"><i class="fas fa-arrow-left"></i> Kembali ke Beranda</a>
 
-    <!-- Tombol Kembali ke Beranda -->
-    <a href="index.html" class="back-home"><i class="fas fa-arrow-left"></i> Kembali ke Beranda</a>
-
-    <div class="login-container">
-        <!-- Bagian Kiri: Branding -->
-        <div class="login-branding">
-            <div class="brand-logo">
-                <i class="fas fa-graduation-cap"></i>
-            </div>
-            <h2>Portal EduGate</h2>
-            <p>Sistem Informasi Akademik Terpadu<br>SMK Negeri 1 Terisi Indramayu</p>
-        </div>
-
-        <!-- Bagian Kanan: Form -->
-        <div class="login-form-box">
-            
-            <!-- Area Login Utama -->
-            <div id="loginArea">
-                <h3 class="box-title">Selamat Datang</h3>
-                <p class="box-subtitle">Silakan pilih peran Anda untuk masuk ke sistem.</p>
-
-                <!-- TABS Peran Pengguna -->
-                <div class="role-tabs">
-                    <button class="role-btn active" data-target="form-siswa">Siswa</button>
-                    <button class="role-btn" data-target="form-guru">Guru</button>
-                    <button class="role-btn" data-target="form-ortu">Wali</button>
-                    <button class="role-btn" data-target="form-calon">PPDB</button>
-                    <button class="role-btn" data-target="form-admin">Admin</button>
-                </div>
-
-                <!-- FORM 1: SISWA -->
-                <form id="form-siswa" class="role-form active">
-                    <div class="input-group">
-                        <i class="fas fa-id-card"></i>
-                        <input type="text" placeholder="NISN Siswa" required>
-                    </div>
-                    <div class="input-group">
-                        <i class="fas fa-lock"></i>
-                        <input type="password" placeholder="Password" required>
-                    </div>
-                    <div class="form-options">
-                        <label><input type="checkbox"> Ingat saya</label>
-                        <a href="#" class="forgot-link" onclick="toggleView('forgotArea')">Lupa Password?</a>
-                    </div>
-                    <button type="submit" class="btn-login">Login Siswa <i class="fas fa-sign-in-alt"></i></button>
-                </form>
-
-                <!-- FORM 2: GURU / STAFF -->
-                <form id="form-guru" class="role-form">
-                    <div class="input-group">
-                        <i class="fas fa-chalkboard-teacher"></i>
-                        <input type="text" placeholder="NIP / Username Guru" required>
-                    </div>
-                    <div class="input-group">
-                        <i class="fas fa-lock"></i>
-                        <input type="password" placeholder="Password" required>
-                    </div>
-                    <div class="form-options">
-                        <label><input type="checkbox"> Ingat saya</label>
-                        <a href="#" class="forgot-link" onclick="toggleView('forgotArea')">Lupa Password?</a>
-                    </div>
-                    <button type="submit" class="btn-login">Login Guru <i class="fas fa-sign-in-alt"></i></button>
-                </form>
-
-                <!-- FORM 3: ORANG TUA / WALI -->
-                <form id="form-ortu" class="role-form">
-                    <div class="input-group">
-                        <i class="fas fa-users"></i>
-                        <input type="text" placeholder="NIS Siswa (Anak)" required>
-                    </div>
-                    <div class="input-group">
-                        <i class="fas fa-key"></i>
-                        <input type="password" placeholder="PIN Akses Orang Tua" required>
-                    </div>
-                    <button type="submit" class="btn-login">Lihat Laporan Siswa <i class="fas fa-search"></i></button>
-                </form>
-
-                <!-- FORM 4: CALON SISWA (PPDB) -->
-                <form id="form-calon" class="role-form">
-                    <div class="input-group">
-                        <i class="fas fa-file-signature"></i>
-                        <input type="text" placeholder="Nomor Pendaftaran PPDB" required>
-                    </div>
-                    <div class="input-group">
-                        <i class="fas fa-calendar-alt"></i>
-                        <input type="date" placeholder="Tanggal Lahir" title="Tanggal Lahir" required>
-                    </div>
-                    <button type="submit" class="btn-login">Cek Status PPDB <i class="fas fa-clipboard-check"></i></button>
-                </form>
-
-                <!-- FORM 5: ADMIN / OPERATOR -->
-                <form id="form-admin" class="role-form">
-                    <div class="input-group">
-                        <i class="fas fa-envelope"></i>
-                        <input type="email" placeholder="Email Admin" required>
-                    </div>
-                    <div class="input-group">
-                        <i class="fas fa-lock"></i>
-                        <input type="password" placeholder="Password" required>
-                    </div>
-                    <div class="input-group">
-                        <i class="fas fa-shield-alt"></i>
-                        <input type="text" placeholder="Kode 2FA (Google Authenticator)" required>
-                    </div>
-                    <div class="form-options">
-                        <span></span>
-                        <a href="#" class="forgot-link" onclick="toggleView('forgotArea')">Lupa Password?</a>
-                    </div>
-                    <button type="submit" class="btn-login admin-btn">Login Administrator <i class="fas fa-cogs"></i></button>
-                </form>
-            </div>
-
-            <!-- Area Lupa Password (Awalnya Disembunyikan) -->
-            <div id="forgotArea" style="display: none;">
-                <h3 class="box-title">Reset Password</h3>
-                <p class="box-subtitle">Masukkan Email yang terdaftar di sistem. Kami akan mengirimkan tautan untuk mereset password Anda.</p>
-                
-                <form action="#" id="form-reset">
-                    <div class="input-group">
-                        <i class="fas fa-envelope"></i>
-                        <input type="email" placeholder="Alamat Email Aktif" required>
-                    </div>
-                    <button type="submit" class="btn-login">Kirim Link Reset <i class="fas fa-paper-plane"></i></button>
-                </form>
-                
-                <div style="text-align: center; margin-top: 20px;">
-                    <a href="#" class="forgot-link" onclick="toggleView('loginArea')"><i class="fas fa-arrow-left"></i> Kembali ke Login</a>
+            <div class="brand-main">
+                <img src="/asset/Logo SMK.png" alt="Logo SMK Negeri 1 Terisi" class="school-mark">
+                <p class="brand-kicker">Portal EduGate Terpadu</p>
+                <h2 class="brand-title">Masuk, daftar, dan pantau layanan sekolah.</h2>
+                <p class="brand-copy">
+                    Akses akademik siswa, panel guru dan tata usaha, pendaftaran akun baru,
+                    reset password email, autentikasi Google, serta pengecekan status PPDB dalam satu halaman.
+                </p>
+                <div class="brand-metrics">
+                    <div class="metric"><strong>750+</strong><span>Siswa Aktif</span></div>
+                    <div class="metric"><strong>50+</strong><span>Guru & Staff</span></div>
+                    <div class="metric"><strong>4</strong><span>Program Keahlian</span></div>
                 </div>
             </div>
 
-        </div>
-    </div>
+            <p class="brand-footer">
+                Gunakan akun resmi sekolah. Akun Guru, Tata Usaha, Kepala Sekolah, dan Admin dibuat oleh administrator.
+            </p>
+        </section>
 
-    <script src="login.js"></script>
+        <section class="work-side">
+            <div class="auth-shell">
+                <div class="auth-top">
+                    <div>
+                        <h1>Login Portal EduGate</h1>
+                        <p>Masuk sesuai peran, atau buat akun baru untuk siswa, calon siswa, dan wali murid.</p>
+                    </div>
+                    <div class="server-pill" id="serverStatus">
+                        <span class="server-dot"></span>
+                        <span id="serverStatusText">Mengecek server</span>
+                    </div>
+                </div>
+
+                <div class="auth-body">
+                    <div class="mode-tabs" role="tablist" aria-label="Mode autentikasi">
+                        <button class="mode-tab active" data-panel="loginPanel" type="button"><i class="fas fa-right-to-bracket"></i> Login</button>
+                        <button class="mode-tab" data-panel="registerPanel" type="button"><i class="fas fa-user-plus"></i> Daftar</button>
+                        <button class="mode-tab" data-panel="ppdbPanel" type="button"><i class="fas fa-clipboard-check"></i> PPDB</button>
+                    </div>
+
+                    <div class="alert" id="mainAlert">
+                        <i class="fas fa-circle-info"></i>
+                        <span id="mainAlertText"></span>
+                    </div>
+
+                    <section class="panel active" id="loginPanel">
+                        <div class="role-tabs" id="roleTabs">
+                            <button class="role-tab active" type="button" data-role="siswa"><i class="fas fa-user-graduate"></i>Siswa</button>
+                            <button class="role-tab" type="button" data-role="guru"><i class="fas fa-chalkboard-user"></i>Guru</button>
+                            <button class="role-tab" type="button" data-role="tata_usaha"><i class="fas fa-briefcase"></i>TU</button>
+                            <button class="role-tab" type="button" data-role="kepala_sekolah"><i class="fas fa-user-tie"></i>Kepsek</button>
+                        </div>
+
+                        <form id="loginForm" novalidate>
+                            <div class="field">
+                                <label for="loginIdentifier"><i class="fas fa-id-card"></i><span id="identifierLabel">NISN Siswa</span></label>
+                                <input id="loginIdentifier" name="identifier" type="text" placeholder="10 digit NISN" autocomplete="username" required>
+                            </div>
+
+                            <div class="field">
+                                <label for="loginPassword"><i class="fas fa-lock"></i>Password</label>
+                                <div class="password-wrap">
+                                    <input id="loginPassword" name="password" type="password" placeholder="Masukkan password" autocomplete="current-password" required>
+                                    <button class="icon-btn" type="button" data-toggle-password="loginPassword" aria-label="Tampilkan password"><i class="fas fa-eye"></i></button>
+                                </div>
+                            </div>
+
+                            <div class="inline-row">
+                                <label><input type="checkbox" id="rememberMe"> Ingat saya</label>
+                                <a href="#" class="text-link" data-panel-link="forgotPanel">Lupa password?</a>
+                            </div>
+
+                            <button class="btn btn-primary" id="loginBtn" type="submit">
+                                <i class="fas fa-spinner btn-spinner"></i>
+                                <span class="btn-label"><i class="fas fa-right-to-bracket"></i> Masuk ke Portal</span>
+                            </button>
+                        </form>
+
+                        <div class="divider">atau masuk cepat</div>
+                        <button class="btn btn-google" id="googleBtn" type="button">
+                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="">
+                            <span>Masuk dengan Google</span>
+                        </button>
+
+                        <p class="form-note">
+                            Akun demo default: siswa NISN <strong>0012345678</strong>, password <strong>Smkn1Terisi@2024</strong>.
+                        </p>
+                    </section>
+
+                    <section class="panel" id="registerPanel">
+                        <form id="registerForm" novalidate>
+                            <div class="grid-2">
+                                <div class="field">
+                                    <label for="regRole"><i class="fas fa-user-tag"></i>Daftar Sebagai</label>
+                                    <select id="regRole" required>
+                                        <option value="siswa">Siswa</option>
+                                        <option value="calon_siswa">Calon Siswa</option>
+                                        <option value="wali_murid">Wali Murid</option>
+                                    </select>
+                                </div>
+                                <div class="field" id="regNisnWrap">
+                                    <label for="regNisn"><i class="fas fa-id-card"></i>NISN</label>
+                                    <input id="regNisn" type="text" placeholder="10 digit NISN" maxlength="10" inputmode="numeric">
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <label for="regName"><i class="fas fa-user"></i>Nama Lengkap</label>
+                                <input id="regName" type="text" placeholder="Nama sesuai dokumen resmi" autocomplete="name" required>
+                            </div>
+
+                            <div class="grid-2">
+                                <div class="field">
+                                    <label for="regEmail"><i class="fas fa-envelope"></i>Email Aktif</label>
+                                    <input id="regEmail" type="email" placeholder="nama@email.com" autocomplete="email" required>
+                                </div>
+                                <div class="field">
+                                    <label for="regPhone"><i class="fas fa-phone"></i>No. HP / WhatsApp</label>
+                                    <input id="regPhone" type="tel" placeholder="08xxxxxxxxxx" autocomplete="tel">
+                                </div>
+                            </div>
+
+                            <div class="grid-2">
+                                <div class="field">
+                                    <label for="regPassword"><i class="fas fa-lock"></i>Password</label>
+                                    <div class="password-wrap">
+                                        <input id="regPassword" type="password" placeholder="Minimal 8 karakter" autocomplete="new-password" required>
+                                        <button class="icon-btn" type="button" data-toggle-password="regPassword" aria-label="Tampilkan password"><i class="fas fa-eye"></i></button>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label for="regConfirm"><i class="fas fa-lock"></i>Konfirmasi Password</label>
+                                    <input id="regConfirm" type="password" placeholder="Ulangi password" autocomplete="new-password" required>
+                                </div>
+                            </div>
+
+                            <div class="strength" id="strengthBox">
+                                <div class="strength-track"><div class="strength-bar" id="strengthBar"></div></div>
+                                <span id="strengthText"></span>
+                            </div>
+
+                            <button class="btn btn-primary" id="registerBtn" type="submit">
+                                <i class="fas fa-spinner btn-spinner"></i>
+                                <span class="btn-label"><i class="fas fa-user-plus"></i> Buat Akun</span>
+                            </button>
+                        </form>
+                        <p class="hint">
+                            Pendaftaran mandiri hanya untuk siswa, calon siswa, dan wali murid. Akun staff dibuat oleh administrator.
+                        </p>
+                    </section>
+
+                    <section class="panel" id="ppdbPanel">
+                        <form id="ppdbCheckForm" novalidate>
+                            <div class="field">
+                                <label for="ppdbNumber"><i class="fas fa-file-lines"></i>Nomor Pendaftaran</label>
+                                <input id="ppdbNumber" type="text" placeholder="Contoh: PPDB-2026-ABC123" required>
+                            </div>
+                            <button class="btn btn-primary" id="ppdbBtn" type="submit">
+                                <i class="fas fa-spinner btn-spinner"></i>
+                                <span class="btn-label"><i class="fas fa-search"></i> Cek Status PPDB</span>
+                            </button>
+                        </form>
+                        <div class="ppdb-result" id="ppdbResult"></div>
+                    </section>
+
+                    <section class="panel" id="forgotPanel">
+                        <form id="forgotForm" novalidate>
+                            <div class="field">
+                                <label for="forgotEmail"><i class="fas fa-envelope"></i>Email Terdaftar</label>
+                                <input id="forgotEmail" type="email" placeholder="nama@email.com" autocomplete="email" required>
+                            </div>
+                            <button class="btn btn-primary" id="forgotBtn" type="submit">
+                                <i class="fas fa-spinner btn-spinner"></i>
+                                <span class="btn-label"><i class="fas fa-paper-plane"></i> Kirim Link Reset</span>
+                            </button>
+                        </form>
+                        <p class="form-note">
+                            <a href="#" class="text-link" data-panel-link="loginPanel"><i class="fas fa-arrow-left"></i> Kembali ke Login</a>
+                        </p>
+                    </section>
+                </div>
+            </div>
+        </section>
+    </main>
 
     <script>
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                document.getElementById('page-loader')?.classList.add('loaded');
-            }, 600);
+        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+        const AUTH_API = API_BASE + '/api/auth';
+        let currentRole = 'siswa';
+
+        const roleConfig = {
+            siswa: { label: 'NISN Siswa', placeholder: '10 digit NISN', type: 'text' },
+            guru: { label: 'Email Guru', placeholder: 'guru@smkn1terisi.sch.id', type: 'email' },
+            tata_usaha: { label: 'Email Tata Usaha', placeholder: 'tu@smkn1terisi.sch.id', type: 'email' },
+            kepala_sekolah: { label: 'Email Kepala Sekolah', placeholder: 'kepsek@smkn1terisi.sch.id', type: 'email' },
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            bindModeTabs();
+            bindRoleTabs();
+            bindForms();
+            bindPasswordToggles();
+            bindUrlMessages();
+            checkServerStatus();
+            checkExistingSession();
+            updateRegisterRole();
         });
-    </script>
 
-<script>
-/* ── Integrasi login ke backend API ── */
-const API_BASE_LOGIN = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
-
-async function doLogin(form) {
-    const data   = new FormData(form);
-    const role   = document.querySelector('.role-btn.active')?.getAttribute('data-target') || 'form-siswa';
-    const isNisnRole = ['form-siswa','form-calon'].includes(role);
-    const identifier = isNisnRole
-        ? form.querySelector('input[placeholder*="NISN"], input[placeholder*="Nomor Pendaftaran"]')?.value?.trim()
-        : form.querySelector('input[type="text"], input[type="email"]')?.value?.trim();
-    const password = form.querySelector('input[type="password"]')?.value?.trim();
-
-    if (!identifier || !password) { alert('Harap isi semua kolom.'); return; }
-
-    const body = isNisnRole
-        ? { nisn: identifier, password }
-        : { email: identifier, password };
-
-    try {
-        const res  = await fetch(API_BASE_LOGIN + '/api/auth/login', {
-            method : 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body   : JSON.stringify(body),
-        });
-        const json = await res.json();
-
-        if (!res.ok) { alert(json.message || 'Login gagal.'); return; }
-
-        localStorage.setItem('smkn_token',   json.data.accessToken);
-        localStorage.setItem('smkn_user',    JSON.stringify(json.data.user));
-        localStorage.setItem('smkn_refresh', json.data.refreshToken);
-
-        const role2 = json.data.user.role;
-        if (['super_admin','kepala_sekolah','guru','tata_usaha'].includes(role2)) {
-            window.location.href = '/admin-panel/dashboard.html';
-        } else if (role2 === 'siswa' || role2 === 'wali_murid') {
-            window.location.href = '/DATA.html';
-        } else {
-            window.location.href = '/ppdb.html';
+        function bindModeTabs() {
+            document.querySelectorAll('.mode-tab').forEach(btn => {
+                btn.addEventListener('click', () => showPanel(btn.dataset.panel));
+            });
+            document.querySelectorAll('[data-panel-link]').forEach(link => {
+                link.addEventListener('click', event => {
+                    event.preventDefault();
+                    showPanel(link.dataset.panelLink);
+                });
+            });
         }
-    } catch(e) {
-        alert('Server tidak dapat dihubungi. Coba lagi nanti.');
-    }
-}
 
-/* Intercept semua form submit di halaman login */
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.role-form').forEach(form => {
-        form.addEventListener('submit', e => { e.preventDefault(); doLogin(form); });
-        const btn = form.querySelector('button[type="button"]');
-        if (btn) btn.addEventListener('click', () => doLogin(form));
-    });
-});
-</script>
+        function showPanel(panelId) {
+            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+            document.getElementById(panelId)?.classList.add('active');
+            document.querySelectorAll('.mode-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === panelId));
+            hideAlert();
+        }
 
+        function bindRoleTabs() {
+            document.querySelectorAll('.role-tab').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentRole = btn.dataset.role;
+                    document.querySelectorAll('.role-tab').forEach(item => item.classList.remove('active'));
+                    btn.classList.add('active');
+                    const cfg = roleConfig[currentRole];
+                    const input = document.getElementById('loginIdentifier');
+                    document.getElementById('identifierLabel').textContent = cfg.label;
+                    input.placeholder = cfg.placeholder;
+                    input.type = cfg.type;
+                    input.value = '';
+                    hideAlert();
+                });
+            });
+        }
+
+        function bindForms() {
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('registerForm').addEventListener('submit', handleRegister);
+            document.getElementById('forgotForm').addEventListener('submit', handleForgotPassword);
+            document.getElementById('ppdbCheckForm').addEventListener('submit', handlePpdbCheck);
+            document.getElementById('googleBtn').addEventListener('click', loginWithGoogle);
+            document.getElementById('regRole').addEventListener('change', updateRegisterRole);
+            document.getElementById('regPassword').addEventListener('input', updateStrength);
+        }
+
+        function bindPasswordToggles() {
+            document.querySelectorAll('[data-toggle-password]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const input = document.getElementById(btn.dataset.togglePassword);
+                    const icon = btn.querySelector('i');
+                    input.type = input.type === 'password' ? 'text' : 'password';
+                    icon.className = input.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+                });
+            });
+        }
+
+        function bindUrlMessages() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('msg')) showAlert('info', params.get('msg'));
+            if (params.get('verified') === 'true') showAlert('success', 'Email berhasil diverifikasi. Silakan login.');
+            if (params.get('error')) {
+                const map = {
+                    google_not_configured: 'Login Google belum aktif. Isi GOOGLE_CLIENT_ID dan GOOGLE_CLIENT_SECRET di file .env backend.',
+                    google_failed: 'Login Google gagal. Coba lagi atau gunakan email/password.',
+                    oauth_failed: 'Autentikasi Google gagal diproses backend.',
+                    account_disabled: 'Akun dinonaktifkan. Hubungi administrator.',
+                };
+                showAlert('error', map[params.get('error')] || 'Autentikasi gagal.');
+            }
+            const oauthToken = params.get('token');
+            if (oauthToken) {
+                persistSession({
+                    accessToken: oauthToken,
+                    refreshToken: params.get('refreshToken') || '',
+                    user: { role: params.get('role') || 'siswa', nama: 'Google User' },
+                    redirectTo: redirectForRole(params.get('role') || 'siswa')
+                });
+            }
+        }
+
+        async function checkServerStatus() {
+            const pill = document.getElementById('serverStatus');
+            const text = document.getElementById('serverStatusText');
+            try {
+                const res = await fetch(API_BASE + '/api/health', { cache: 'no-store' });
+                if (!res.ok) throw new Error('offline');
+                pill.classList.add('online');
+                text.textContent = 'Server online';
+            } catch {
+                pill.classList.add('offline');
+                text.textContent = 'Server offline';
+                showAlert('warning', 'Server backend belum terhubung. Jalankan npm run dev dari folder backend.');
+            }
+        }
+
+        async function checkExistingSession() {
+            const token = localStorage.getItem('smkn_token') || localStorage.getItem('accessToken');
+            if (!token) return;
+            try {
+                const res = await fetch(AUTH_API + '/check', { headers: { Authorization: 'Bearer ' + token } });
+                const json = await res.json();
+                if (!json.success) return;
+                const role = json.user?.role || localStorage.getItem('userRole');
+                if (role) window.location.href = redirectForRole(role);
+            } catch {
+                clearSession();
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            hideAlert();
+            const identifier = document.getElementById('loginIdentifier').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+            if (!identifier || !password) return showAlert('error', 'Identifier dan password wajib diisi.');
+
+            const btn = document.getElementById('loginBtn');
+            setLoading(btn, true);
+            try {
+                const json = await postJson(AUTH_API + '/login', { identifier, password, role: currentRole, rememberMe });
+                if (!json.success) throw new Error(json.message || 'Login gagal.');
+                persistSession(json.data);
+            } catch (err) {
+                showAlert('error', normalizeError(err.message));
+            } finally {
+                setLoading(btn, false);
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            hideAlert();
+            const role = document.getElementById('regRole').value;
+            const password = document.getElementById('regPassword').value;
+            const confirm = document.getElementById('regConfirm').value;
+            if (password !== confirm) return showAlert('error', 'Konfirmasi password tidak cocok.');
+
+            const payload = {
+                role,
+                nama_lengkap: document.getElementById('regName').value.trim(),
+                email: document.getElementById('regEmail').value.trim(),
+                password,
+                no_hp: document.getElementById('regPhone').value.trim(),
+            };
+            const nisn = document.getElementById('regNisn').value.trim();
+            if (role === 'siswa' && nisn) payload.nisn = nisn;
+
+            const btn = document.getElementById('registerBtn');
+            setLoading(btn, true);
+            try {
+                const json = await postJson(AUTH_API + '/register', payload);
+                if (!json.success) throw new Error(json.message || 'Pendaftaran gagal.');
+                document.getElementById('registerForm').reset();
+                updateRegisterRole();
+                updateStrength();
+                showPanel('loginPanel');
+                showAlert('success', json.message || 'Akun berhasil dibuat. Silakan login.');
+            } catch (err) {
+                showAlert('error', normalizeError(err.message));
+            } finally {
+                setLoading(btn, false);
+            }
+        }
+
+        async function handleForgotPassword(event) {
+            event.preventDefault();
+            hideAlert();
+            const email = document.getElementById('forgotEmail').value.trim();
+            const btn = document.getElementById('forgotBtn');
+            setLoading(btn, true);
+            try {
+                const json = await postJson(AUTH_API + '/forgot-password', { email });
+                showAlert(json.success ? 'success' : 'error', json.message || 'Permintaan reset diproses.');
+                if (json.success) document.getElementById('forgotForm').reset();
+            } catch (err) {
+                showAlert('error', normalizeError(err.message));
+            } finally {
+                setLoading(btn, false);
+            }
+        }
+
+        async function handlePpdbCheck(event) {
+            event.preventDefault();
+            hideAlert();
+            const nomor = document.getElementById('ppdbNumber').value.trim();
+            const result = document.getElementById('ppdbResult');
+            if (!nomor) return showAlert('error', 'Nomor pendaftaran wajib diisi.');
+            const btn = document.getElementById('ppdbBtn');
+            setLoading(btn, true);
+            result.classList.remove('show');
+            result.innerHTML = '';
+            try {
+                const res = await fetch(API_BASE + '/api/ppdb/cek?nomor=' + encodeURIComponent(nomor));
+                const json = await res.json();
+                if (!res.ok || !json.success) throw new Error(json.message || 'Nomor pendaftaran tidak ditemukan.');
+                const d = json.data;
+                result.innerHTML = `
+                    <h3>Status Pendaftaran</h3>
+                    <dl>
+                        <dt>Nomor</dt><dd>${escapeHtml(d.nomor_daftar || '-')}</dd>
+                        <dt>Nama</dt><dd>${escapeHtml(d.nama_lengkap || '-')}</dd>
+                        <dt>Jalur</dt><dd>${escapeHtml(d.jalur || '-')}</dd>
+                        <dt>Jurusan</dt><dd>${escapeHtml(d.jurusan_pilihan || '-')}</dd>
+                        <dt>Status</dt><dd>${escapeHtml(d.status || '-')}</dd>
+                        <dt>Catatan</dt><dd>${escapeHtml(d.catatan || '-')}</dd>
+                    </dl>
+                `;
+                result.classList.add('show');
+            } catch (err) {
+                showAlert('error', normalizeError(err.message));
+            } finally {
+                setLoading(btn, false);
+            }
+        }
+
+        function loginWithGoogle() {
+            window.location.href = AUTH_API + '/google';
+        }
+
+        function persistSession(data) {
+            const user = data.user || {};
+            const role = user.role || data.role || 'siswa';
+            localStorage.setItem('smkn_token', data.accessToken || '');
+            localStorage.setItem('smkn_refresh', data.refreshToken || '');
+            localStorage.setItem('smkn_user', JSON.stringify(user));
+            localStorage.setItem('accessToken', data.accessToken || '');
+            localStorage.setItem('refreshToken', data.refreshToken || '');
+            localStorage.setItem('userRole', role);
+            localStorage.setItem('userData', JSON.stringify(user));
+            window.location.href = data.redirectTo || redirectForRole(role);
+        }
+
+        function clearSession() {
+            ['smkn_token','smkn_refresh','smkn_user','accessToken','refreshToken','userRole','userData'].forEach(key => localStorage.removeItem(key));
+        }
+
+        function redirectForRole(role) {
+            const map = {
+                super_admin: '/admin-panel/dashboard.html',
+                kepala_sekolah: '/admin-panel/dashboard.html',
+                guru: '/admin-panel/dashboard.html',
+                tata_usaha: '/admin-panel/dashboard.html',
+                siswa: '/DATA.html',
+                wali_murid: '/DATA.html',
+                calon_siswa: '/ppdb.html',
+            };
+            return map[role] || '/index.html';
+        }
+
+        async function postJson(url, payload) {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const json = await res.json().catch(() => ({ success: false, message: 'Response backend tidak valid.' }));
+            if (!res.ok || !json.success) {
+                if (json.errors?.length) throw new Error(json.errors.map(item => item.message).join(' '));
+                throw new Error(json.message || 'Request gagal.');
+            }
+            return json;
+        }
+
+        function updateRegisterRole() {
+            const role = document.getElementById('regRole').value;
+            const wrap = document.getElementById('regNisnWrap');
+            const nisn = document.getElementById('regNisn');
+            wrap.style.display = role === 'siswa' ? '' : 'none';
+            nisn.required = role === 'siswa';
+            if (role !== 'siswa') nisn.value = '';
+        }
+
+        function updateStrength() {
+            const value = document.getElementById('regPassword').value;
+            const box = document.getElementById('strengthBox');
+            const bar = document.getElementById('strengthBar');
+            const text = document.getElementById('strengthText');
+            if (!value) {
+                box.style.display = 'none';
+                return;
+            }
+            box.style.display = 'block';
+            let score = 0;
+            if (value.length >= 8) score++;
+            if (/[A-Z]/.test(value)) score++;
+            if (/[a-z]/.test(value)) score++;
+            if (/[0-9]/.test(value)) score++;
+            if (/[^A-Za-z0-9]/.test(value)) score++;
+            const levels = [
+                ['20%', '#dc2626', 'Sangat lemah'],
+                ['40%', '#ea580c', 'Lemah'],
+                ['60%', '#ca8a04', 'Cukup'],
+                ['80%', '#16a34a', 'Kuat'],
+                ['100%', '#0f9f62', 'Sangat kuat'],
+            ];
+            const level = levels[Math.max(0, score - 1)];
+            bar.style.width = level[0];
+            bar.style.background = level[1];
+            text.textContent = 'Kekuatan password: ' + level[2];
+        }
+
+        function setLoading(btn, loading) {
+            btn.disabled = loading;
+            btn.classList.toggle('loading', loading);
+        }
+
+        function showAlert(type, message) {
+            const box = document.getElementById('mainAlert');
+            const text = document.getElementById('mainAlertText');
+            box.className = 'alert show ' + type;
+            text.textContent = message;
+        }
+
+        function hideAlert() {
+            const box = document.getElementById('mainAlert');
+            box.className = 'alert';
+            document.getElementById('mainAlertText').textContent = '';
+        }
+
+        function normalizeError(message) {
+            if (!message || message === 'Failed to fetch') return 'Koneksi ke server gagal. Pastikan backend berjalan di port 3001.';
+            return message;
+        }
+
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, char => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+            }[char]));
+        }
+    </script>
 </body>
 </html>

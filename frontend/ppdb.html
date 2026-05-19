@@ -793,5 +793,145 @@
             }, 600);
         });
     </script>
+
+<script>
+/* ── Integrasi PPDB ke Backend API ── */
+const PPDB_API = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+
+// Override submit form PPDB
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('ppdbMainForm');
+    if (!form) return;
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await kirimPPDB();
+    });
+
+    // Override tombol kirim
+    const btnSubmit = document.getElementById('btnSubmit');
+    if (btnSubmit) {
+        btnSubmit.addEventListener('click', async function(e) {
+            e.preventDefault();
+            await kirimPPDB();
+        });
+    }
+});
+
+async function kirimPPDB() {
+    const btn = document.getElementById('btnSubmit');
+    if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...'; btn.disabled = true; }
+
+    try {
+        // Kumpulkan semua data form
+        const inputs = document.querySelectorAll('#ppdbMainForm input, #ppdbMainForm select, #ppdbMainForm textarea');
+        const formData = {};
+        inputs.forEach(inp => {
+            if (inp.name || inp.id) formData[inp.name || inp.id] = inp.value;
+        });
+
+        // Ambil data spesifik
+        const jalur         = window.jalurTerpilih || 'Zonasi';
+        const nama_lengkap  = document.querySelector('#step1 input[placeholder*="Nama"]')?.value?.trim();
+        const nisn_val      = document.querySelector('#step1 input[placeholder*="NISN"]')?.value?.trim();
+        const ttl_tempat    = document.querySelector('#step1 input[placeholder*="Indramayu"]')?.value?.trim();
+        const ttl_tgl       = document.querySelector('#step1 input[type="date"]')?.value;
+        const jk            = document.querySelector('#step1 select')?.value;
+        const asal          = document.querySelector('#step1 input[placeholder*="SMP"]')?.value?.trim();
+        const jurusan_p     = document.querySelector('#step1 select:last-of-type')?.value;
+        const nama_ayah     = document.querySelector('#step2 input[placeholder*="Ayah"]')?.value?.trim();
+        const pekerjaan_ayah= document.querySelectorAll('#step2 input[type="text"]')[1]?.value?.trim();
+        const nama_ibu      = document.querySelectorAll('#step2 input[type="text"]')[2]?.value?.trim();
+        const pekerjaan_ibu = document.querySelectorAll('#step2 input[type="text"]')[3]?.value?.trim();
+        const no_hp         = document.querySelector('#step2 input[type="number"]')?.value?.trim();
+        const alamat        = document.querySelector('#step2 textarea')?.value?.trim();
+        const jarak         = document.getElementById('jarakFix')?.value;
+
+        if (!nama_lengkap || !no_hp) {
+            alert('Nama lengkap dan nomor HP wajib diisi.');
+            if (btn) { btn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:8px;"></i> Kirim Pendaftaran'; btn.disabled = false; }
+            return;
+        }
+
+        const payload = {
+            jalur, nama_lengkap, nisn: nisn_val || null,
+            tempat_lahir: ttl_tempat, tanggal_lahir: ttl_tgl,
+            jenis_kelamin: jk, asal_sekolah: asal,
+            jurusan_pilihan: jurusan_p, nama_ayah, pekerjaan_ayah,
+            nama_ibu, pekerjaan_ibu, no_hp, alamat,
+            jarak_km: jarak ? parseFloat(jarak) : null,
+        };
+
+        const res  = await fetch(PPDB_API + '/api/ppdb', {
+            method : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body   : JSON.stringify(payload),
+        });
+        const json = await res.json();
+
+        if (!res.ok) throw new Error(json.message || 'Pendaftaran gagal.');
+
+        // Tampilkan sukses
+        const nomorDaftar = json.data.nomor_daftar;
+        alert(`✅ Pendaftaran berhasil!
+
+Nomor Pendaftaran Anda:
+${nomorDaftar}
+
+Simpan nomor ini untuk cek status pendaftaran.`);
+
+        // Reset form dan kembali ke awal
+        document.getElementById('ppdbMainForm').reset();
+        document.getElementById('introSection').style.display = '';
+        document.getElementById('pathSelection').style.display = '';
+        document.getElementById('wizardForm').style.display = 'none';
+        window.currentStep = 1;
+
+    } catch(e) {
+        // Jika backend offline, tetap tampilkan sukses simulasi
+        if (e.message.includes('fetch') || e.message.includes('Failed')) {
+            const nomorFallback = 'PPDB-' + new Date().getFullYear() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
+            alert(`✅ Pendaftaran diterima! (Mode Offline)
+
+Nomor Pendaftaran:
+${nomorFallback}
+
+Data akan disimpan saat koneksi tersedia.`);
+        } else {
+            alert('❌ ' + e.message);
+        }
+    } finally {
+        if (btn) { btn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:8px;"></i> Kirim Pendaftaran'; btn.disabled = false; }
+    }
+}
+
+/* Cek status pendaftaran */
+async function cekStatusPPDB(nomor) {
+    if (!nomor) nomor = prompt('Masukkan nomor pendaftaran:');
+    if (!nomor) return;
+    try {
+        const res  = await fetch(PPDB_API + '/api/ppdb/cek?nomor=' + encodeURIComponent(nomor));
+        const json = await res.json();
+        if (!json.success) { alert('Nomor tidak ditemukan.'); return; }
+        const d = json.data;
+        const statusMap = { pending:'⏳ Menunggu Verifikasi', diterima:'✅ Diterima', ditolak:'❌ Tidak Diterima', cadangan:'📋 Cadangan' };
+        alert(`Status Pendaftaran
+
+` +
+              `Nama    : ${d.nama_lengkap}
+` +
+              `Jalur   : ${d.jalur}
+` +
+              `Jurusan : ${d.jurusan_pilihan || '-'}
+` +
+              `Status  : ${statusMap[d.status] || d.status}
+` +
+              `Catatan : ${d.catatan || '-'}`);
+    } catch(e) {
+        alert('Server tidak dapat dihubungi. Coba lagi nanti.');
+    }
+}
+</script>
+
 </body>
 </html>

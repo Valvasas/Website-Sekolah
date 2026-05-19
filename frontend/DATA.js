@@ -5,46 +5,25 @@
 'use strict';
 
 /* ============================================================
-   DATABASE SIMULASI
+   API CONFIG & FALLBACK DATA
    ============================================================ */
-const DB_AKUN = [
-    { nisn:'0012345678', password:'smkn123', nama:'Ahmad Farhan Maulana',  kelas:'XI TKJ 1',  jurusan:'Teknik Komputer & Jaringan' },
-    { nisn:'0023456789', password:'smkn123', nama:'Siti Nurhaliza Putri',  kelas:'XI AKL 1',  jurusan:'Akuntansi & Keuangan' },
-    { nisn:'0034567890', password:'smkn123', nama:'Rizky Aditya Pratama',  kelas:'XI TBSM 2', jurusan:'Teknik Bisnis Sepeda Motor' },
-];
+const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
 
-const DB_PROFIL = {
-    '0012345678': {
-        pribadi: {
-            'NISN': '0012345678',
-            'Nama Lengkap': 'Ahmad Farhan Maulana',
-            'Tempat Lahir': 'Indramayu',
-            'Tanggal Lahir': '15 Januari 2008',
-            'Jenis Kelamin': 'Laki-laki',
-            'Agama': 'Islam',
-            'Kewarganegaraan': 'Indonesia',
-            'No. HP': '0812-3456-7890',
+async function apiFetch(path, options = {}) {
+    const token = localStorage.getItem('smkn_token');
+    const res = await fetch(API_BASE + path, {
+        ...options,
+        headers: {
+            'Content-Type' : 'application/json',
+            'Authorization': token ? 'Bearer ' + token : '',
+            ...(options.headers||{}),
         },
-        ortu: {
-            'Nama Ayah': 'Supriadi',
-            'Pekerjaan Ayah': 'Wiraswasta',
-            'Nama Ibu': 'Siti Aminah',
-            'Pekerjaan Ibu': 'Ibu Rumah Tangga',
-            'No. HP Orang Tua': '0811-2233-4455',
-            'Email Orang Tua': 'supriadi@email.com',
-        },
-        alamat: {
-            'Jalan': 'Jl. Raya Terisi No. 45 RT 02 RW 05',
-            'Kelurahan': 'Terisi',
-            'Kecamatan': 'Terisi',
-            'Kabupaten': 'Indramayu',
-            'Provinsi': 'Jawa Barat',
-            'Kode Pos': '45262',
-        }
-    }
-};
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+}
 
-const DB_NILAI = {
+const FALLBACK_NILAI = {
     genap: [
         { mapel:'Teknik Komputer Jaringan', uh:90, uts:86, uas:88, tugas:92, kkm:75 },
         { mapel:'Matematika',               uh:78, uts:80, uas:82, tugas:85, kkm:70 },
@@ -62,73 +41,56 @@ const DB_NILAI = {
         { mapel:'PKn',                      uh:82, uts:86, uas:84, tugas:85, kkm:70 },
         { mapel:'Sejarah Indonesia',        uh:77, uts:80, uas:82, tugas:84, kkm:70 },
         { mapel:'Produk Kreatif & KWU',     uh:84, uts:86, uas:88, tugas:90, kkm:75 },
-    ]
+    ],
 };
 
-const DB_KEHADIRAN = {
-    hadir: 142, sakit: 3, izin: 2, alpha: 1,
-    riwayat: [
-        { tgl:'23 Apr 2026', hari:'Kamis',  status:'hadir', ket:'-' },
-        { tgl:'22 Apr 2026', hari:'Rabu',   status:'hadir', ket:'-' },
-        { tgl:'21 Apr 2026', hari:'Selasa', status:'hadir', ket:'-' },
-        { tgl:'18 Apr 2026', hari:'Sabtu',  status:'libur', ket:'Libur Mingguan' },
-        { tgl:'17 Apr 2026', hari:'Jumat',  status:'hadir', ket:'-' },
-        { tgl:'16 Apr 2026', hari:'Kamis',  status:'sakit', ket:'Demam, Surat dokter terlampir' },
-        { tgl:'15 Apr 2026', hari:'Rabu',   status:'hadir', ket:'-' },
-        { tgl:'14 Apr 2026', hari:'Selasa', status:'hadir', ket:'-' },
-        { tgl:'13 Apr 2026', hari:'Senin',  status:'hadir', ket:'-' },
-        { tgl:'10 Apr 2026', hari:'Jumat',  status:'izin',  ket:'Keperluan keluarga' },
-    ]
-};
-
-const DB_JADWAL = {
-    senin:  [
-        { jam:'07.00 - 08.30', mapel:'Teknik Komputer Jaringan', guru:'Pak Deni S.', ruang:'Lab TKJ 1' },
-        { jam:'08.30 - 10.00', mapel:'Matematika', guru:'Bu Ratna S.', ruang:'R.11' },
-        { jam:'10.15 - 11.45', mapel:'Bahasa Indonesia', guru:'Bu Intan P.', ruang:'R.11' },
-        { jam:'12.45 - 14.15', mapel:'PKn', guru:'Pak Asep H.', ruang:'R.11' },
+const FALLBACK_JADWAL = {
+    senin : [
+        { jam:'07.00 - 08.30', mapel:'Teknik Komputer Jaringan', guru:'Pak Deni S.',   ruang:'Lab TKJ 1' },
+        { jam:'08.30 - 10.00', mapel:'Matematika',               guru:'Bu Ratna S.',   ruang:'R.11' },
+        { jam:'10.15 - 11.45', mapel:'Bahasa Indonesia',         guru:'Bu Intan P.',   ruang:'R.11' },
+        { jam:'12.45 - 14.15', mapel:'PKn',                      guru:'Pak Asep H.',   ruang:'R.11' },
     ],
     selasa: [
-        { jam:'07.00 - 08.30', mapel:'Bahasa Inggris', guru:'Bu Maya S.', ruang:'R.12' },
-        { jam:'08.30 - 10.00', mapel:'Produk Kreatif & KWU', guru:'Pak Hendra W.', ruang:'R.11' },
-        { jam:'10.15 - 11.45', mapel:'Sejarah Indonesia', guru:'Bu Rini L.', ruang:'R.11' },
-        { jam:'12.45 - 14.15', mapel:'Praktik TKJ', guru:'Pak Deni S.', ruang:'Lab TKJ 2' },
+        { jam:'07.00 - 08.30', mapel:'Bahasa Inggris',           guru:'Bu Maya S.',    ruang:'R.12' },
+        { jam:'08.30 - 10.00', mapel:'Produk Kreatif & KWU',     guru:'Pak Hendra W.', ruang:'R.11' },
+        { jam:'10.15 - 11.45', mapel:'Sejarah Indonesia',        guru:'Bu Rini L.',    ruang:'R.11' },
+        { jam:'12.45 - 14.15', mapel:'Praktik TKJ',              guru:'Pak Deni S.',   ruang:'Lab TKJ 2' },
     ],
     rabu: [
-        { jam:'07.00 - 09.00', mapel:'Praktik TKJ (TEFA)', guru:'Pak Deni S.', ruang:'Lab TKJ 1' },
-        { jam:'09.00 - 11.00', mapel:'Matematika', guru:'Bu Ratna S.', ruang:'R.11' },
-        { jam:'12.45 - 14.15', mapel:'Bahasa Inggris', guru:'Bu Maya S.', ruang:'R.12' },
+        { jam:'07.00 - 09.00', mapel:'Praktik TKJ (TEFA)',       guru:'Pak Deni S.',   ruang:'Lab TKJ 1' },
+        { jam:'09.00 - 11.00', mapel:'Matematika',               guru:'Bu Ratna S.',   ruang:'R.11' },
     ],
     kamis: [
-        { jam:'07.00 - 08.30', mapel:'Teknik Komputer Jaringan', guru:'Pak Deni S.', ruang:'Lab TKJ 2' },
-        { jam:'08.30 - 10.00', mapel:'Sejarah Indonesia', guru:'Bu Rini L.', ruang:'R.11' },
-        { jam:'10.15 - 11.45', mapel:'Produk Kreatif & KWU', guru:'Pak Hendra W.', ruang:'R.11' },
-        { jam:'12.45 - 13.30', mapel:'Ekstrakulikuler / P5', guru:'-', ruang:'Aula' },
+        { jam:'07.00 - 08.30', mapel:'Teknik Komputer Jaringan', guru:'Pak Deni S.',   ruang:'Lab TKJ 2' },
+        { jam:'08.30 - 10.00', mapel:'Sejarah Indonesia',        guru:'Bu Rini L.',    ruang:'R.11' },
     ],
     jumat: [
-        { jam:'07.00 - 08.00', mapel:'Pendidikan Agama Islam', guru:'Pak Usep M.', ruang:'Mushola' },
-        { jam:'08.00 - 09.30', mapel:'PKn', guru:'Pak Asep H.', ruang:'R.11' },
-        { jam:'09.45 - 11.15', mapel:'Bahasa Indonesia', guru:'Bu Intan P.', ruang:'R.11' },
+        { jam:'07.00 - 08.00', mapel:'Pendidikan Agama Islam',   guru:'Pak Usep M.',   ruang:'Mushola' },
+        { jam:'08.00 - 09.30', mapel:'PKn',                      guru:'Pak Asep H.',   ruang:'R.11' },
     ],
 };
 
-const DB_PRESTASI = [
+const FALLBACK_KEHADIRAN = {
+    hadir:142, sakit:3, izin:2, alpha:1,
+    riwayat:[
+        { tgl:'23 Apr 2026', hari:'Kamis',  status:'hadir', ket:'-' },
+        { tgl:'22 Apr 2026', hari:'Rabu',   status:'hadir', ket:'-' },
+        { tgl:'16 Apr 2026', hari:'Kamis',  status:'sakit', ket:'Demam' },
+        { tgl:'10 Apr 2026', hari:'Jumat',  status:'izin',  ket:'Keperluan keluarga' },
+    ],
+};
+
+const FALLBACK_PRESTASI = [
     { judul:'Juara 1 LKS IT Networking', tingkat:'Kabupaten Indramayu', tahun:'2025', medal:'🥇', keterangan:'Lomba Kompetensi Siswa bidang IT Network Systems Administration.' },
     { judul:'Juara 2 Olimpiade Matematika', tingkat:'Kecamatan Terisi', tahun:'2025', medal:'🥈', keterangan:'Kompetisi Olimpiade Sains Matematika tingkat kecamatan.' },
-    { judul:'Siswa Berprestasi Terbaik', tingkat:'SMKN 1 Terisi', tahun:'2024', medal:'🏆', keterangan:'Penghargaan siswa berprestasi semester ganjil 2024/2025.' },
-];
-
-const DB_SURAT = [
-    { id:1, jenis:'Surat Keterangan Aktif', tanggal:'15 Mar 2026', tujuan:'Beasiswa KIP', status:'selesai' },
-    { id:2, jenis:'Surat Pengantar PKL', tanggal:'02 Apr 2026', tujuan:'PT. Telkom Indonesia', status:'proses' },
-    { id:3, jenis:'Surat Izin Tidak Masuk', tanggal:'16 Apr 2026', tujuan:'Kepala Sekolah', status:'selesai' },
 ];
 
 const NOTIFIKASI = [
-    { ikon:'fas fa-tasks', warna:'#2563eb', judul:'Jadwal UKK telah ditetapkan', waktu:'1 jam lalu', unread:true },
-    { ikon:'fas fa-star',  warna:'#d97706', judul:'Nilai UTS sudah bisa dilihat', waktu:'3 jam lalu', unread:true },
-    { ikon:'fas fa-file-alt', warna:'#059669', judul:'Surat Aktif siap diambil', waktu:'Kemarin', unread:false },
-    { ikon:'fas fa-calendar', warna:'#7c3aed', judul:'Libur Nasional 1 Mei 2026', waktu:'2 hari lalu', unread:false },
+    { ikon:'fas fa-tasks', warna:'#2563eb', judul:'Jadwal UKK telah ditetapkan',  waktu:'1 jam lalu', unread:true  },
+    { ikon:'fas fa-star',  warna:'#d97706', judul:'Nilai UTS sudah bisa dilihat', waktu:'3 jam lalu', unread:true  },
+    { ikon:'fas fa-file-alt', warna:'#059669', judul:'Surat Aktif siap diambil', waktu:'Kemarin',    unread:false },
+    { ikon:'fas fa-calendar', warna:'#7c3aed', judul:'Libur Nasional 1 Mei 2026', waktu:'2 hari lalu',unread:false },
 ];
 
 /* ============================================================
@@ -138,7 +100,8 @@ let currentUser  = null;
 let currentMonth = new Date().getMonth();
 let currentYear  = new Date().getFullYear();
 let currentSem   = 'genap';
-let suratList    = [...DB_SURAT];
+let suratList    = [];
+let apiData = { profil:null, nilai:{}, kehadiran:null, jadwal:{}, prestasi:[], dashboard:null };
 
 /* ============================================================
    UTILS
@@ -214,59 +177,101 @@ function toggleNotif() {
 /* ============================================================
    LOGIN
    ============================================================ */
-function doLogin() {
+async function doLogin() {
     const nisn = document.getElementById('l-nisn').value.trim();
     const pass = document.getElementById('l-pass').value.trim();
     const err  = document.getElementById('l-err');
     const errM = document.getElementById('l-err-msg');
+    const btn  = document.querySelector('.btn-login-ds');
 
-    if (!nisn || !pass) {
-        errM.textContent = 'Harap isi semua kolom.';
-        err.classList.remove('hidden'); return;
+    if (!nisn || !pass) { errM.textContent='Harap isi semua kolom.'; err.classList.remove('hidden'); return; }
+
+    if (btn) { btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Masuk...'; btn.disabled=true; }
+
+    try {
+        const json = await apiFetch('/api/auth/login', {
+            method:'POST', body:JSON.stringify({ nisn, password:pass }),
+        });
+
+        if (!json.success) throw new Error(json.message || 'Login gagal.');
+
+        // Simpan token
+        localStorage.setItem('smkn_token',   json.data.accessToken);
+        localStorage.setItem('smkn_refresh',  json.data.refreshToken);
+        localStorage.setItem('smkn_user',     JSON.stringify(json.data.user));
+
+        const u = json.data.user;
+        currentUser = { nisn:u.nisn, nama:u.nama_lengkap, kelas:'-', jurusan:'-', role:u.role, id:u.id };
+        err.classList.add('hidden');
+        await initDashboard();
+
+    } catch(e) {
+        // Fallback demo mode jika backend offline
+        if (e.message.includes('fetch') || e.message.includes('Failed')) {
+            showToastDs('Backend offline — mode demo aktif', 'orange', 4000);
+            currentUser = { nisn, nama:'Ahmad Farhan Maulana', kelas:'XI TKJ 1', jurusan:'Teknik Komputer & Jaringan', role:'siswa' };
+            await initDashboard();
+        } else {
+            errM.textContent = e.message;
+            err.classList.remove('hidden');
+        }
+    } finally {
+        if (btn) { btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Masuk'; btn.disabled=false; }
     }
-
-    // Cari akun
-    const akun = DB_AKUN.find(a => a.nisn === nisn && a.password === pass);
-    // Mode demo: login lebih longgar
-    const demoAkun = DB_AKUN[0];
-    const found    = akun || (nisn.length >= 6 && pass.length >= 4 ? demoAkun : null);
-
-    if (!found) {
-        errM.textContent = 'NISN atau password salah.';
-        err.classList.remove('hidden'); return;
-    }
-
-    currentUser = found;
-    err.classList.add('hidden');
-    initDashboard();
 }
 
 /* ============================================================
    INIT DASHBOARD
    ============================================================ */
-function initDashboard() {
+async function initDashboard() {
     const u = currentUser;
+
+    // Fetch semua data paralel dari API
+    try {
+        const [dash, nilaiRes, khRes, jadwalRes] = await Promise.allSettled([
+            apiFetch('/api/siswa/dashboard'),
+            apiFetch('/api/siswa/nilai?semester=genap'),
+            apiFetch('/api/siswa/kehadiran'),
+            apiFetch('/api/siswa/jadwal'),
+        ]);
+
+        if (dash.status==='fulfilled' && dash.value.success) {
+            const d = dash.value.data;
+            u.kelas   = d.kelas   || u.kelas   || '-';
+            u.jurusan = d.jurusan || u.jurusan || '-';
+            apiData.dashboard = d;
+        }
+        if (nilaiRes.status==='fulfilled' && nilaiRes.value.success) {
+            apiData.nilai.genap = nilaiRes.value.data;
+        }
+        if (khRes.status==='fulfilled' && khRes.value.success) {
+            apiData.kehadiran = { ...khRes.value.summary, riwayat: khRes.value.data };
+        }
+        if (jadwalRes.status==='fulfilled' && jadwalRes.value.success) {
+            apiData.jadwal = jadwalRes.value.data;
+        }
+    } catch(e) { /* pakai fallback */ }
 
     // Update UI sidebar
     const initial = u.nama.charAt(0).toUpperCase();
-    document.getElementById('sb-avatar').textContent      = initial;
-    document.getElementById('sb-nama').textContent        = u.nama.split(' ').slice(0,2).join(' ');
-    document.getElementById('sb-kelas').textContent       = u.kelas;
-    document.getElementById('topbar-avatar').textContent  = initial;
+    const el = id => document.getElementById(id);
+    if(el('sb-avatar'))     el('sb-avatar').textContent     = initial;
+    if(el('sb-nama'))       el('sb-nama').textContent       = u.nama.split(' ').slice(0,2).join(' ');
+    if(el('sb-kelas'))      el('sb-kelas').textContent      = u.kelas;
+    if(el('topbar-avatar')) el('topbar-avatar').textContent = initial;
 
     // Welcome banner
-    document.getElementById('wd-greeting').textContent    = getGreeting();
-    document.getElementById('wd-nama').textContent        = u.nama.split(' ')[0];
-    document.getElementById('wd-sub').textContent         = `${u.kelas} · Semester Genap · TA 2025/2026`;
+    if(el('wd-greeting')) el('wd-greeting').textContent = getGreeting();
+    if(el('wd-nama'))     el('wd-nama').textContent     = u.nama.split(' ')[0];
+    if(el('wd-sub'))      el('wd-sub').textContent      = `${u.kelas} · Semester Genap · TA 2025/2026`;
 
     // Biodata profile card
-    document.getElementById('bpc-avatar').textContent  = initial;
-    document.getElementById('bpc-nama').textContent    = u.nama;
-    document.getElementById('bpc-kelas').textContent   = `${u.kelas} · SMKN 1 Terisi`;
-    document.getElementById('bpc-nisn').textContent    = u.nisn;
-    document.getElementById('bpc-jurusan').textContent = u.jurusan.split(' ')[0];
+    if(el('bpc-avatar'))  el('bpc-avatar').textContent  = initial;
+    if(el('bpc-nama'))    el('bpc-nama').textContent    = u.nama;
+    if(el('bpc-kelas'))   el('bpc-kelas').textContent   = `${u.kelas} · SMKN 1 Terisi`;
+    if(el('bpc-nisn'))    el('bpc-nisn').textContent    = u.nisn;
+    if(el('bpc-jurusan')) el('bpc-jurusan').textContent = (u.jurusan||'-').split(' ')[0];
 
-    // Render semua
     renderNotif();
     renderBeranda();
     renderBiodata();
@@ -323,9 +328,9 @@ function renderBeranda() {
     // Nilai Bars
     const barsEl = document.getElementById('nilai-bars');
     if (barsEl) {
-        const mapelList = DB_NILAI.genap.slice(0,5);
+        const mapelList = (apiData.nilai.genap || FALLBACK_NILAI.genap).slice(0,5);
         barsEl.innerHTML = mapelList.map(m => {
-            const final = Math.round((m.uh*0.2 + m.uts*0.25 + m.uas*0.3 + m.tugas*0.25));
+            const final = m.nilai_final !== undefined ? Math.round(m.nilai_final) : Math.round((m.uh*0.2 + m.uts*0.25 + m.uas*0.3 + m.tugas*0.25));
             const color = final >= 90 ? '#059669' : final >= 75 ? '#2563eb' : '#dc2626';
             return `<div class="nb-item">
                 <div class="nb-info">
@@ -349,7 +354,7 @@ function renderBeranda() {
     // Jadwal hari ini
     const hari = ['minggu','senin','selasa','rabu','kamis','jumat','sabtu'];
     const hariIni = hari[new Date().getDay()];
-    const jadwal  = DB_JADWAL[hariIni] || [];
+    const jadwal  = (Object.keys(apiData.jadwal).length ? apiData.jadwal : FALLBACK_JADWAL)[hariIni] || [];
     const hariEl  = document.getElementById('hari-ini-badge');
     const jadwalEl= document.getElementById('jadwal-today');
     const now     = new Date();
@@ -384,51 +389,87 @@ function renderBeranda() {
    RENDER: BIODATA
    ============================================================ */
 function renderBiodata() {
-    const profil = DB_PROFIL[currentUser?.nisn] || DB_PROFIL['0012345678'];
+    const p = apiData.profil?.profil;
+    const u = currentUser;
 
     function renderSection(sectionId, data) {
         const el = document.getElementById(sectionId);
-        if (!el) return;
+        if (!el || !data) return;
         el.innerHTML = Object.entries(data).map(([k,v]) => `
             <div class="bd-field">
                 <label>${k}</label>
-                <span>${v}</span>
+                <span>${v || '-'}</span>
             </div>
         `).join('');
     }
-    renderSection('bd-pribadi', profil.pribadi);
-    renderSection('bd-ortu',    profil.ortu);
-    renderSection('bd-alamat',  profil.alamat);
+
+    const pribadi = {
+        'NISN'           : u.nisn || '-',
+        'Nama Lengkap'   : u.nama || '-',
+        'Tempat Lahir'   : p?.tempat_lahir || '-',
+        'Tanggal Lahir'  : p?.tanggal_lahir ? new Date(p.tanggal_lahir).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}) : '-',
+        'Jenis Kelamin'  : p?.jenis_kelamin || '-',
+        'Agama'          : p?.agama || 'Islam',
+        'Kewarganegaraan': 'Indonesia',
+        'No. HP'         : u.no_hp || '-',
+    };
+    const ortu = {
+        'Nama Ayah'       : p?.nama_ayah      || '-',
+        'Pekerjaan Ayah'  : p?.pekerjaan_ayah || '-',
+        'Nama Ibu'        : p?.nama_ibu       || '-',
+        'Pekerjaan Ibu'   : p?.pekerjaan_ibu  || '-',
+        'No. HP Orang Tua': p?.no_hp_ortu     || '-',
+        'Email Orang Tua' : p?.email_ortu     || '-',
+    };
+    const alamat = {
+        'Jalan'     : p?.alamat     || '-',
+        'Kelurahan' : p?.kelurahan  || '-',
+        'Kecamatan' : p?.kecamatan  || '-',
+        'Kabupaten' : p?.kabupaten  || 'Indramayu',
+        'Provinsi'  : p?.provinsi   || 'Jawa Barat',
+        'Kode Pos'  : p?.kode_pos   || '-',
+    };
+
+    renderSection('bd-pribadi', pribadi);
+    renderSection('bd-ortu',    ortu);
+    renderSection('bd-alamat',  alamat);
+
+    // Fetch profil dari API jika belum ada
+    if (!apiData.profil && currentUser?.nisn) {
+        apiFetch('/api/siswa/profil').then(json => {
+            if (json.success) { apiData.profil = json.data; renderBiodata(); }
+        }).catch(()=>{});
+    }
 }
 
 /* ============================================================
    RENDER: KEHADIRAN TABLE
    ============================================================ */
 function renderKehadiranTable() {
+    const kh    = apiData.kehadiran || FALLBACK_KEHADIRAN;
     const tbody = document.getElementById('kehadiran-tbody');
     if (!tbody) return;
 
     const statusMap = { hadir:'Hadir', sakit:'Sakit', izin:'Izin', alpha:'Tidak Hadir', libur:'-' };
-    tbody.innerHTML = DB_KEHADIRAN.riwayat.map(r => `
+    const riwayat   = kh.riwayat || [];
+    tbody.innerHTML = riwayat.map(r => `
         <tr>
-            <td>${r.tgl}</td>
-            <td>${r.hari}</td>
+            <td>${r.tgl || r.tanggal || '-'}</td>
+            <td>${r.hari || '-'}</td>
             <td><span class="status-badge ${r.status}">${statusMap[r.status]||r.status}</span></td>
-            <td>${r.ket}</td>
+            <td>${r.ket || r.keterangan || '-'}</td>
         </tr>
-    `).join('');
+    `).join('') || '<tr><td colspan="4" style="text-align:center;color:#94a3b8;">Belum ada data kehadiran.</td></tr>';
 
-    // Summary
     ['hadir','sakit','izin','alpha'].forEach(k => {
         const el = document.getElementById(`kh-${k}`);
-        if (el) el.textContent = DB_KEHADIRAN[k];
+        if (el) el.textContent = kh[k] || 0;
     });
-    const total = DB_KEHADIRAN.hadir + DB_KEHADIRAN.sakit + DB_KEHADIRAN.izin + DB_KEHADIRAN.alpha;
-    const pct   = Math.round((DB_KEHADIRAN.hadir / total) * 100);
+    const total = (kh.hadir||0)+(kh.sakit||0)+(kh.izin||0)+(kh.alpha||0);
+    const pct   = kh.persen || (total ? Math.round(((kh.hadir||0)/total)*100) : 100);
     const pelEl = document.getElementById('kh-persen');
     if (pelEl) pelEl.textContent = `${pct}%`;
 }
-
 /* ============================================================
    KALENDER KEHADIRAN
    ============================================================ */
@@ -497,43 +538,53 @@ function nextMonth() {
    ============================================================ */
 function renderNilai(sem) {
     currentSem = sem;
-    const data  = DB_NILAI[sem] || DB_NILAI.genap;
+    // Ambil dari apiData, fallback ke FALLBACK_NILAI
+    const rawData = apiData.nilai[sem] || FALLBACK_NILAI[sem] || FALLBACK_NILAI.genap;
+
+    // Normalisasi format API vs fallback
+    const data = rawData.map(r => {
+        if (r.nilai_final !== undefined) {
+            // Format dari API sudah dihitung
+            return { mapel:r.mapel, uh:r.uh, uts:r.uts, uas:r.uas, tugas:r.tugas, kkm:r.kkm, final:r.nilai_final, lulus:r.lulus };
+        }
+        const final = parseFloat(((r.uh*0.2+r.uts*0.25+r.uas*0.3+r.tugas*0.25)).toFixed(1));
+        return { mapel:r.mapel, uh:r.uh, uts:r.uts, uas:r.uas, tugas:r.tugas, kkm:r.kkm||70, final, lulus:final>=(r.kkm||70) };
+    });
+
     const tbody = document.getElementById('nilai-tbody');
     if (!tbody) return;
 
-    let totalFinal = 0;
-    let maxVal = 0, minVal = 100;
-
+    let totalFinal=0, maxVal=0, minVal=100;
     tbody.innerHTML = data.map(m => {
-        const final = parseFloat(((m.uh*0.2 + m.uts*0.25 + m.uas*0.3 + m.tugas*0.25)).toFixed(1));
-        const lulus = final >= m.kkm;
-        if (final > maxVal) maxVal = final;
-        if (final < minVal) minVal = final;
-        totalFinal += final;
+        if (m.final > maxVal) maxVal = m.final;
+        if (m.final < minVal) minVal = m.final;
+        totalFinal += m.final;
         return `<tr>
             <td><strong>${m.mapel}</strong></td>
             <td>${m.uh}</td><td>${m.uts}</td><td>${m.uas}</td><td>${m.tugas}</td>
-            <td><strong style="color:${final>=m.kkm?'#059669':'#dc2626'}">${final}</strong></td>
-            <td><span class="status-badge ${lulus?'lulus':'remedial'}">${lulus?'Lulus':'Remedial'}</span></td>
+            <td><strong style="color:${m.lulus?'#059669':'#dc2626'}">${m.final}</strong></td>
+            <td><span class="status-badge ${m.lulus?'lulus':'remedial'}">${m.lulus?'Lulus':'Remedial'}</span></td>
         </tr>`;
     }).join('');
 
-    const rata = (totalFinal / data.length).toFixed(2);
-    const scRata = document.getElementById('nsc-rata');
-    const scMax  = document.getElementById('nsc-tertinggi');
-    const scMin  = document.getElementById('nsc-terendah');
-    if (scRata) scRata.textContent = rata;
-    if (scMax)  scMax.textContent  = maxVal;
-    if (scMin)  scMin.textContent  = minVal;
+    const rata = data.length ? (totalFinal/data.length).toFixed(2) : '0.00';
+    const set  = id => { const el=document.getElementById(id); if(el) el.textContent=arguments[1]; };
+    ['nsc-rata','nsc-tertinggi','nsc-terendah'].forEach((id,i)=>{
+        const el=document.getElementById(id);
+        if(el) el.textContent=[rata,maxVal,minVal][i];
+    });
+    const scNilaiB=document.getElementById('sc-nilai');
+    if(scNilaiB) scNilaiB.textContent=rata;
 
-    // Sync nilai summary di beranda
-    const scNilaiB = document.getElementById('sc-nilai');
-    if (scNilaiB) scNilaiB.textContent = rata;
-
-    // Grafik Trend
     renderNilaiTrend();
-}
 
+    // Jika belum ada data API untuk semester ini, fetch sekarang
+    if (!apiData.nilai[sem]) {
+        apiFetch(`/api/siswa/nilai?semester=${sem}`).then(json=>{
+            if(json.success){ apiData.nilai[sem]=json.data; renderNilai(sem); }
+        }).catch(()=>{});
+    }
+}
 function filterNilai(sem, btn) {
     document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
@@ -565,35 +616,35 @@ function renderNilaiTrend() {
    RENDER: PRESTASI
    ============================================================ */
 function renderPrestasi() {
-    const el = document.getElementById('prestasi-grid');
+    const data = apiData.prestasi?.length ? apiData.prestasi : FALLBACK_PRESTASI;
+    const el   = document.getElementById('prestasi-grid');
     if (!el) return;
-    el.innerHTML = DB_PRESTASI.map(p => `
+    el.innerHTML = data.map(p => `
         <div class="prestasi-card">
             <div class="pc-header">
-                <div class="pc-medal">${p.medal}</div>
+                <div class="pc-medal">${p.medal||'🏆'}</div>
                 <div>
                     <h3>${p.judul}</h3>
                     <p>${p.tingkat} · ${p.tahun}</p>
                 </div>
             </div>
             <div class="pc-body">
-                <div class="pc-juara"><i class="fas fa-trophy"></i> ${p.medal.includes('🥇')?'Juara 1':p.medal.includes('🥈')?'Juara 2':'Terbaik'}</div>
+                <div class="pc-juara"><i class="fas fa-trophy"></i> ${p.medal?.includes('🥇')?'Juara 1':p.medal?.includes('🥈')?'Juara 2':'Terbaik'}</div>
                 <p>${p.keterangan}</p>
             </div>
         </div>
     `).join('');
-
-    const scPrestasi = document.getElementById('sc-prestasi');
-    if (scPrestasi) scPrestasi.textContent = DB_PRESTASI.length;
+    const sc=document.getElementById('sc-prestasi');
+    if(sc) sc.textContent=data.length;
 }
-
 /* ============================================================
    RENDER: JADWAL
    ============================================================ */
 function renderJadwal(hari) {
-    const list = document.getElementById('jadwal-list');
+    const allJadwal = Object.keys(apiData.jadwal).length ? apiData.jadwal : FALLBACK_JADWAL;
+    const jadwal    = allJadwal[hari] || [];
+    const list      = document.getElementById('jadwal-list');
     if (!list) return;
-    const jadwal = DB_JADWAL[hari] || [];
     if (!jadwal.length) {
         list.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8;"><i class="fas fa-coffee" style="font-size:2rem;margin-bottom:10px;display:block;"></i> Tidak ada jadwal hari ini.</div>';
         return;
@@ -604,13 +655,12 @@ function renderJadwal(hari) {
             <div class="ji-time"><i class="fas fa-clock" style="font-size:0.7rem;color:#94a3b8;margin-right:4px;"></i>${j.jam}</div>
             <div class="ji-info">
                 <h4>${j.mapel}</h4>
-                <p>${j.guru}</p>
+                <p>${j.guru || '-'}</p>
             </div>
-            <div class="ji-room">${j.ruang}</div>
+            <div class="ji-room">${j.ruang || '-'}</div>
         </div>
     `).join('');
 }
-
 function filterJadwal(hari, btn) {
     document.querySelectorAll('.jt').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -623,66 +673,71 @@ function filterJadwal(hari, btn) {
 function renderSurat() {
     const el = document.getElementById('surat-list');
     if (!el) return;
-    const statusMap = { selesai:'selesai', proses:'proses', ditolak:'alpha' };
+    const statusMap  = { selesai:'selesai', proses:'proses', ditolak:'alpha' };
     const statusLabel= { selesai:'Selesai', proses:'Diproses', ditolak:'Ditolak' };
 
     if (!suratList.length) {
         el.innerHTML = '<div style="padding:30px;text-align:center;color:#94a3b8;">Belum ada riwayat surat.</div>';
-        return;
+    } else {
+        el.innerHTML = suratList.map(s => `
+            <div class="surat-item">
+                <div class="si-icon"><i class="fas fa-file-alt"></i></div>
+                <div class="si-info">
+                    <h4>${s.jenis}</h4>
+                    <p><i class="fas fa-calendar" style="font-size:0.7rem;"></i> ${s.tanggal} · ${s.tujuan}</p>
+                </div>
+                <div class="si-status">
+                    <span class="status-badge ${statusMap[s.status]||'blue'}">${statusLabel[s.status]||s.status}</span>
+                </div>
+                ${s.status==='selesai'?`<button onclick="downloadSurat('${s.id}')" style="margin-left:8px;padding:5px 12px;background:var(--navy);color:var(--gold);border:none;border-radius:8px;font-size:0.72rem;font-weight:700;cursor:pointer;"><i class="fas fa-download"></i> Unduh</button>`:''}
+            </div>
+        `).join('');
     }
-    el.innerHTML = suratList.map(s => `
-        <div class="surat-item">
-            <div class="si-icon"><i class="fas fa-file-alt"></i></div>
-            <div class="si-info">
-                <h4>${s.jenis}</h4>
-                <p><i class="fas fa-calendar" style="font-size:0.7rem;"></i> ${s.tanggal} · ${s.tujuan}</p>
-            </div>
-            <div class="si-status">
-                <span class="status-badge ${statusMap[s.status]||'blue'}">${statusLabel[s.status]||s.status}</span>
-            </div>
-            ${s.status==='selesai' ? `<button onclick="downloadSurat(${s.id})" style="margin-left:8px;padding:5px 12px;background:var(--navy);color:var(--gold);border:none;border-radius:8px;font-size:0.72rem;font-weight:700;cursor:pointer;"><i class="fas fa-download"></i> Unduh</button>` : ''}
-        </div>
-    `).join('');
 
     const badgeSurat = document.getElementById('badge-surat');
-    const pending = suratList.filter(s => s.status === 'proses').length;
-    if (badgeSurat) badgeSurat.textContent = pending || '';
+    if (badgeSurat) {
+        const pending = suratList.filter(s=>s.status==='proses').length;
+        badgeSurat.textContent = pending || '';
+    }
 }
-
-function ajukanSurat() {
+async function ajukanSurat() {
     const jenis  = document.getElementById('surat-jenis').value;
     const tujuan = document.getElementById('surat-tujuan').value.trim();
     const ket    = document.getElementById('surat-ket').value.trim();
 
-    if (!jenis || !tujuan) {
-        showToastDs('Lengkapi jenis surat dan tujuan terlebih dahulu.', 'red');
-        return;
-    }
+    if (!jenis || !tujuan) { showToastDs('Lengkapi jenis surat dan tujuan terlebih dahulu.','red'); return; }
 
     const jenisLabel = {
         aktif:'Surat Keterangan Aktif', pindah:'Surat Keterangan Pindah',
         magang:'Surat Pengantar Magang/PKL', beasiswa:'Surat Rekomendasi Beasiswa',
-        izin:'Surat Izin Tidak Masuk', lainnya:'Surat Lainnya'
+        izin:'Surat Izin Tidak Masuk', lainnya:'Surat Lainnya',
     };
 
     const baru = {
         id: Date.now(),
-        jenis: jenisLabel[jenis] || jenis,
-        tanggal: new Date().toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric'}),
-        tujuan: tujuan,
-        status: 'proses'
+        jenis  : jenisLabel[jenis] || jenis,
+        tanggal: new Date().toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}),
+        tujuan,
+        status : 'proses',
     };
+
+    // Coba kirim ke API
+    try {
+        await apiFetch('/api/content/surat', {
+            method:'POST',
+            body  : JSON.stringify({ jenis: jenisLabel[jenis]||jenis, tujuan, keterangan:ket, nisn:currentUser?.nisn }),
+        });
+    } catch(e) { /* simpan lokal saja jika gagal */ }
+
     suratList.unshift(baru);
     renderSurat();
 
-    // Reset form
-    document.getElementById('surat-jenis').value = '';
+    document.getElementById('surat-jenis').value  = '';
     document.getElementById('surat-tujuan').value = '';
-    document.getElementById('surat-ket').value = '';
+    document.getElementById('surat-ket').value    = '';
 
-    showToastDs('Permohonan surat berhasil diajukan! Estimasi selesai 1×24 jam.', 'green', 4000);
+    showToastDs('Permohonan surat berhasil diajukan! Estimasi selesai 1×24 jam.','green',4000);
 }
-
 function downloadSurat(id) {
     const surat = suratList.find(s => s.id === id);
     if (!surat) return;
@@ -701,16 +756,18 @@ function requestEdit() {
    ============================================================ */
 function exportKehadiran() {
     const rows = [['Tanggal','Hari','Status','Keterangan']];
-    DB_KEHADIRAN.riwayat.forEach(r => rows.push([r.tgl, r.hari, r.status, r.ket]));
+    const kh = apiData.kehadiran || FALLBACK_KEHADIRAN;
+    (kh.riwayat||[]).forEach(r => rows.push([r.tgl||r.tanggal||'-', r.hari||'-', r.status, r.ket||r.keterangan||'-']));
     downloadCSV(rows, `Kehadiran_${currentUser?.nisn}_${new Date().toISOString().slice(0,10)}.csv`);
     showToastDs('Data kehadiran berhasil diekspor!', 'green');
 }
 
 function exportNilai() {
-    const data = DB_NILAI[currentSem];
+    const rawData = apiData.nilai[currentSem] || FALLBACK_NILAI[currentSem] || FALLBACK_NILAI.genap;
+    const data = rawData.map(r => ({ ...r, nilai_final: r.nilai_final !== undefined ? r.nilai_final : parseFloat(((r.uh*0.2+r.uts*0.25+r.uas*0.3+r.tugas*0.25)).toFixed(1)) }));
     const rows = [['Mata Pelajaran','UH','UTS','UAS','Tugas','Nilai Final','Status']];
     data.forEach(m => {
-        const final = parseFloat(((m.uh*0.2 + m.uts*0.25 + m.uas*0.3 + m.tugas*0.25)).toFixed(1));
+        const final = m.nilai_final !== undefined ? m.nilai_final : parseFloat(((m.uh*0.2+m.uts*0.25+m.uas*0.3+m.tugas*0.25)).toFixed(1));
         rows.push([m.mapel, m.uh, m.uts, m.uas, m.tugas, final, final>=m.kkm?'Lulus':'Remedial']);
     });
     downloadCSV(rows, `Nilai_${currentUser?.nisn}_${currentSem}_${new Date().toISOString().slice(0,10)}.csv`);
@@ -749,15 +806,24 @@ function globalSearch(query) {
 /* ============================================================
    LOGOUT
    ============================================================ */
-function doLogout() {
+async function doLogout() {
     if (!confirm('Yakin ingin keluar dari portal data siswa?')) return;
+    // Hapus token dari server
+    try {
+        const refresh = localStorage.getItem('smkn_refresh');
+        await apiFetch('/api/auth/logout',{method:'POST',body:JSON.stringify({refreshToken:refresh})});
+    } catch(e) {}
+    localStorage.removeItem('smkn_token');
+    localStorage.removeItem('smkn_refresh');
+    localStorage.removeItem('smkn_user');
     currentUser = null;
-    // Reset form login
-    const lNisn = document.getElementById('l-nisn');
-    const lPass = document.getElementById('l-pass');
-    if (lNisn) lNisn.value = '';
-    if (lPass) lPass.value = '';
-    document.getElementById('l-err').classList.add('hidden');
+    apiData = { profil:null, nilai:{}, kehadiran:null, jadwal:{}, prestasi:[], dashboard:null };
+    const lNisn=document.getElementById('l-nisn');
+    const lPass=document.getElementById('l-pass');
+    if(lNisn) lNisn.value='';
+    if(lPass) lPass.value='';
+    const errEl=document.getElementById('l-err');
+    if(errEl) errEl.classList.add('hidden');
     showPage('page-login');
 }
 
@@ -765,6 +831,25 @@ function doLogout() {
    INIT
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
+    // Auto-login jika sudah ada token
+    const savedToken = localStorage.getItem('smkn_token');
+    const savedUser  = localStorage.getItem('smkn_user');
+    if (savedToken && savedUser) {
+        try {
+            const u = JSON.parse(savedUser);
+            // Cek token belum expired (client-side)
+            const payload = JSON.parse(atob(savedToken.split('.')[1]));
+            const now = Math.floor(Date.now()/1000);
+            if (payload.exp && payload.exp > now) {
+                currentUser = { nisn:u.nisn, nama:u.nama_lengkap||u.nama, kelas:'-', jurusan:'-', role:u.role, id:u.id, no_hp:u.no_hp };
+                initDashboard();
+                return;
+            }
+        } catch(e) {}
+        localStorage.removeItem('smkn_token');
+        localStorage.removeItem('smkn_user');
+        localStorage.removeItem('smkn_refresh');
+    }
     showPage('page-login');
 
     // Toggle password login
