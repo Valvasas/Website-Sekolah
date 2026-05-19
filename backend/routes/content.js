@@ -213,3 +213,22 @@ router.get('/cbt-results/export', authenticate, isStaff, (req, res) => {
 });
 
 module.exports = router;
+
+/* ── POST /api/content/surat — simpan permohonan surat ── */
+router.post('/surat', authenticate, (req, res) => {
+    try {
+        const db  = getDB();
+        const now = new Date().toISOString();
+        const { jenis, tujuan, keterangan, nisn } = req.body;
+        if (!jenis || !tujuan) return res.status(400).json({ success:false, message:'jenis dan tujuan wajib.' });
+
+        const { v4: uuidv4 } = require('uuid');
+        db.prepare(`INSERT INTO audit_logs (id,user_id,action,entity,detail,created_at)
+            VALUES (?,?,?,?,?,?)`).run(
+            uuidv4(), req.user.id, 'surat_ajukan', 'surat',
+            JSON.stringify({ jenis, tujuan, keterangan, nisn }),
+            now
+        );
+        res.status(201).json({ success:true, message:'Permohonan surat berhasil diajukan.' });
+    } catch(e) { res.status(500).json({ success:false, message:e.message }); }
+});

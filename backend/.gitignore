@@ -1,0 +1,26 @@
+# Environment
+.env
+.env.local
+.env.production
+
+# Database files
+data/
+*.bin
+*.db
+
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp

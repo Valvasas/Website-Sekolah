@@ -175,3 +175,159 @@ if (require.main === module) {
 }
 
 module.exports = { setup };
+
+/* Export fungsi tambah tabel baru (dipanggil dari migrasi) */
+async function migrate() {
+    const path = require('path');
+    const fs   = require('fs');
+    const SQL  = await require('sql.js')();
+    require('dotenv').config();
+
+    const DB_PATH = path.resolve(
+        (process.env.DB_PATH || './data/smkn1terisi').replace(/\.db$/, '') + '.bin'
+    );
+    if (!fs.existsSync(DB_PATH)) { console.error('DB tidak ditemukan. Jalankan setup dulu.'); return; }
+
+    const db = new SQL.Database(fs.readFileSync(DB_PATH));
+
+    /* Tabel siswa detail */
+    db.run(`CREATE TABLE IF NOT EXISTS siswa_profil (
+        id          TEXT PRIMARY KEY,
+        user_id     TEXT NOT NULL UNIQUE,
+        nisn        TEXT NOT NULL,
+        kelas       TEXT,
+        jurusan     TEXT,
+        tempat_lahir TEXT,
+        tanggal_lahir TEXT,
+        jenis_kelamin TEXT,
+        agama       TEXT,
+        alamat      TEXT,
+        kelurahan   TEXT,
+        kecamatan   TEXT,
+        kabupaten   TEXT DEFAULT 'Indramayu',
+        provinsi    TEXT DEFAULT 'Jawa Barat',
+        kode_pos    TEXT,
+        nama_ayah   TEXT,
+        pekerjaan_ayah TEXT,
+        nama_ibu    TEXT,
+        pekerjaan_ibu  TEXT,
+        no_hp_ortu  TEXT,
+        email_ortu  TEXT,
+        updated_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    )`);
+
+    /* Tabel nilai */
+    db.run(`CREATE TABLE IF NOT EXISTS nilai_siswa (
+        id          TEXT PRIMARY KEY,
+        nisn        TEXT NOT NULL,
+        semester    TEXT NOT NULL,
+        mapel       TEXT NOT NULL,
+        uh          REAL DEFAULT 0,
+        uts         REAL DEFAULT 0,
+        uas         REAL DEFAULT 0,
+        tugas       REAL DEFAULT 0,
+        kkm         REAL DEFAULT 70,
+        created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    )`);
+
+    /* Tabel kehadiran */
+    db.run(`CREATE TABLE IF NOT EXISTS kehadiran (
+        id          TEXT PRIMARY KEY,
+        nisn        TEXT NOT NULL,
+        tanggal     TEXT NOT NULL,
+        hari        TEXT,
+        status      TEXT NOT NULL DEFAULT 'hadir',
+        keterangan  TEXT,
+        created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    )`);
+
+    /* Tabel jadwal */
+    db.run(`CREATE TABLE IF NOT EXISTS jadwal (
+        id          TEXT PRIMARY KEY,
+        kelas       TEXT NOT NULL,
+        hari        TEXT NOT NULL,
+        jam         TEXT NOT NULL,
+        mapel       TEXT NOT NULL,
+        guru        TEXT,
+        ruang       TEXT,
+        created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    )`);
+
+    /* Tabel PPDB */
+    db.run(`CREATE TABLE IF NOT EXISTS ppdb_pendaftaran (
+        id              TEXT PRIMARY KEY,
+        nomor_daftar    TEXT NOT NULL UNIQUE,
+        jalur           TEXT NOT NULL,
+        nama_lengkap    TEXT NOT NULL,
+        nisn            TEXT,
+        tempat_lahir    TEXT,
+        tanggal_lahir   TEXT,
+        jenis_kelamin   TEXT,
+        asal_sekolah    TEXT,
+        jurusan_pilihan TEXT,
+        nama_ayah       TEXT,
+        pekerjaan_ayah  TEXT,
+        nama_ibu        TEXT,
+        pekerjaan_ibu   TEXT,
+        no_hp           TEXT,
+        alamat          TEXT,
+        status          TEXT NOT NULL DEFAULT 'pending',
+        catatan         TEXT,
+        jarak_km        REAL,
+        created_at      TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updated_at      TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    )`);
+
+    /* Seed nilai untuk siswa default */
+    const { v4: uuidv4 } = require('uuid');
+    const now = new Date().toISOString();
+
+    const nilaiData = [
+        { mapel:'Teknik Komputer Jaringan', uh:90, uts:86, uas:88, tugas:92, kkm:75 },
+        { mapel:'Matematika',               uh:78, uts:80, uas:82, tugas:85, kkm:70 },
+        { mapel:'Bahasa Indonesia',         uh:88, uts:90, uas:85, tugas:92, kkm:70 },
+        { mapel:'Bahasa Inggris',           uh:82, uts:85, uas:88, tugas:90, kkm:70 },
+        { mapel:'PKn',                      uh:85, uts:88, uas:86, tugas:88, kkm:70 },
+        { mapel:'Sejarah Indonesia',        uh:80, uts:82, uas:84, tugas:86, kkm:70 },
+        { mapel:'Produk Kreatif & KWU',     uh:87, uts:89, uas:91, tugas:93, kkm:75 },
+    ];
+
+    for (const n of nilaiData) {
+        try {
+            db.run(`INSERT OR IGNORE INTO nilai_siswa (id,nisn,semester,mapel,uh,uts,uas,tugas,kkm,created_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?)`,
+                [uuidv4(),'0012345678','genap',n.mapel,n.uh,n.uts,n.uas,n.tugas,n.kkm,now]);
+        } catch(e) {}
+    }
+
+    /* Seed profil siswa default */
+    try {
+        db.run(`INSERT OR IGNORE INTO siswa_profil
+            (id,user_id,nisn,kelas,jurusan,tempat_lahir,tanggal_lahir,jenis_kelamin,agama,
+             alamat,kelurahan,kecamatan,nama_ayah,pekerjaan_ayah,nama_ibu,pekerjaan_ibu,
+             no_hp_ortu,email_ortu,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [uuidv4(),'__nisn_0012345678__','0012345678','XI TKJ 1','Teknik Komputer & Jaringan',
+             'Indramayu','2008-01-15','Laki-laki','Islam',
+             'Jl. Raya Terisi No. 45 RT 02 RW 05','Terisi','Terisi',
+             'Supriadi','Wiraswasta','Siti Aminah','Ibu Rumah Tangga',
+             '0811-2233-4455','supriadi@email.com',now]);
+    } catch(e) {}
+
+    const data = db.export();
+    fs.writeFileSync(DB_PATH, Buffer.from(data));
+    db.close();
+
+    console.log('✅ Migrasi selesai: tabel siswa_profil, nilai_siswa, kehadiran, jadwal, ppdb_pendaftaran dibuat.');
+}
+
+if (require.main === module) {
+    const arg = process.argv[2];
+    if (arg === '--migrate') {
+        migrate().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); });
+    } else {
+        setup().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); });
+    }
+}
+
+module.exports = { setup, migrate };

@@ -37,7 +37,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
 
 /* ── Static files ────────────────────────────────────── */
-const frontendPath = path.resolve(__dirname, '..');
+const projectRootPath = path.resolve(__dirname, '..');
+const frontendPath    = path.join(projectRootPath, 'frontend');
+
+app.use('/asset', express.static(path.join(projectRootPath, 'asset')));
 app.use(express.static(frontendPath, { index: 'index.html', extensions: ['html'] }));
 app.use('/admin-panel', express.static(path.join(__dirname, 'admin-panel')));
 
@@ -168,6 +171,8 @@ function setupRoutes() {
     app.use('/api/auth',    require('./routes/auth'));
     app.use('/api/users',   require('./routes/users'));
     app.use('/api/content', require('./routes/content'));
+    app.use('/api/siswa',   require('./routes/siswa'));
+    app.use('/api/ppdb',    require('./routes/ppdb'));
 
     // ── Halaman khusus backend ──────────────────────────
     app.get('/admin-panel',        (_r, res) => res.redirect('/admin-panel/login.html'));

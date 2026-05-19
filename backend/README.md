@@ -1,108 +1,94 @@
 # Backend SMKN 1 Terisi
 
-Node.js + Express + sql.js + JWT + WebSocket
+**Stack:** Node.js · Express · sql.js · JWT · bcrypt · WebSocket
 
-## Setup
+## Quick Start
 
 ```bash
 cd backend
-cp .env.example .env       # edit jika perlu
+cp .env.example .env
 npm install
-node utils/setupDatabase.js   # buat DB + seed data
-npm run dev                   # development (nodemon)
-# atau
-npm start                     # production
+node utils/setupDatabase.js
+npm run dev
 ```
 
-Server berjalan di `http://localhost:3001`
+Server: http://localhost:3001
 
-## Akun Default
+## Akun Default (password: Smkn1Terisi@2024)
 
-| Role | Login | Password |
-|---|---|---|
-| super_admin | admin@smkn1terisi.sch.id | Smkn1Terisi@2024 |
-| kepala_sekolah | kepsek@smkn1terisi.sch.id | Smkn1Terisi@2024 |
-| guru | deni.setiawan@smkn1terisi.sch.id | Smkn1Terisi@2024 |
-| tata_usaha | tu@smkn1terisi.sch.id | Smkn1Terisi@2024 |
-| siswa | NISN: 0012345678 | Smkn1Terisi@2024 |
-| wali_murid | supriadi@gmail.com | Smkn1Terisi@2024 |
+| Role | Login |
+|------|-------|
+| super_admin | admin@smkn1terisi.sch.id |
+| kepala_sekolah | kepsek@smkn1terisi.sch.id |
+| guru | deni.setiawan@smkn1terisi.sch.id |
+| tata_usaha | tu@smkn1terisi.sch.id |
+| siswa | NISN: 0012345678 |
+| wali_murid | supriadi@gmail.com |
+
+## Frontend Files (timpa ke root project)
+
+| File | Perubahan |
+|------|-----------|
+| auth-guard.js | BARU — proteksi JWT per halaman |
+| DATA.js | Fetch dari /api/siswa/*, fallback offline |
+| DATA.html | Tambah script auth-guard.js |
+| login.html | Form ke /api/auth/login |
+| SKL.js | Fetch dari /api/content/skl/cari |
+| script.js | Ticker dari /api/content/announcements |
+| ppdb.html | Form ke /api/ppdb |
+
+## Cara pakai auth-guard.js
+
+```html
+<script src="auth-guard.js"></script>  <!-- SEBELUM script utama -->
+<script src="DATA.js"></script>
+```
 
 ## API Endpoints
 
-### Auth — `/api/auth/`
-| Method | Path | Deskripsi |
-|---|---|---|
-| POST | /login | Login semua role |
-| POST | /register | Daftar akun baru |
-| POST | /logout | Logout |
-| POST | /refresh | Refresh access token |
-| POST | /forgot-password | Kirim email reset |
-| POST | /reset-password | Ganti password via token |
-| POST | /change-password | Ganti password (sudah login) |
-| GET | /me | Profil user saat ini |
-| GET | /verify-email | Verifikasi email |
+```
+POST /api/auth/login             publik
+POST /api/auth/register          publik
+POST /api/auth/refresh           publik
+POST /api/auth/forgot-password   publik
+POST /api/auth/reset-password    publik
+GET  /api/auth/me                auth
 
-### Users — `/api/users/` *(butuh auth)*
-| Method | Path | Akses |
-|---|---|---|
-| GET | / | Staff only |
-| GET | /stats | Admin only |
-| GET | /audit-logs | Admin only |
-| POST | / | Admin only |
-| PUT | /:id | Self atau admin |
-| DELETE | /:id | Admin only |
+GET  /api/siswa/dashboard        siswa/wali
+GET  /api/siswa/profil           siswa/wali
+PUT  /api/siswa/profil           siswa
+GET  /api/siswa/nilai            siswa/guru
+GET  /api/siswa/kehadiran        siswa/wali
+GET  /api/siswa/jadwal           siswa
 
-### Content — `/api/content/`
-| Method | Path | Akses |
-|---|---|---|
-| POST | /skl/cari | Publik |
-| GET | /skl | TU+ |
-| POST | /skl | TU+ |
-| PUT | /skl/:id | TU+ |
-| DELETE | /skl/:id | Admin |
-| GET | /announcements | Publik |
-| POST | /announcements | Staff |
-| GET | /cbt-results | Staff |
-| GET | /cbt-results/export | Staff |
+POST /api/content/skl/cari       publik
+GET  /api/content/announcements  publik
+GET  /api/cbt-results            staff
 
-## Contoh Request Login
+POST /api/ppdb                   publik
+GET  /api/ppdb/cek?nomor=        publik
+GET  /api/ppdb                   staff
+PATCH /api/ppdb/:id/status       staff
+```
+
+## Migrasi DB (jika sudah ada)
 
 ```bash
-# Login staff (email)
-curl -X POST http://localhost:3001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@smkn1terisi.sch.id","password":"Smkn1Terisi@2024"}'
-
-# Login siswa (NISN)
-curl -X POST http://localhost:3001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"nisn":"0012345678","password":"Smkn1Terisi@2024"}'
-
-# Cari SKL
-curl -X POST http://localhost:3001/api/content/skl/cari \
-  -H "Content-Type: application/json" \
-  -d '{"nisn":"0012345678","nama":"AHMAD FARHAN MAULANA","ttl":"2008-01-15","tahun_lulus":"2026"}'
+node utils/setupDatabase.js --migrate
 ```
 
-## Struktur Folder
+## Production
 
-```
-backend/
-├── server.js
-├── package.json
-├── .env.example
-├── config/         jwt, database, mailer, passport
-├── controllers/    authController, userController
-├── middleware/     auth, auditLog, rateLimiter, validate
-├── routes/         auth, users, content
-├── utils/          setupDatabase, testServer
-├── admin-panel/    login.html, dashboard.html, reset-password.html
-└── data/           smkn1terisi.bin (di-ignore git)
+```bash
+npm install -g pm2
+pm2 start server.js --name smkn1terisi
+pm2 save && pm2 startup
 ```
 
-## Frontend Files yang Diupdate
+## .env Wajib Diubah di Production
 
-Salin file-file ini ke root project:
-- `SKL.js` → fetch dari `/api/content/skl/cari`
-- `script.js` → ticker bar dari `/api/content/announcements`
-- `login.html` → form login ke `/api/auth/login`
+```
+JWT_SECRET=ganti-dengan-string-acak-panjang
+JWT_REFRESH_SECRET=ganti-dengan-string-acak-panjang
+FRONTEND_URL=https://domain-sekolah.sch.id
+```
