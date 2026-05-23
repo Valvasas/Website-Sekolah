@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit — SMKN 1 Terisi</title>
+<style>
+  :root {
+    --bg: #f8fafc; --bg2: #f1f5f9; --bg3: #ffffff;
+    --border: #e2e8f0; --text: #1e293b; --muted: #64748b;
+    --red: #dc2626; --orange: #d97706; --green: #16a34a; --blue: #2563eb; --purple: #7c3aed;
+    --red-bg: #fef2f2; --orange-bg: #fffbeb; --green-bg: #f0fdf4; --blue-bg: #eff6ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; font-size: 14px; }
+  h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+  .tab { padding: 8px 16px; border: none; background: transparent; color: var(--muted); font-size: 13px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+  .panel { display: none; } .panel.active { display: block; }
+
+  /* Score cards */
+  .score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+  @media(max-width:600px){ .score-grid { grid-template-columns: 1fr 1fr; } }
+  .sc { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .sc-num { font-size: 28px; font-weight: 700; line-height: 1; }
+  .sc-bar-bg { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 8px 0 6px; }
+  .sc-bar { height: 100%; border-radius: 99px; }
+  .sc-lbl { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 3px; }
+  .sc-note { font-size: 11px; color: var(--muted); }
+
+  /* Section label */
+  .slabel { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 20px 0 10px; }
+
+  /* Issue cards */
+  .istack { display: flex; flex-direction: column; gap: 8px; }
+  .icard { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .ihead { display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; transition: background .15s; }
+  .ihead:hover { background: var(--bg2); }
+  .sev { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; }
+  .s-blocker { background: #fee2e2; color: #991b1b; }
+  .s-high    { background: #fef3c7; color: #92400e; }
+  .s-med     { background: #e0f2fe; color: #075985; }
+  .s-low     { background: #f0fdf4; color: #166534; }
+  .ititle { font-size: 13px; font-weight: 500; flex: 1; }
+  .icat { font-size: 11px; color: var(--muted); margin-left: auto; white-space: nowrap; }
+  .ibody { padding: 12px 14px; border-top: 1px solid var(--border); display: none; }
+  .ibody.open { display: block; }
+  .ibody p { font-size: 12px; color: #475569; line-height: 1.7; }
+  .ibody code { background: var(--bg2); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; font-size: 11px; }
+  .fix-box { font-size: 11px; background: var(--green-bg); border-left: 3px solid var(--green); border-radius: 0 5px 5px 0; padding: 8px 10px; margin-top: 10px; color: #166534; }
+  .why-box { font-size: 11px; background: var(--blue-bg); border-left: 3px solid var(--blue); border-radius: 0 5px 5px 0; padding: 8px 10px; margin-top: 6px; color: #1e40af; }
+
+  /* Table */
+  .mtable { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .mtable th { background: var(--bg2); padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .mtable td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: #475569; vertical-align: middle; }
+  .mtable tr:last-child td { border-bottom: none; }
+  .mtable tr:hover td { background: var(--bg2); }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; }
+  .p-red    { background: var(--red-bg); color: var(--red); }
+  .p-orange { background: var(--orange-bg); color: var(--orange); }
+  .p-green  { background: var(--green-bg); color: var(--green); }
+  .p-grey   { background: var(--bg2); color: var(--muted); border: 1px solid var(--border); }
+
+  /* Flow */
+  .flow-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .flow-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .fn { padding: 5px 11px; border-radius: 5px; font-size: 11px; font-weight: 500; border: 1px solid; }
+  .fn-blue   { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+  .fn-green  { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+  .fn-red    { background: #fef2f2; color: #b91c1c; border-color: #fecaca; border-style: dashed; }
+  .fn-orange { background: #fffbeb; color: #b45309; border-color: #fde68a; border-style: dashed; }
+  .fn-grey   { background: var(--bg2); color: var(--muted); border-color: var(--border); border-style: dashed; }
+  .fn-arr    { color: var(--muted); font-size: 14px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+  .leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  .leg-dot { width: 8px; height: 8px; border-radius: 50%; }
+</style>
+</head>
+<body>
+
+<h1>🔍 Audit Mendalam — SMKN 1 Terisi</h1>
+<p class="sub">Analisis product completeness, data flow, UX blockers & arsitektur</p>
+
+<div class="tabs">
+  <button class="tab active" data-tab="overview">Overview</button>
+  <button class="tab" data-tab="missing">Fitur Hilang</button>
+  <button class="tab" data-tab="dataflow">Data Flow</button>
+  <button class="tab" data-tab="ux">UX Blockers</button>
+  <button class="tab" data-tab="arch">Arsitektur</button>
+</div>
+
+<!-- OVERVIEW -->
+<div class="panel active" id="tab-overview">
+  <div class="score-grid">
+    <div class="sc"><div class="sc-num" style="color:var(--red)">28<span style="font-size:14px">/100</span></div><div class="sc-bar-bg"><div class="sc-bar" style="width:28%;background:var(--red)"></div></div><div class="sc-lbl">Backend Completeness</div><div class="sc-note">Route ada, 60% tidak terkoneksi ke frontend</div></div>
+    <div class="sc"><div class="sc-num" style="color:var(--orange)">41<span style="font-size:14px">/100</span></div><div class="sc-bar-bg"><div class="sc-bar" style="width:41%;background:var(--orange)"></div></div><div class="sc-lbl">Frontend ↔ API Integration</div><div class="sc-note">LMS & CBT masih 100% dummy data</div></div>
+    <div class="sc"><div class="sc-num" style="color:var(--orange)">45<span style="font-size:14px">/100</span></div><div class="sc-bar-bg"><div class="sc-bar" style="width:45%;background:var(--orange)"></div></div><div class="sc-lbl">UX Readiness</div><div class="sc-note">7 user flow krusial tidak bisa selesai</div></div>
+    <div class="sc"><div class="sc-num" style="color:var(--red)">22<span style="font-size:14px">/100</span></div><div class="sc-bar-bg"><div class="sc-bar" style="width:22%;background:var(--red)"></div></div><div class="sc-lbl">Production Readiness</div><div class="sc-note">Data hilang saat server restart</div></div>
+    <div class="sc"><div class="sc-num" style="color:var(--green)">71<span style="font-size:14px">/100</span></div><div class="sc-bar-bg"><div class="sc-bar" style="width:71%;background:var(--green)"></div></div><div class="sc-lbl">UI Design Quality</div><div class="sc-note">Visual bagus, tidak konsisten antar halaman</div></div>
+    <div class="sc"><div class="sc-num" style="color:var(--red)">31<span style="font-size:14px">/100</span></div><div class="sc-bar-bg"><div class="sc-bar" style="width:31%;background:var(--red)"></div></div><div class="sc-lbl">Data Persistence</div><div class="sc-note">sql.js in-memory — fatal di production</div></div>
+  </div>
+
+  <div class="slabel">5 Kelemahan Paling Krusial</div>
+  <div class="istack">
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-blocker">BLOCKER</span><span class="ititle">sql.js bukan database yang tepat untuk production server</span><span class="icat">Arsitektur</span></div><div class="ibody"><p>sql.js berjalan <strong>sepenuhnya di RAM (in-memory)</strong>. Setiap server restart — crash, deploy ulang, mati listrik — semua data yang belum ter-flush ke file <code>.bin</code> hilang permanen. Window data loss bisa sampai 30 detik. Fatal untuk data ujian & nilai siswa.</p><div class="fix-box">✅ Fix: Migrasi ke <strong>better-sqlite3</strong> — drop-in replacement, API hampir identik, langsung write ke disk, thread-safe. Estimasi 2–4 jam kerja.</div><div class="why-box">💡 Kenapa krusial: Satu crash = data ujian CBT hilang, data PPDB hilang, nilai siswa hilang. Tidak ada recovery.</div></div></div>
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-blocker">BLOCKER</span><span class="ititle">LMS.js & cbt.js 100% dummy data — tidak terhubung ke backend</span><span class="icat">Integrasi</span></div><div class="ibody"><p>Semua data di LMS (<code>DATA_KELAS</code>, <code>DATA_TUGAS</code>, <code>DATA_NILAI</code>, <code>DATA_FORUM</code>) adalah array JavaScript hardcoded. Backend sudah punya <code>/api/siswa/nilai</code>, <code>/api/siswa/kehadiran</code>, <code>/api/siswa/jadwal</code> tapi tidak dipakai. Semua siswa melihat nilai yang sama persis.</p><div class="fix-box">✅ Fix: Ganti semua DATA_* dengan fetch ke API pada initDashboard(). Backend sudah siap, tinggal koneksikan.</div><div class="why-box">💡 Ini secara harfiah membuat LMS tidak berguna untuk operasi sekolah sungguhan.</div></div></div>
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-blocker">BLOCKER</span><span class="ititle">Tidak ada sistem upload file yang bekerja (tugas, foto profil, berkas PPDB)</span><span class="icat">Fitur Hilang</span></div><div class="ibody"><p>Tiga titik upload: (1) lampiran tugas LMS, (2) foto profil user, (3) berkas PPDB (KK, akta, ijazah). Semua punya UI yang bagus tapi <strong>tidak ada handler backend</strong>. Multer sudah di-install tapi tidak ada route yang menggunakannya. File yang di-"upload" langsung dibuang.</p><div class="fix-box">✅ Fix: Buat route POST /api/upload dengan Multer, validasi tipe & ukuran, simpan ke backend/public/uploads/, return URL. Hubungkan ke frontend.</div><div class="why-box">💡 PPDB tanpa upload berkas = pendaftaran tidak sah secara administratif.</div></div></div>
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-high">HIGH</span><span class="ititle">Tidak ada halaman/panel untuk guru input nilai & kehadiran</span><span class="icat">Fitur Hilang</span></div><div class="ibody"><p>Backend punya <code>POST /api/siswa/nilai</code> dan <code>POST /api/siswa/kehadiran</code> yang diproteksi untuk role guru/staff. Tapi tidak ada UI. Guru tidak bisa input nilai dari mana pun selain curl/Postman.</p><div class="fix-box">✅ Fix: Tambahkan tab "Input Nilai" dan "Input Kehadiran" di admin-panel/dashboard.html dengan tabel per-kelas.</div><div class="why-box">💡 Ini adalah core function sebuah sistem informasi akademik. Tanpa ini, LMS hanya jadi website statis.</div></div></div>
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-high">HIGH</span><span class="ititle">auth-guard.js tidak ada — halaman sensitif bisa diakses tanpa login</span><span class="icat">Security</span></div><div class="ibody"><p>README menyebut ada <code>auth-guard.js</code> tapi file ini tidak ada di codebase. <code>LMS.html</code>, <code>cbt.html</code>, <code>DATA.html</code> tidak punya proteksi redirect jika token tidak ada atau expired. User bisa langsung akses URL tanpa login.</p><div class="fix-box">✅ Fix: Buat frontend/auth-guard.js yang cek localStorage token + hit /api/auth/check, redirect ke login jika gagal. Embed di setiap halaman yang butuh auth.</div></div></div>
+  </div>
+</div>
+
+<!-- FITUR HILANG -->
+<div class="panel" id="tab-missing">
+  <div class="slabel">Fitur yang Ada di UI tapi Backend-nya Tidak Ada</div>
+  <table class="mtable">
+    <thead><tr><th>Fitur</th><th>UI</th><th>Backend</th><th>Terkoneksi</th><th>Impact</th></tr></thead>
+    <tbody>
+      <tr><td>Upload lampiran tugas (LMS)</td><td><span class="pill p-green">Ada</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Critical</span></td></tr>
+      <tr><td>Submit tugas tersimpan ke DB</td><td><span class="pill p-green">Ada</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Critical</span></td></tr>
+      <tr><td>Forum post tersimpan ke DB</td><td><span class="pill p-green">Ada</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-orange">High</span></td></tr>
+      <tr><td>Upload foto profil user</td><td><span class="pill p-green">Ada (modal)</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-orange">High</span></td></tr>
+      <tr><td>Upload berkas PPDB (KK, akta)</td><td><span class="pill p-green">Ada</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Critical</span></td></tr>
+      <tr><td>Input nilai oleh guru (UI)</td><td><span class="pill p-red">Tidak Ada</span></td><td><span class="pill p-green">Ada</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Critical</span></td></tr>
+      <tr><td>Input kehadiran oleh guru (UI)</td><td><span class="pill p-red">Tidak Ada</span></td><td><span class="pill p-green">Ada</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Critical</span></td></tr>
+      <tr><td>Generate token CBT (UI guru)</td><td><span class="pill p-red">Tidak Ada</span></td><td><span class="pill p-green">Ada (baru)</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Critical</span></td></tr>
+      <tr><td>Manajemen soal CBT oleh guru</td><td><span class="pill p-red">Tidak Ada</span></td><td><span class="pill p-red">Tidak Ada</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Critical</span></td></tr>
+      <tr><td>Jadwal pelajaran tampil di LMS</td><td><span class="pill p-orange">Dummy</span></td><td><span class="pill p-green">Ada</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-orange">High</span></td></tr>
+      <tr><td>Nilai real di LMS siswa</td><td><span class="pill p-orange">Dummy</span></td><td><span class="pill p-green">Ada</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Critical</span></td></tr>
+      <tr><td>Ganti password di profil siswa</td><td><span class="pill p-orange">Ada tombol</span></td><td><span class="pill p-green">Ada</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-orange">High</span></td></tr>
+      <tr><td>Edit profil siswa (kelas, ortu)</td><td><span class="pill p-red">Tidak Ada</span></td><td><span class="pill p-green">Ada</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-orange">High</span></td></tr>
+      <tr><td>Export nilai siswa PDF/Excel</td><td><span class="pill p-red">Tidak Ada</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-orange">High</span></td></tr>
+      <tr><td>Notifikasi real-time ke siswa</td><td><span class="pill p-orange">Dummy</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-orange">Medium</span></td></tr>
+      <tr><td>Cek status PPDB real-time</td><td><span class="pill p-green">Ada</span></td><td><span class="pill p-green">Ada</span></td><td><span class="pill p-green">Ya ✓</span></td><td><span class="pill p-green">OK</span></td></tr>
+      <tr><td>Login & auth admin panel</td><td><span class="pill p-green">Ada</span></td><td><span class="pill p-green">Ada</span></td><td><span class="pill p-green">Ya ✓</span></td><td><span class="pill p-green">OK</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="slabel" style="margin-top:20px">Fitur Hilang Total (Tidak Ada di Mana Pun)</div>
+  <div class="istack">
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-high">HIGH</span><span class="ititle">Tidak ada sistem manajemen soal CBT untuk guru</span><span class="icat">Fitur Hilang Total</span></div><div class="ibody"><p>Bank soal CBT hardcoded di <code>cbt.js</code> sebagai array JavaScript. Guru tidak bisa tambah, edit, atau hapus soal tanpa menyentuh source code. Tidak ada tabel <code>bank_soal</code> di DB, tidak ada route <code>/api/soal</code>, tidak ada UI untuk manage soal. Setiap ujian semester harus edit file JS secara manual.</p><div class="fix-box">✅ Fix yang dibutuhkan: Tabel DB bank_soal → API CRUD → UI halaman manajemen soal di admin panel → CBT fetch soal dari API.</div></div></div>
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-high">HIGH</span><span class="ititle">Tidak ada sistem assign tugas dari guru ke kelas tertentu</span><span class="icat">Fitur Hilang Total</span></div><div class="ibody"><p>Ada tabel announcements untuk ticker website, tapi tidak ada sistem di mana guru bisa assign tugas ke kelas tertentu dengan deadline, dan siswa bisa melihatnya di LMS. LMS menampilkan tugas tapi semuanya hardcoded — guru tidak punya cara untuk post tugas baru.</p><div class="fix-box">✅ Fix: Tabel tugas_kelas di DB → API POST/GET per kelas → UI guru untuk assign → UI siswa untuk lihat & submit.</div></div></div>
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-med">MEDIUM</span><span class="ititle">Tidak ada sistem backup & recovery database</span><span class="icat">Ops</span></div><div class="ibody"><p>Satu-satunya persistence adalah file .bin yang di-overwrite setiap 30 detik. Tidak ada backup otomatis harian, tidak ada versioning, tidak ada cara restore jika file corrupt.</p><div class="fix-box">✅ Fix minimal: Cron job harian yang copy .bin ke folder backup dengan timestamp. Fix proper: Migrasi ke better-sqlite3 + backup ke cloud.</div></div></div>
+  </div>
+</div>
+
+<!-- DATA FLOW -->
+<div class="panel" id="tab-dataflow">
+  <div class="slabel">Peta Koneksi Frontend ↔ Backend</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Merah/putus = tidak terhubung, Orange/putus = partial/dummy, Hijau = berfungsi.</div>
+  <div class="flow-list">
+    <div class="flow-row"><div class="fn fn-blue">login.html</div><div class="fn-arr">→</div><div class="fn fn-green">POST /api/auth/login</div><div class="fn-arr">→</div><div class="fn fn-green">localStorage token</div><div class="fn-arr">→</div><div class="fn fn-red">auth-guard.js (TIDAK ADA)</div></div>
+    <div class="flow-row"><div class="fn fn-blue">LMS.html</div><div class="fn-arr">→</div><div class="fn fn-orange">LMS.js (dummy data)</div><div class="fn-arr" style="opacity:.4">⇢</div><div class="fn fn-grey">/api/siswa/* (tidak dipanggil)</div></div>
+    <div class="flow-row"><div class="fn fn-blue">cbt.html</div><div class="fn-arr">→</div><div class="fn fn-green">POST /api/cbt/token/validate</div><div class="fn-arr">→</div><div class="fn fn-green">WebSocket (auth fixed)</div><div class="fn-arr">→</div><div class="fn fn-orange">bank soal (masih lokal JS)</div></div>
+    <div class="flow-row"><div class="fn fn-blue">ppdb.html</div><div class="fn-arr">→</div><div class="fn fn-green">POST /api/ppdb</div><div class="fn-arr">→</div><div class="fn fn-red">Upload berkas (TIDAK ADA route)</div></div>
+    <div class="flow-row"><div class="fn fn-blue">dashboard.html</div><div class="fn-arr">→</div><div class="fn fn-green">/api/users/stats ✓</div><div class="fn-arr">→</div><div class="fn fn-red">Input nilai guru (TIDAK ADA UI)</div></div>
+    <div class="flow-row"><div class="fn fn-blue">admin.html (CBT)</div><div class="fn-arr">→</div><div class="fn fn-green">WebSocket (auth fixed)</div><div class="fn-arr">→</div><div class="fn fn-red">Generate token UI (TIDAK ADA)</div></div>
+  </div>
+  <div class="legend">
+    <div class="leg"><div class="leg-dot" style="background:#3b82f6"></div> Halaman frontend</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--green)"></div> Terhubung & berfungsi</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--orange)"></div> Ada tapi dummy/partial</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--red)"></div> Putus / tidak ada</div>
+  </div>
+
+  <div class="slabel" style="margin-top:20px">Database Schema Gaps</div>
+  <table class="mtable">
+    <thead><tr><th>Kebutuhan</th><th>Tabel Ada?</th><th>Dipakai?</th><th>Masalah</th></tr></thead>
+    <tbody>
+      <tr><td>Bank soal CBT</td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Tidak</span></td><td>Soal hardcoded di JS, guru tidak bisa kelola</td></tr>
+      <tr><td>Tugas per kelas</td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Tidak</span></td><td>LMS dummy, guru tidak bisa assign tugas</td></tr>
+      <tr><td>Submission tugas siswa</td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Tidak</span></td><td>Submit tugas tidak tersimpan ke manapun</td></tr>
+      <tr><td>Forum diskusi</td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Tidak</span></td><td>Post forum hilang saat refresh</td></tr>
+      <tr><td>File uploads tracking</td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Tidak</span></td><td>Tidak ada tracking file yang di-upload</td></tr>
+      <tr><td>Materi per kelas</td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Tidak</span></td><td>Materi LMS hardcoded, guru tidak bisa upload</td></tr>
+      <tr><td>Notifikasi user</td><td><span class="pill p-red">Tidak</span></td><td><span class="pill p-red">Tidak</span></td><td>Notif di topbar LMS adalah dummy</td></tr>
+      <tr><td>User profile detail</td><td><span class="pill p-green">Ada (siswa_profil)</span></td><td><span class="pill p-red">Tidak dipakai</span></td><td>UI edit profil tidak ada di LMS</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- UX BLOCKERS -->
+<div class="panel" id="tab-ux">
+  <div class="slabel">User Flow Yang Tidak Bisa Diselesaikan</div>
+  <div class="istack">
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-blocker">BLOCKER</span><span class="ititle">Guru tidak bisa melakukan tugas utamanya dari sistem ini</span><span class="icat">User Flow</span></div><div class="ibody"><p>Flow guru: Login → Lihat siswa per kelas → Input nilai → Input kehadiran → Upload materi → Buat soal CBT → Generate token ujian → Monitor live. Dari 7 langkah ini, <strong>hanya login dan monitor live (partial) yang bisa dilakukan</strong>. Sisa 5 langkah tidak ada UI-nya.</p><div class="why-box">💡 Sistem ini tidak bisa menggantikan buku nilai & absensi manual. Guru masih butuh cara lain.</div></div></div>
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-blocker">BLOCKER</span><span class="ititle">Siswa login ke LMS tapi semua data yang dilihat adalah palsu</span><span class="icat">User Flow</span></div><div class="ibody"><p>Siswa login → Melihat nilai 82 → Padahal itu <code>DATA_NILAI</code> hardcoded yang sama untuk semua user. Semua siswa melihat nilai, tugas, dan kelas yang identik. Forum post hilang saat refresh. Ini bukan hanya bug — ini menyesatkan user secara aktif.</p><div class="fix-box">✅ Priority fix: Connect LMS.js ke /api/siswa/nilai dan /api/siswa/dashboard minimal untuk data personal siswa.</div></div></div>
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-high">HIGH</span><span class="ititle">Mobile CBT tidak layak untuk ujian resmi di Android budget</span><span class="icat">Responsive</span></div><div class="ibody"><p>Di layar 360px (Android murah yang banyak dimiliki siswa SMK): nav grid soal terlalu kecil, teks soal overflow, timer box terpotong. Fullscreen API tidak support di banyak Android budget — siswa langsung gagal pre-check dan tidak bisa ujian sama sekali.</p><div class="fix-box">✅ Fix: Fullscreen API harus jadi opsional (warn, bukan block) di mobile. Nav grid pakai touch target min 44px.</div></div></div>
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-high">HIGH</span><span class="ititle">Tidak ada feedback loading state di form-form krusial</span><span class="icat">Micro UX</span></div><div class="ibody"><p>Saat submit PPDB: tidak ada loading state. Saat login gagal LMS: tidak jelas apakah karena password salah atau server down. Admin panel: tidak ada indikator saat save data. User tidak tahu apakah aksinya berhasil atau tidak.</p><div class="fix-box">✅ Fix: Loading state (disabled button + spinner) untuk semua form submit. Error state yang deskriptif per field.</div></div></div>
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-med">MEDIUM</span><span class="ititle">Tidak ada onboarding untuk user baru (siswa, orang tua)</span><span class="icat">UX</span></div><div class="ibody"><p>User baru tidak tahu: apa itu LMS, cara login CBT, cara cek status PPDB, atau URL mana yang harus dibuka. Tidak ada halaman "Panduan" atau tooltip. Satu-satunya hint adalah demo credentials di login page.</p><div class="fix-box">✅ Fix minimal: Tambahkan halaman /panduan.html dan link dari navbar utama. Atau tambahkan tooltip di form-form kritis.</div></div></div>
+  </div>
+</div>
+
+<!-- ARSITEKTUR -->
+<div class="panel" id="tab-arch">
+  <div class="istack">
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-blocker">BLOCKER</span><span class="ititle">sql.js harus diganti better-sqlite3 sebelum go-live</span><span class="icat">Database</span></div><div class="ibody"><p><strong>Masalah sql.js</strong>: (1) In-memory — data loss saat crash. (2) Tidak thread-safe — concurrent request bisa corrupt data. (3) Lambat untuk read-heavy karena load seluruh DB ke RAM. (4) File .bin bisa ratusan MB untuk data sekolah besar.</p><div class="fix-box">✅ Migrasi: <code>npm install better-sqlite3</code> → update config/database.js wrapper → semua query SQL tetap sama. Estimasi 2–4 jam kerja.</div><div class="why-box">💡 Tanpa ini, semua data hilang saat server crash. Ini prerequisite untuk production, bukan nice-to-have.</div></div></div>
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-high">HIGH</span><span class="ititle">Tidak ada sistem logging yang proper (hanya console.error)</span><span class="icat">Observability</span></div><div class="ibody"><p>Semua error hanya di-log via <code>console.error()</code>. Di production, log ini hilang saat server restart. Tidak ada log rotation, tidak ada error tracking, tidak ada cara debugging masalah production tanpa akses SSH real-time.</p><div class="fix-box">✅ Fix minimal: Install <strong>winston</strong>, log ke file /logs/app.log dengan rotation harian. Fix proper: Integrate Sentry untuk error tracking otomatis.</div></div></div>
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-high">HIGH</span><span class="ititle">Tidak ada PM2 config & health monitoring di production</span><span class="icat">DevOps</span></div><div class="ibody"><p>README menyebut PM2 tapi tidak ada <code>ecosystem.config.js</code>. Tidak ada health check yang monitor memori/CPU. Tidak ada alerting jika server down. Jika server crash tengah malam pas ujian besok pagi, tidak ada yang tahu.</p><div class="fix-box">✅ Fix: Buat ecosystem.config.js untuk PM2 dengan restart policy, memory limit, dan log file. Update /api/health endpoint agar return status DB + uptime + memory usage.</div></div></div>
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-med">MEDIUM</span><span class="ititle">Static files tidak di-cache — lambat di koneksi WiFi sekolah ramai</span><span class="icat">Performance</span></div><div class="ibody"><p>Server Express serve semua static files tanpa cache headers. Setiap request ke cbt.css, cbt.js, lms.css, lms.js akan download ulang. Di WiFi sekolah dengan 100 siswa ujian serentak, ini berarti bandwidth tinggi dan load time lambat.</p><div class="fix-box">✅ Fix: Tambahkan <code>express.static(path, { maxAge: '1d' })</code> untuk asset files. Atau pasang Nginx di depan Express sebagai reverse proxy + static file server.</div></div></div>
+    <div class="icard"><div class="ihead" onclick="toggle(this)"><span class="sev s-med">MEDIUM</span><span class="ititle">Tidak ada config validation terpusat saat startup</span><span class="icat">Config</span></div><div class="ibody"><p>Nilai env seperti <code>LOGIN_MAX_ATTEMPTS</code>, <code>EMAIL_HOST</code> dibaca dengan <code>process.env.X || defaultValue</code> di berbagai file. Tidak ada validasi terpusat. Jika .env salah isi, sistem jalan tapi dengan behavior tidak terduga — bukan crash dengan pesan jelas.</p><div class="fix-box">✅ Fix: Buat <code>backend/config/env.js</code> yang validasi semua env vars saat startup dan throw error deskriptif jika ada yang salah atau tidak sesuai format.</div></div></div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+    });
+  });
+  function toggle(head) {
+    head.nextElementSibling.classList.toggle('open');
+  }
+</script>
+</body>
+</html>

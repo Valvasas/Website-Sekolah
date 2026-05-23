@@ -28,38 +28,37 @@ async function run() {
     await ok('Load bcryptjs',    () => require('bcryptjs'));
     await ok('Load jsonwebtoken',() => require('jsonwebtoken'));
     await ok('Load uuid',        () => require('uuid'));
-    await ok('Load sql.js',      () => require('sql.js'));
+    await ok('Load better-sqlite3', () => require('better-sqlite3'));
 
-    // 7-11: Database langsung (tanpa initDatabase agar tidak ada setInterval)
+    // 7-11: Database langsung
     let db;
-    await ok('Init database langsung', async () => {
-        const SQL    = await require('sql.js')();
+    await ok('Init database langsung', () => {
+        const Database = require('better-sqlite3');
         const DB_PATH = path.resolve(
-            (process.env.DB_PATH || './data/smkn1terisi').replace(/\.db$/, '') + '.bin'
+            (process.env.DB_PATH || './data/smkn1terisi').replace(/\.bin$/, '').replace(/\.db$/, '') + '.db'
         );
         if (!fs.existsSync(DB_PATH)) throw new Error('File DB tidak ditemukan. Jalankan setupDatabase.js dulu.');
-        db = new SQL.Database(fs.readFileSync(DB_PATH));
+        db = new Database(DB_PATH);
     });
 
     await ok('Query users table', () => {
-        const [{ values }] = db.exec('SELECT COUNT(*) FROM users');
-        const cnt = values[0][0];
+        const cnt = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
         console.log(`      (${cnt} user di database)`);
         if (cnt === 0) throw new Error('Tabel users kosong');
     });
 
     await ok('Query announcements table', () => {
-        const [{ values }] = db.exec('SELECT COUNT(*) FROM announcements');
-        console.log(`      (${values[0][0]} pengumuman)`);
+        const cnt = db.prepare('SELECT COUNT(*) as c FROM announcements').get().c;
+        console.log(`      (${cnt} pengumuman)`);
     });
 
     await ok('Query skl_data table', () => {
-        const [{ values }] = db.exec('SELECT COUNT(*) FROM skl_data');
-        console.log(`      (${values[0][0]} data SKL)`);
+        const cnt = db.prepare('SELECT COUNT(*) as c FROM skl_data').get().c;
+        console.log(`      (${cnt} data SKL)`);
     });
 
     await ok('Query cbt_results table', () => {
-        db.exec('SELECT COUNT(*) FROM cbt_results');
+        db.prepare('SELECT COUNT(*) as c FROM cbt_results').get();
     });
 
     // 12-16: Config & Middleware
@@ -102,14 +101,14 @@ async function run() {
 
     // 23: Akun default ada
     await ok('Cek akun default ada di database', () => {
-        const res = db.exec("SELECT id FROM users WHERE email='admin@smkn1terisi.sch.id'");
-        if (!res.length || !res[0].values.length) throw new Error('Akun admin tidak ditemukan');
+        const res = db.prepare("SELECT id FROM users WHERE email='admin@smkn1terisi.sch.id'").get();
+        if (!res) throw new Error('Akun admin tidak ditemukan');
     });
 
     // 24: SKL default ada
     await ok('Cek data SKL default', () => {
-        const res = db.exec("SELECT id FROM skl_data WHERE nisn='0012345678'");
-        if (!res.length || !res[0].values.length) throw new Error('Data SKL default tidak ditemukan');
+        const res = db.prepare("SELECT id FROM skl_data WHERE nisn='0012345678'").get();
+        if (!res) throw new Error('Data SKL default tidak ditemukan');
     });
 
     // 25: JWT sign/verify

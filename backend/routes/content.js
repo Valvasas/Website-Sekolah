@@ -225,7 +225,7 @@ router.post('/surat', authenticate, (req, res) => {
         const { v4: uuidv4 } = require('uuid');
         db.prepare(`INSERT INTO audit_logs (id,user_id,action,entity,detail,created_at)
             VALUES (?,?,?,?,?,?)`).run(
-            uuidv4(), req.user.id, 'surat_ajukan', 'surat',
+            uuidv4(), req.user.sub, 'surat_ajukan', 'surat',
             JSON.stringify({ jenis, tujuan, keterangan, nisn }),
             now
         );

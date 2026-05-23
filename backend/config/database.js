@@ -1,174 +1,76 @@
-// config/database.js — sql.js pure JavaScript wrapper
+// config/database.js — better-sqlite3 wrapper
+// MIGRATION: in-memory SQLite wrapper → better-sqlite3 (direct disk write)
+// API tetap sama persis sehingga tidak perlu ubah route/controller manapun
 'use strict';
 
 require('dotenv').config();
 const path = require('path');
 const fs   = require('fs');
 
+// better-sqlite3 harus diinstall dulu:
+// npm install better-sqlite3
+let Database;
+try {
+    Database = require('better-sqlite3');
+} catch(e) {
+    console.error('❌ better-sqlite3 tidak ditemukan.');
+    console.error('   Jalankan: npm install better-sqlite3');
+    process.exit(1);
+}
+
 const DB_PATH = path.resolve(
-    (process.env.DB_PATH || './data/smkn1terisi').replace(/\.db$/, '') + '.bin'
+    (process.env.DB_PATH || './data/smkn1terisi').replace(/\.bin$/, '').replace(/\.db$/, '') + '.db'
 );
 const DB_DIR = path.dirname(DB_PATH);
 if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
 
-let SQL      = null;
-let rawDB    = null;
-let _wrapper = null;
+let _db = null;
 
-function saveDB() {
-    if (!rawDB) return;
-    try {
-        const data = rawDB.export();
-        fs.writeFileSync(DB_PATH, Buffer.from(data));
-    } catch(e) { console.error('[DB] saveDB error:', e.message); }
+// ── Inisialisasi (synchronous — better-sqlite3 tidak butuh async) ──
+function initDatabase() {
+    if (_db) return _db;
+
+    _db = new Database(DB_PATH, {
+        // verbose: process.env.NODE_ENV === 'development' ? console.log : null,
+    });
+
+    // Optimasi performa & keamanan
+    _db.pragma('journal_mode = WAL');        // Write-Ahead Logging — lebih cepat & aman
+    _db.pragma('foreign_keys = ON');         // Enforce FK constraints
+    _db.pragma('synchronous = NORMAL');      // Balance antara safety & speed
+    _db.pragma('cache_size = -32000');       // 32MB cache
+    _db.pragma('temp_store = MEMORY');       // Temporary tables di memory
+
+    console.log(`✅ Database terhubung: ${DB_PATH}`);
+    return _db;
 }
 
-class Stmt {
-    constructor(sql) { this._sql = sql; }
-
-    _p(params) {
-        if (!params || params.length === 0) return [];
-        if (
-            params.length === 1 &&
-            params[0] !== null &&
-            typeof params[0] === 'object' &&
-            !Array.isArray(params[0])
-        ) {
-            const obj = params[0];
-            const out = {};
-            for (const k of Object.keys(obj)) out[`:${k}`] = obj[k];
-            return out;
-        }
-        return params.flat();
-    }
-
-    _fix(row) {
-        if (!row) return row;
-        const r = {};
-        for (const [k, v] of Object.entries(row)) {
-            r[k] = typeof v === 'bigint' ? Number(v) : v;
-        }
-        return r;
-    }
-
-    run(...params) {
-        rawDB.run(this._sql, this._p(params));
-        saveDB();
-        try {
-            const meta = rawDB.exec('SELECT last_insert_rowid() as lid, changes() as ch');
-            const row = meta[0]?.values[0];
-            return { lastInsertRowid: row?.[0] ?? null, changes: row?.[1] ?? 0 };
-        } catch {
-            return { lastInsertRowid: null, changes: 0 };
-        }
-    }
-
-    get(...params) {
-        const st = rawDB.prepare(this._sql);
-        const p = this._p(params);
-        if (p && typeof p === 'object' && !Array.isArray(p)) {
-            st.bind(p);
-        } else if (Array.isArray(p) && p.length > 0) {
-            st.bind(p);
-        }
-        const result = st.step() ? this._fix(st.getAsObject()) : undefined;
-        st.free();
-        return result;
-    }
-
-    all(...params) {
-        const out = [];
-        const p = this._p(params);
-        if (p && typeof p === 'object' && !Array.isArray(p)) {
-            const st = rawDB.prepare(this._sql);
-            st.bind(p);
-            while (st.step()) out.push(this._fix(st.getAsObject()));
-            st.free();
-        } else {
-            const res = rawDB.exec(this._sql, Array.isArray(p) && p.length ? p : undefined);
-            if (!res.length) return out;
-            const { columns, values } = res[0];
-            for (const row of values) {
-                const o = {};
-                columns.forEach((c, i) => { o[c] = row[i]; });
-                out.push(this._fix(o));
-            }
-        }
-        return out;
-    }
-}
-
-class DB {
-    exec(sql) {
-        rawDB.run(sql);
-        saveDB();
-        return this;
-    }
-
-    prepare(sql) { return new Stmt(sql); }
-
-    pragma(s) {
-        try { rawDB.run(`PRAGMA ${s}`); } catch {}
-        return this;
-    }
-
-    transaction(fn) {
-        return (...args) => {
-            let inTransaction = false;
-            try {
-                rawDB.run('BEGIN');
-                inTransaction = true;
-            } catch(e) {
-                inTransaction = false;
-            }
-
-            try {
-                const result = fn(...args);
-                if (inTransaction) {
-                    rawDB.run('COMMIT');
-                    saveDB();
-                }
-                return result;
-            } catch(err) {
-                if (inTransaction) {
-                    try { rawDB.run('ROLLBACK'); } catch {}
-                }
-                throw err;
-            }
-        };
-    }
-
-    close() {
-        saveDB();
-        rawDB?.close();
-        rawDB = null;
-        _wrapper = null;
-    }
-}
-
+// ── getDB — sama seperti sebelumnya ──────────────────────────────
 function getDB() {
-    if (!_wrapper) throw new Error('[DB] Belum diinisialisasi. Panggil initDatabase() dahulu.');
-    return _wrapper;
+    if (!_db) throw new Error('[DB] Belum diinisialisasi. Panggil initDatabase() dahulu.');
+    return _db;
 }
 
-async function initDatabase() {
-    if (_wrapper) return _wrapper;
+// ── saveDB — tidak diperlukan lagi (better-sqlite3 langsung tulis ke disk)
+// Tetap export agar tidak break code lain yang memanggil saveDB()
+function saveDB() {
+    // No-op: better-sqlite3 menulis ke disk secara synchronous otomatis
+    // Fungsi ini dibiarkan ada agar tidak perlu ubah server.js
+}
 
-    if (!SQL) SQL = await require('sql.js')();
-
-    if (fs.existsSync(DB_PATH)) {
-        rawDB = new SQL.Database(fs.readFileSync(DB_PATH));
-    } else {
-        rawDB = new SQL.Database();
+// ── Graceful close ────────────────────────────────────────────────
+function closeDB() {
+    if (_db) {
+        _db.close();
+        _db = null;
+        console.log('✅ Database connection closed.');
     }
-
-    _wrapper = new DB();
-    _wrapper.pragma('foreign_keys = ON');
-    setInterval(saveDB, 30_000);
-
-    return _wrapper;
 }
 
-module.exports = getDB;
+// ── Export ────────────────────────────────────────────────────────
+// Untuk backward compatibility: module.exports = getDB (bisa dipanggil langsung)
+module.exports             = getDB;
 module.exports.initDatabase = initDatabase;
-module.exports.saveDB = saveDB;
+module.exports.saveDB       = saveDB;
+module.exports.closeDB      = closeDB;
+module.exports.getDB        = getDB;

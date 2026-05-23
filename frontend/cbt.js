@@ -114,12 +114,19 @@ const BANK_SOAL = {
     }
 };
 
+// URL base API — sesuaikan jika backend di server berbeda
+const CBT_API = window.location.hostname === 'localhost'
+    ? 'http://localhost:3001/api/cbt'
+    : '/api/cbt';
+
 /* ============================================================
    STATE APLIKASI
    ============================================================ */
 const state = {
     mapel:       null,
     siswa:       '',
+    nisn:        '',   // FIX: simpan NISN untuk WS handshake
+    token:       '',   // FIX: simpan CBT token untuk WS handshake
     soalList:    [],
     jawaban:     {},     // { nomor: 'A'/'B'/... }
     raguList:    new Set(),
@@ -168,46 +175,85 @@ if (togglePw) {
     });
 }
 
-function handleLogin() {
+async function handleLogin() {
     const nisn   = document.getElementById('login-nisn').value.trim();
     const token  = document.getElementById('login-token').value.trim();
     const mapel  = document.getElementById('login-mapel').value;
     const errEl  = document.getElementById('login-error');
     const errMsg = document.getElementById('login-error-msg');
+    const btnMasuk = document.getElementById('btn-masuk');
 
-    // Validasi
-    if (!nisn || nisn.length < 6) {
-        showError(errEl, errMsg, 'Masukkan NISN yang valid (min. 6 digit).');
-        return;
-    }
-    if (!token) {
-        showError(errEl, errMsg, 'Token ujian tidak boleh kosong.');
-        return;
-    }
-    if (!mapel) {
-        showError(errEl, errMsg, 'Pilih mata pelajaran terlebih dahulu.');
-        return;
-    }
-
-    // Simulasi token: token = "ujian" + 4 digit akhir NISN
-    const expectedToken = 'ujian' + nisn.slice(-4);
-    if (token.toLowerCase() !== expectedToken) {
-        showError(errEl, errMsg, `Token tidak valid. Gunakan: ${expectedToken}`);
-        return;
+    function showErr(msg) {
+        errMsg.textContent = msg;
+        errEl.classList.remove('hidden');
     }
 
     errEl.classList.add('hidden');
-    state.mapel  = mapel;
-    state.siswa  = 'NISN: ' + nisn;
 
-    // Isi data briefing
-    const data = BANK_SOAL[mapel];
-    document.getElementById('brief-mapel-name').textContent = data.nama;
-    document.getElementById('brief-type').textContent       = data.jenis;
-    document.getElementById('brief-jumlah').textContent     = data.soal.length;
-    document.getElementById('brief-durasi').textContent     = data.durasi;
+    if (!nisn || nisn.length < 6) {
+        showErr('NISN harus minimal 6 digit.');
+        return;
+    }
+    if (!token) {
+        showErr('Token ujian tidak boleh kosong.');
+        return;
+    }
+    if (!mapel) {
+        showErr('Pilih mata pelajaran terlebih dahulu.');
+        return;
+    }
 
-    showScreen('screen-briefing');
+    btnMasuk.disabled = true;
+    btnMasuk.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memvalidasi...';
+
+    try {
+        const res  = await fetch(`${CBT_API}/token/validate`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ nisn, token })
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+            showErr(data.message || 'Token tidak valid. Hubungi guru pengawas.');
+            return;
+        }
+
+        if (data.data.mapel !== mapel) {
+            showErr(`Token ini untuk mapel ${data.data.mapel}, bukan ${mapel}. Hubungi guru pengawas.`);
+            return;
+        }
+
+        state.mapel  = data.data.mapel;
+        state.siswa  = data.data.siswa_nama || `NISN: ${nisn}`;
+        state.nisn   = nisn;
+        state.token  = token;
+
+        const bankData = BANK_SOAL[state.mapel];
+        if (!bankData) {
+            showErr('Data soal untuk mata pelajaran ini tidak tersedia.');
+            return;
+        }
+
+        document.getElementById('brief-mapel-name').textContent = bankData.nama;
+        document.getElementById('brief-type').textContent       = bankData.jenis;
+        document.getElementById('brief-jumlah').textContent     = bankData.soal.length;
+        document.getElementById('brief-durasi').textContent     = data.data.durasi_menit || bankData.durasi;
+        state.durasi = data.data.durasi_menit || bankData.durasi;
+
+        runPreExamCheck(state.mapel, nisn);
+
+    } catch (err) {
+        if (!navigator.onLine || err.message.includes('fetch')) {
+            showErr('Tidak bisa terhubung ke server. Pastikan koneksi internet aktif.');
+        } else {
+            showErr('Terjadi kesalahan. Coba lagi atau hubungi pengawas.');
+        }
+        console.error('[CBT handleLogin]', err);
+    } finally {
+        btnMasuk.disabled = false;
+        btnMasuk.innerHTML = '<span>Mulai Ujian</span><i class="fas fa-arrow-right"></i>';
+    }
 }
 
 function showError(el, msgEl, msg) {
@@ -518,20 +564,68 @@ document.addEventListener('visibilitychange', () => {
    KONFIGURASI SOCKET (WebSocket ke server admin)
    Ganti URL sesuai server Node.js admin kamu
    ────────────────────────────────────────────────────────────── */
-const ADMIN_WS_URL = 'ws://localhost:3001';
-let adminSocket    = null;
+let adminSocket = null;
 
 function connectAdminSocket(studentData) {
     try {
-        adminSocket = new WebSocket(ADMIN_WS_URL);
+        const wsUrl = window.location.protocol === 'https:'
+            ? `wss://${window.location.host}`
+            : `ws://${window.location.hostname}:3001`;
+
+        adminSocket = new WebSocket(wsUrl);
+
         adminSocket.onopen = () => {
             console.log('[CBT] Terhubung ke server admin');
-            sendToAdmin({ type: 'student_join', ...studentData });
+            sendToAdmin({
+                type:  'student_join',
+                nisn:  studentData.nisn || state.nisn,
+                token: state.token,
+                mapel: studentData.mapel,
+                lat:   studentData.lat,
+                lng:   studentData.lng,
+                device:  studentData.device,
+                browser: studentData.browser
+            });
         };
-        adminSocket.onclose = () => console.warn('[CBT] Koneksi admin terputus');
-        adminSocket.onerror = () => console.error('[CBT] Error koneksi admin');
+
+        adminSocket.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                switch (msg.type) {
+                    case 'warning':
+                        examLock._warn(`⚠️ Peringatan dari pengawas: ${msg.message}`);
+                        break;
+                    case 'kicked':
+                        alert('Anda dikeluarkan dari sesi ujian oleh pengawas.');
+                        finishExam();
+                        break;
+                    case 'force_finish':
+                        alert('Waktu ujian telah dihentikan oleh pengawas. Jawaban dikumpulkan otomatis.');
+                        finishExam();
+                        break;
+                    case 'broadcast':
+                        examLock._warn(`📢 ${msg.message}`);
+                        break;
+                    case 'error':
+                        console.warn('[CBT WS error]', msg.message);
+                        break;
+                }
+            } catch(e) {}
+        };
+
+        adminSocket.onclose = (event) => {
+            console.warn('[CBT] Koneksi admin terputus', event.code);
+            if (state.started) {
+                setTimeout(() => connectAdminSocket(studentData), 5000);
+            }
+        };
+
+        adminSocket.onerror = (e) => {
+            console.warn('[CBT] Server admin tidak tersedia – mode offline');
+        };
+
     } catch(e) {
-        console.warn('[CBT] Server admin tidak tersedia – mode offline');
+        console.warn('[CBT] Gagal koneksi WebSocket:', e.message);
     }
 }
 
@@ -1337,42 +1431,7 @@ function getPrecheckErrorMessage(err) {
     return 'Syarat belum terpenuhi. Periksa izin dan perangkat.';
 }
 
-window._origHandleLogin = window.handleLogin;
-window.handleLogin = function() {
-    const nisn   = document.getElementById('login-nisn').value.trim();
-    const token  = document.getElementById('login-token').value.trim();
-    const mapel  = document.getElementById('login-mapel').value;
-    const errEl  = document.getElementById('login-error');
-    const errMsg = document.getElementById('login-error-msg');
-
-    function showErr(msg) {
-        errMsg.textContent = msg;
-        errEl.classList.remove('hidden');
-    }
-
-    if (!nisn || nisn.length < 6) { showErr('Masukkan NISN yang valid.'); return; }
-    if (!token) { showErr('Token ujian tidak boleh kosong.'); return; }
-    if (!mapel) { showErr('Pilih mata pelajaran terlebih dahulu.'); return; }
-
-    const expectedToken = 'ujian' + nisn.slice(-4);
-    if (token.toLowerCase() !== expectedToken) {
-        showErr(`Token tidak valid. Gunakan: ${expectedToken}`);
-        return;
-    }
-
-    errEl.classList.add('hidden');
-    state.mapel  = mapel;
-    state.siswa  = 'NISN: ' + nisn;
-
-    const data = BANK_SOAL[mapel];
-    document.getElementById('brief-mapel-name').textContent = data.nama;
-    document.getElementById('brief-type').textContent       = data.jenis;
-    document.getElementById('brief-jumlah').textContent     = data.soal.length;
-    document.getElementById('brief-durasi').textContent     = data.durasi;
-
-    // Jalankan pre-check dulu, bukan langsung ke briefing
-    runPreExamCheck(mapel, nisn);
-};
+window.handleLogin = handleLogin;
 
 /* ──────────────────────────────────────────────────────────────
    PATCH startExam — tambah warmup sebelum ujian

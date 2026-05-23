@@ -72,7 +72,7 @@ router.put('/profil', authenticate, (req, res) => {
                  alamat,kelurahan,kecamatan,nama_ayah,pekerjaan_ayah,nama_ibu,pekerjaan_ibu,
                  no_hp_ortu,email_ortu,updated_at)
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
-                uuidv4(), req.user.id, nisn,
+                uuidv4(), req.user.sub, nisn,
                 kelas,jurusan,tempat_lahir,tanggal_lahir,jenis_kelamin,agama,
                 alamat,kelurahan,kecamatan,nama_ayah,pekerjaan_ayah,
                 nama_ibu,pekerjaan_ibu,no_hp_ortu,email_ortu,now
