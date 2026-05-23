@@ -34,7 +34,8 @@ function connectWS() {
 
     adminState.ws.onopen = () => {
         setWsStatus(true);
-        adminState.ws.send(JSON.stringify({ type: 'admin_auth', role: 'admin' }));
+        const token = localStorage.getItem('accessToken') || localStorage.getItem('smkn_token') || '';
+        adminState.ws.send(JSON.stringify({ type: 'admin_auth', role: 'admin', token }));
         addLog('Terhubung ke server CBT.', 'success');
     };
 

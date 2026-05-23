@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panduan Penggunaan | SMKN 1 Terisi</title>
+    <link rel="icon" type="image/png" href="/asset/Logo SMK.png">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --navy:#002244; --navy-d:#001529; --gold:#D4AF37;
+            --green:#10b981; --blue:#3b82f6; --red:#ef4444; --orange:#f59e0b;
+            --white:#fff; --light:#f8fafc; --border:#e2e8f0; --muted:#64748b;
+            --radius:12px; --shadow:0 4px 20px rgba(0,0,0,.07);
+        }
+        *,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Sora',sans-serif; background:var(--light); color:var(--navy); }
+
+        /* NAV */
+        .topnav {
+            background:var(--navy-d); padding:0 24px; height:56px;
+            display:flex; align-items:center; justify-content:space-between;
+            position:sticky; top:0; z-index:100;
+            box-shadow:0 2px 12px rgba(0,0,0,.3);
+        }
+        .topnav-brand { display:flex; align-items:center; gap:10px; color:var(--gold); font-weight:700; font-size:.95rem; text-decoration:none; }
+        .topnav-brand img { width:32px; height:32px; border-radius:50%; border:2px solid var(--gold); }
+        .topnav-links { display:flex; gap:16px; }
+        .topnav-links a { color:rgba(255,255,255,.6); font-size:.82rem; text-decoration:none; transition:color .2s; }
+        .topnav-links a:hover { color:var(--gold); }
+
+        /* HERO */
+        .hero {
+            background:linear-gradient(135deg, var(--navy-d), #003366);
+            padding:60px 24px; text-align:center; color:white;
+        }
+        .hero h1 { font-family:'Playfair Display',serif; font-size:clamp(1.8rem,4vw,2.8rem); margin-bottom:12px; }
+        .hero h1 span { color:var(--gold); }
+        .hero p { color:rgba(255,255,255,.6); font-size:.95rem; max-width:500px; margin:0 auto 32px; line-height:1.7; }
+        .role-pills { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+        .role-pill {
+            padding:9px 18px; border-radius:50px; border:none; cursor:pointer;
+            font-family:'Sora',sans-serif; font-size:.82rem; font-weight:700;
+            transition:all .25s;
+        }
+        .rp-all    { background:var(--gold); color:var(--navy-d); }
+        .rp-siswa  { background:rgba(59,130,246,.2); color:#93c5fd; border:1px solid rgba(59,130,246,.4); }
+        .rp-ortu   { background:rgba(16,185,129,.2); color:#6ee7b7; border:1px solid rgba(16,185,129,.4); }
+        .rp-guru   { background:rgba(245,158,11,.2); color:#fcd34d; border:1px solid rgba(245,158,11,.4); }
+        .role-pill.active, .role-pill:hover { opacity:1; transform:scale(1.05); }
+
+        /* MAIN */
+        .main { max-width:900px; margin:0 auto; padding:40px 20px 80px; }
+        .section-title { font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--navy); margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+        .section-title i { color:var(--gold); font-size:1.2rem; }
+
+        /* QUICK LINKS */
+        .quick-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:14px; margin-bottom:48px; }
+        .quick-card {
+            background:var(--white); border-radius:var(--radius); padding:20px 16px;
+            text-align:center; box-shadow:var(--shadow); border:1.5px solid var(--border);
+            text-decoration:none; color:var(--navy); transition:all .25s;
+            display:flex; flex-direction:column; align-items:center; gap:10px;
+        }
+        .quick-card:hover { border-color:var(--gold); transform:translateY(-4px); box-shadow:0 10px 30px rgba(212,175,55,.15); }
+        .qc-icon { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; }
+        .quick-card span { font-size:.82rem; font-weight:600; }
+        .quick-card small { font-size:.72rem; color:var(--muted); }
+
+        /* STEPS */
+        .guide-section { margin-bottom:48px; }
+        .guide-card {
+            background:var(--white); border-radius:var(--radius); box-shadow:var(--shadow);
+            border:1.5px solid var(--border); overflow:hidden; margin-bottom:12px;
+        }
+        .guide-head {
+            display:flex; align-items:center; gap:14px; padding:16px 20px;
+            cursor:pointer; transition:background .15s;
+        }
+        .guide-head:hover { background:var(--light); }
+        .step-num {
+            width:36px; height:36px; border-radius:50%; flex-shrink:0;
+            display:flex; align-items:center; justify-content:center;
+            font-weight:800; font-size:.85rem;
+        }
+        .guide-head h3 { font-size:.95rem; font-weight:700; flex:1; }
+        .guide-head .badge { font-size:.7rem; font-weight:700; padding:3px 8px; border-radius:50px; }
+        .chevron { color:var(--muted); transition:transform .25s; font-size:.85rem; }
+        .guide-body { padding:0 20px 20px; display:none; border-top:1px solid var(--border); }
+        .guide-body.open { display:block; }
+        .steps-list { list-style:none; margin-top:14px; }
+        .steps-list li {
+            display:flex; align-items:flex-start; gap:12px;
+            padding:10px 0; border-bottom:1px solid var(--border); font-size:.88rem; line-height:1.6;
+        }
+        .steps-list li:last-child { border-bottom:none; }
+        .step-dot { width:24px; height:24px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:800; margin-top:2px; }
+        code { background:var(--light); border:1px solid var(--border); border-radius:4px; padding:1px 6px; font-size:.82rem; font-family:monospace; }
+        .tip { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; margin-top:10px; font-size:.82rem; color:#92400e; display:flex; gap:8px; }
+        .warning { background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px 14px; margin-top:10px; font-size:.82rem; color:#991b1b; display:flex; gap:8px; }
+
+        /* FAQ */
+        .faq-section { margin-bottom:48px; }
+        .faq-item { background:var(--white); border-radius:var(--radius); border:1.5px solid var(--border); margin-bottom:8px; overflow:hidden; }
+        .faq-q { padding:14px 18px; cursor:pointer; font-weight:600; font-size:.88rem; display:flex; align-items:center; justify-content:space-between; gap:10px; transition:background .15s; }
+        .faq-q:hover { background:var(--light); }
+        .faq-a { padding:0 18px 14px; font-size:.85rem; color:var(--muted); line-height:1.7; display:none; border-top:1px solid var(--border); }
+        .faq-a.open { display:block; }
+
+        /* CONTACT */
+        .contact-card {
+            background:linear-gradient(135deg, var(--navy), #003366);
+            border-radius:var(--radius); padding:32px; text-align:center; color:white;
+        }
+        .contact-card h3 { font-family:'Playfair Display',serif; font-size:1.4rem; margin-bottom:8px; }
+        .contact-card p { color:rgba(255,255,255,.6); font-size:.88rem; margin-bottom:20px; }
+        .contact-links { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+        .contact-btn { padding:10px 20px; border-radius:8px; font-size:.85rem; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:8px; transition:all .25s; }
+        .cb-wa { background:var(--green); color:white; }
+        .cb-email { background:var(--blue); color:white; }
+        .cb-wa:hover, .cb-email:hover { opacity:.88; transform:translateY(-2px); }
+
+        @media(max-width:600px) {
+            .quick-grid { grid-template-columns:repeat(2,1fr); }
+            .topnav-links { display:none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- TOPNAV -->
+<nav class="topnav">
+    <a href="/index.html" class="topnav-brand">
+        <img src="/asset/Logo SMK.png" alt="Logo" onerror="this.style.display='none'">
+        SMKN 1 Terisi
+    </a>
+    <div class="topnav-links">
+        <a href="/index.html">Beranda</a>
+        <a href="/login.html">Login</a>
+        <a href="/ppdb.html">PPDB</a>
+        <a href="/cbt.html">CBT</a>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <h1>Panduan <span>Portal Digital</span></h1>
+    <p>Semua yang perlu kamu tahu tentang cara menggunakan sistem informasi SMKN 1 Terisi — dari login hingga ujian CBT.</p>
+    <div class="role-pills">
+        <button class="role-pill rp-all active" onclick="filterRole('all', this)"><i class="fas fa-users"></i> Semua</button>
+        <button class="role-pill rp-siswa" onclick="filterRole('siswa', this)"><i class="fas fa-user-graduate"></i> Siswa</button>
+        <button class="role-pill rp-ortu" onclick="filterRole('ortu', this)"><i class="fas fa-users"></i> Orang Tua</button>
+        <button class="role-pill rp-guru" onclick="filterRole('guru', this)"><i class="fas fa-chalkboard-teacher"></i> Guru</button>
+    </div>
+</section>
+
+<main class="main">
+
+    <!-- QUICK LINKS -->
+    <h2 class="section-title"><i class="fas fa-bolt"></i> Akses Cepat</h2>
+    <div class="quick-grid">
+        <a href="/login.html" class="quick-card">
+            <div class="qc-icon" style="background:#dbeafe;color:#1d4ed8;"><i class="fas fa-sign-in-alt"></i></div>
+            <span>Login Portal</span><small>Masuk ke sistem</small>
+        </a>
+        <a href="/LMS.html" class="quick-card" data-role="siswa guru">
+            <div class="qc-icon" style="background:#d1fae5;color:#065f46;"><i class="fas fa-book-open"></i></div>
+            <span>LMS Belajar</span><small>Tugas & materi</small>
+        </a>
+        <a href="/cbt.html" class="quick-card" data-role="siswa">
+            <div class="qc-icon" style="background:#fef3c7;color:#92400e;"><i class="fas fa-edit"></i></div>
+            <span>CBT Ujian</span><small>Ujian online</small>
+        </a>
+        <a href="/ppdb.html" class="quick-card" data-role="ortu">
+            <div class="qc-icon" style="background:#ede9fe;color:#5b21b6;"><i class="fas fa-clipboard-list"></i></div>
+            <span>PPDB</span><small>Daftar masuk</small>
+        </a>
+        <a href="/SKL.html" class="quick-card" data-role="siswa ortu">
+            <div class="qc-icon" style="background:#fee2e2;color:#991b1b;"><i class="fas fa-certificate"></i></div>
+            <span>SKL Online</span><small>Cek kelulusan</small>
+        </a>
+        <a href="/admin-panel/login.html" class="quick-card" data-role="guru">
+            <div class="qc-icon" style="background:#f0fdf4;color:#15803d;"><i class="fas fa-cog"></i></div>
+            <span>Admin Panel</span><small>Untuk guru/staff</small>
+        </a>
+    </div>
+
+    <!-- PANDUAN SISWA -->
+    <div class="guide-section" data-for="siswa all">
+        <h2 class="section-title"><i class="fas fa-user-graduate"></i> Panduan untuk Siswa</h2>
+
+        <div class="guide-card">
+            <div class="guide-head" onclick="toggle(this)">
+                <div class="step-num" style="background:#dbeafe;color:#1d4ed8;">1</div>
+                <h3>Cara Login ke Portal</h3>
+                <span class="badge" style="background:#dbeafe;color:#1d4ed8;">Wajib</span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="guide-body">
+                <ul class="steps-list">
+                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">1</div><div>Buka halaman <a href="/login.html" style="color:var(--blue);">login.html</a> atau klik tombol "Login" di navbar.</div></li>
+                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">2</div><div>Pilih role <strong>"Siswa"</strong> di bagian atas form login.</div></li>
+                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">3</div><div>Masukkan <strong>NISN</strong> kamu (10 digit) di kolom identifier.</div></li>
+                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">4</div><div>Masukkan password. Password default pertama kali: <code>Smkn1Terisi@2024</code></div></li>
+                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">5</div><div>Klik <strong>"Masuk ke Portal"</strong>. Kamu akan diarahkan ke halaman DATA siswa.</div></li>
+                </ul>
+                <div class="tip"><i class="fas fa-lightbulb"></i> Centang "Ingat saya" agar tidak perlu login ulang setiap kali buka halaman.</div>
+                <div class="warning"><i class="fas fa-exclamation-triangle"></i> Segera ganti password default setelah pertama kali login melalui menu Profil.</div>
+            </div>
+        </div>
+
+        <div class="guide-card">
+            <div class="guide-head" onclick="toggle(this)">
+                <div class="step-num" style="background:#d1fae5;color:#065f46;">2</div>
+                <h3>Menggunakan LMS (Belajar Online)</h3>
+                <span class="badge" style="background:#d1fae5;color:#065f46;">Penting</span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="guide-body">
+                <ul class="steps-list">
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">1</div><div>Buka <a href="/LMS.html" style="color:var(--blue);">LMS.html</a> dan login dengan NISN + password yang sama.</div></li>
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">2</div><div><strong>Beranda</strong> — Lihat ringkasan nilai, tugas mendesak, dan kelas aktif.</div></li>
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">3</div><div><strong>Tugas</strong> — Klik tombol <strong>"Kumpulkan"</strong> pada tugas yang belum selesai. Isi jawaban atau upload file, lalu submit.</div></li>
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">4</div><div><strong>Materi</strong> — Download modul, PPT, atau video pembelajaran dari guru. Klik ikon download.</div></li>
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">5</div><div><strong>Forum</strong> — Tanya jawab dengan guru dan teman sekelas. Tulis pertanyaan di kotak forum.</div></li>
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">6</div><div><strong>Nilai</strong> — Lihat nilai UH, UTS, UAS, dan tugas per mata pelajaran.</div></li>
+                </ul>
+                <div class="tip"><i class="fas fa-lightbulb"></i> Notifikasi tugas baru muncul di ikon lonceng di pojok kanan atas.</div>
+            </div>
+        </div>
+
+        <div class="guide-card">
+            <div class="guide-head" onclick="toggle(this)">
+                <div class="step-num" style="background:#fef3c7;color:#92400e;">3</div>
+                <h3>Cara Mengikuti Ujian CBT</h3>
+                <span class="badge" style="background:#fef3c7;color:#92400e;">Ujian</span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="guide-body">
+                <ul class="steps-list">
+                    <li><div class="step-dot" style="background:#fef3c7;color:#92400e;">1</div><div>Pastikan kamu sudah mendapat <strong>Token Ujian</strong> dari guru pengawas sebelum ujian dimulai.</div></li>
+                    <li><div class="step-dot" style="background:#fef3c7;color:#92400e;">2</div><div>Buka <a href="/cbt.html" style="color:var(--blue);">cbt.html</a> dan masukkan NISN, token ujian, serta pilih mata pelajaran.</div></li>
+                    <li><div class="step-dot" style="background:#fef3c7;color:#92400e;">3</div><div><strong>Pre-Check</strong> — Sistem akan cek jaringan, kamera, dan lokasi. Izinkan semua akses yang diminta browser.</div></li>
+                    <li><div class="step-dot" style="background:#fef3c7;color:#92400e;">4</div><div><strong>Soal Pemanasan</strong> — Jawab 5 soal latihan untuk memastikan sistem berjalan dengan baik.</div></li>
+                    <li><div class="step-dot" style="background:#fef3c7;color:#92400e;">5</div><div>Saat ujian berlangsung: gunakan grid navigasi soal di kanan, centang "Ragu-ragu" jika ingin kembali ke soal tersebut.</div></li>
+                    <li><div class="step-dot" style="background:#fef3c7;color:#92400e;">6</div><div>Setelah semua soal dijawab, klik <strong>"Selesai & Kumpulkan"</strong> untuk submit jawaban.</div></li>
+                </ul>
+                <div class="warning"><i class="fas fa-exclamation-triangle"></i> Jangan buka tab lain atau minimize browser saat ujian. Pelanggaran akan tercatat oleh pengawas.</div>
+                <div class="tip"><i class="fas fa-lightbulb"></i> Gunakan laptop/PC jika memungkinkan. Jika pakai HP, pastikan baterai cukup dan koneksi stabil.</div>
+            </div>
+        </div>
+
+        <div class="guide-card">
+            <div class="guide-head" onclick="toggle(this)">
+                <div class="step-num" style="background:#ede9fe;color:#5b21b6;">4</div>
+                <h3>Cek SKL (Surat Keterangan Lulus)</h3>
+                <span class="badge" style="background:#ede9fe;color:#5b21b6;">Kelas XII</span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="guide-body">
+                <ul class="steps-list">
+                    <li><div class="step-dot" style="background:#ede9fe;color:#5b21b6;">1</div><div>Buka halaman <a href="/SKL.html" style="color:var(--blue);">SKL.html</a>.</div></li>
+                    <li><div class="step-dot" style="background:#ede9fe;color:#5b21b6;">2</div><div>Isi formulir: NISN, Nama Lengkap (sesuai ijazah — huruf kapital semua), Tanggal Lahir, dan Tahun Lulus.</div></li>
+                    <li><div class="step-dot" style="background:#ede9fe;color:#5b21b6;">3</div><div>Klik <strong>"Cari Data"</strong>. Jika data ditemukan, informasi SKL akan tampil lengkap.</div></li>
+                </ul>
+                <div class="tip"><i class="fas fa-lightbulb"></i> Jika data tidak ditemukan, hubungi Tata Usaha untuk memastikan data sudah diinput ke sistem.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANDUAN ORTU -->
+    <div class="guide-section" data-for="ortu all">
+        <h2 class="section-title"><i class="fas fa-users"></i> Panduan untuk Orang Tua / Wali</h2>
+
+        <div class="guide-card">
+            <div class="guide-head" onclick="toggle(this)">
+                <div class="step-num" style="background:#d1fae5;color:#065f46;">1</div>
+                <h3>Daftar PPDB (Pendaftaran Siswa Baru)</h3>
+                <span class="badge" style="background:#d1fae5;color:#065f46;">PPDB</span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="guide-body">
+                <ul class="steps-list">
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">1</div><div>Buka <a href="/ppdb.html" style="color:var(--blue);">ppdb.html</a> dan pilih jalur pendaftaran yang sesuai (Zonasi / Prestasi / Afirmasi).</div></li>
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">2</div><div>Isi formulir 4 langkah: Data Siswa → Data Orang Tua → Validasi Jalur → Upload Berkas.</div></li>
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">3</div><div>Siapkan berkas digital: KK, Akta Kelahiran, SKL/Ijazah SMP, Pas Foto 3×4 (format JPG/PNG/PDF, max 5MB).</div></li>
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">4</div><div>Setelah submit, catat <strong>Nomor Pendaftaran</strong> yang muncul. Nomor ini penting untuk cek status.</div></li>
+                </ul>
+                <div class="tip"><i class="fas fa-lightbulb"></i> Pendaftaran hanya bisa dilakukan selama jalur masih berstatus "Sedang Buka". Pantau status di halaman PPDB.</div>
+            </div>
+        </div>
+
+        <div class="guide-card">
+            <div class="guide-head" onclick="toggle(this)">
+                <div class="step-num" style="background:#dbeafe;color:#1d4ed8;">2</div>
+                <h3>Cek Status Pendaftaran PPDB</h3>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="guide-body">
+                <ul class="steps-list">
+                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">1</div><div>Buka <a href="/login.html" style="color:var(--blue);">login.html</a> dan klik tab <strong>"PPDB"</strong>.</div></li>
+                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">2</div><div>Masukkan nomor pendaftaran yang didapat saat daftar (format: <code>PPDB-2026-XXXXXX</code>).</div></li>
+                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">3</div><div>Klik <strong>"Cek Status PPDB"</strong>. Status akan tampil: Menunggu Verifikasi / Diterima / Tidak Diterima / Cadangan.</div></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="guide-card">
+            <div class="guide-head" onclick="toggle(this)">
+                <div class="step-num" style="background:#fef3c7;color:#92400e;">3</div>
+                <h3>Memantau Nilai & Kehadiran Anak</h3>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="guide-body">
+                <ul class="steps-list">
+                    <li><div class="step-dot" style="background:#fef3c7;color:#92400e;">1</div><div>Daftar akun <strong>Wali Murid</strong> di halaman <a href="/login.html" style="color:var(--blue);">login.html</a> → tab Daftar.</div></li>
+                    <li><div class="step-dot" style="background:#fef3c7;color:#92400e;">2</div><div>Setelah akun diaktifkan oleh admin, login dengan email dan password yang didaftarkan.</div></li>
+                    <li><div class="step-dot" style="background:#fef3c7;color:#92400e;">3</div><div>Di halaman DATA, kamu bisa lihat nilai semester, rekap kehadiran, dan jadwal pelajaran anak.</div></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANDUAN GURU -->
+    <div class="guide-section" data-for="guru all">
+        <h2 class="section-title"><i class="fas fa-chalkboard-teacher"></i> Panduan untuk Guru & Staff</h2>
+
+        <div class="guide-card">
+            <div class="guide-head" onclick="toggle(this)">
+                <div class="step-num" style="background:#fef3c7;color:#92400e;">1</div>
+                <h3>Login ke Admin Panel</h3>
+                <span class="badge" style="background:#fef3c7;color:#92400e;">Admin</span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="guide-body">
+                <ul class="steps-list">
+                    <li><div class="step-dot" style="background:#fef3c7;color:#92400e;">1</div><div>Buka <a href="/admin-panel/login.html" style="color:var(--blue);">admin-panel/login.html</a>.</div></li>
+                    <li><div class="step-dot" style="background:#fef3c7;color:#92400e;">2</div><div>Pilih role sesuai jabatan: <strong>Guru</strong>, <strong>Staff TU</strong>, atau <strong>Kepsek</strong>.</div></li>
+                    <li><div class="step-dot" style="background:#fef3c7;color:#92400e;">3</div><div>Login dengan email instansi (<code>nama@smkn1terisi.sch.id</code>) dan password yang diberikan admin.</div></li>
+                </ul>
+                <div class="warning"><i class="fas fa-exclamation-triangle"></i> Akun guru tidak bisa didaftar mandiri — harus dibuat oleh Super Admin/Kepala Sekolah.</div>
+            </div>
+        </div>
+
+        <div class="guide-card">
+            <div class="guide-head" onclick="toggle(this)">
+                <div class="step-num" style="background:#d1fae5;color:#065f46;">2</div>
+                <h3>Input Nilai & Kehadiran Siswa</h3>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="guide-body">
+                <ul class="steps-list">
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">1</div><div>Di admin panel, klik menu <strong>"Input Nilai"</strong> di sidebar kiri.</div></li>
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">2</div><div>Pilih Kelas, Mata Pelajaran, dan Semester. Tabel siswa akan muncul otomatis.</div></li>
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">3</div><div>Isi kolom UH, UTS, UAS, dan Tugas. Nilai akhir otomatis dihitung.</div></li>
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">4</div><div>Klik <strong>"Simpan Semua"</strong> atau simpan per baris. Data langsung tersimpan ke database.</div></li>
+                    <li><div class="step-dot" style="background:#d1fae5;color:#065f46;">5</div><div>Untuk kehadiran: klik <strong>"Input Kehadiran"</strong>, pilih kelas dan tanggal, set status per siswa, lalu simpan.</div></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="guide-card">
+            <div class="guide-head" onclick="toggle(this)">
+                <div class="step-num" style="background:#dbeafe;color:#1d4ed8;">3</div>
+                <h3>Membuat Token Ujian CBT</h3>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="guide-body">
+                <ul class="steps-list">
+                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">1</div><div>Di admin panel, klik menu <strong>"Token Ujian CBT"</strong>.</div></li>
+                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">2</div><div>Pilih mata pelajaran dan durasi ujian (default 90 menit).</div></li>
+                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">3</div><div>Masukkan NISN siswa yang akan ujian (satu per baris atau pisah koma). Bisa bulk hingga 100 siswa.</div></li>
+                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">4</div><div>Klik <strong>"Generate Token"</strong>. Token unik dibuat untuk setiap siswa.</div></li>
+                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">5</div><div>Klik <strong>"Export Token CSV"</strong> untuk download daftar token, lalu bagikan ke siswa.</div></li>
+                </ul>
+                <div class="tip"><i class="fas fa-lightbulb"></i> Token hanya berlaku selama durasi yang ditentukan. Generate token paling cepat 30 menit sebelum ujian dimulai.</div>
+            </div>
+        </div>
+
+        <div class="guide-card">
+            <div class="guide-head" onclick="toggle(this)">
+                <div class="step-num" style="background:#ede9fe;color:#5b21b6;">4</div>
+                <h3>Kelola Bank Soal CBT</h3>
+                <i class="fas fa-chevron-down chevron"></i>
+            </div>
+            <div class="guide-body">
+                <ul class="steps-list">
+                    <li><div class="step-dot" style="background:#ede9fe;color:#5b21b6;">1</div><div>Klik menu <strong>"Bank Soal CBT"</strong> di admin panel.</div></li>
+                    <li><div class="step-dot" style="background:#ede9fe;color:#5b21b6;">2</div><div>Klik <strong>"Tambah Soal"</strong> untuk input soal baru. Isi teks soal, 4–5 opsi jawaban, dan tandai jawaban yang benar.</div></li>
+                    <li><div class="step-dot" style="background:#ede9fe;color:#5b21b6;">3</div><div>Untuk import massal, siapkan file JSON dengan format array soal dan gunakan API <code>POST /api/cbt/soal/import</code>.</div></li>
+                    <li><div class="step-dot" style="background:#ede9fe;color:#5b21b6;">4</div><div>Soal yang dihapus tidak hilang dari database (soft delete) — bisa dipulihkan oleh admin.</div></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="faq-section">
+        <h2 class="section-title"><i class="fas fa-question-circle"></i> Pertanyaan yang Sering Ditanyakan</h2>
+
+        <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Saya lupa password, bagaimana cara reset? <i class="fas fa-chevron-down" style="font-size:.8rem;"></i></div>
+            <div class="faq-a">Di halaman login, klik <strong>"Lupa password?"</strong>. Masukkan email yang terdaftar. Link reset akan dikirim ke email tersebut (berlaku 15 menit). Jika tidak ada email, hubungi Tata Usaha untuk reset manual.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">NISN saya tidak bisa digunakan untuk login? <i class="fas fa-chevron-down" style="font-size:.8rem;"></i></div>
+            <div class="faq-a">Pastikan: (1) NISN yang dimasukkan 10 digit tanpa spasi, (2) Role dipilih "Siswa", (3) Akun sudah diaktifkan oleh admin. Jika masih tidak bisa, hubungi Tata Usaha dengan membawa kartu pelajar.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Token CBT saya tidak valid padahal baru dapat dari guru? <i class="fas fa-chevron-down" style="font-size:.8rem;"></i></div>
+            <div class="faq-a">Token CBT memiliki masa berlaku. Pastikan: (1) Token dimasukkan persis seperti yang diberikan guru (case-sensitive), (2) Mata pelajaran yang dipilih sesuai dengan token, (3) Waktu ujian belum melewati batas yang ditetapkan. Jika masih gagal, minta guru generate ulang token.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Kamera tidak bisa diakses saat pre-check CBT? <i class="fas fa-chevron-down" style="font-size:.8rem;"></i></div>
+            <div class="faq-a">Buka pengaturan browser: klik ikon gembok/info di address bar → pilih "Izin situs" → set Kamera dan Lokasi ke "Izinkan". Refresh halaman dan coba lagi. Pastikan tidak ada aplikasi lain yang menggunakan kamera.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Nilai di LMS tidak sesuai dengan yang diumumkan guru? <i class="fas fa-chevron-down" style="font-size:.8rem;"></i></div>
+            <div class="faq-a">Nilai di LMS diinput oleh guru masing-masing. Jika ada ketidaksesuaian, laporkan ke guru mata pelajaran terkait dengan menyebutkan NISN dan mata pelajaran. Guru dapat melakukan koreksi melalui admin panel.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Data PPDB saya tidak muncul saat dicek? <i class="fas fa-chevron-down" style="font-size:.8rem;"></i></div>
+            <div class="faq-a">Pastikan nomor pendaftaran dimasukkan dengan benar (format: PPDB-2026-XXXXXX). Nomor ini diberikan saat konfirmasi pendaftaran. Jika hilang, hubungi panitia PPDB di sekolah dengan membawa bukti pendaftaran.</div>
+        </div>
+    </div>
+
+    <!-- CONTACT -->
+    <div class="contact-card">
+        <h3>Masih Butuh Bantuan?</h3>
+        <p>Tim IT dan Tata Usaha SMKN 1 Terisi siap membantu kamu.</p>
+        <div class="contact-links">
+            <a href="https://wa.me/6281234567890" class="contact-btn cb-wa" target="_blank">
+                <i class="fab fa-whatsapp"></i> WhatsApp TU
+            </a>
+            <a href="mailto:info@smkn1terisi.sch.id" class="contact-btn cb-email">
+                <i class="fas fa-envelope"></i> Email Sekolah
+            </a>
+        </div>
+        <p style="margin-top:16px;font-size:.78rem;color:rgba(255,255,255,.4);">
+            Jam operasional: Senin–Jumat, 07.00–15.00 WIB
+        </p>
+    </div>
+
+</main>
+
+<script>
+    function toggle(head) {
+        const body    = head.nextElementSibling;
+        const chevron = head.querySelector('.chevron');
+        body.classList.toggle('open');
+        if (chevron) chevron.style.transform = body.classList.contains('open') ? 'rotate(180deg)' : '';
+    }
+
+    function toggleFaq(el) {
+        const ans = el.nextElementSibling;
+        ans.classList.toggle('open');
+    }
+
+    function filterRole(role, btn) {
+        document.querySelectorAll('.role-pill').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+
+        document.querySelectorAll('.guide-section').forEach(s => {
+            const forAttr = s.dataset.for || 'all';
+            s.style.display = (role === 'all' || forAttr.includes(role) || forAttr.includes('all')) ? '' : 'none';
+        });
+
+        if (role !== 'all') {
+            document.querySelectorAll('.quick-card[data-role]').forEach(c => {
+                c.style.opacity = c.dataset.role?.includes(role) ? '1' : '0.3';
+            });
+        } else {
+            document.querySelectorAll('.quick-card').forEach(c => c.style.opacity = '1');
+        }
+    }
+</script>
+
+</body>
+</html>

@@ -4,12 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="LMS SMKN 1 Terisi — Platform Belajar Digital">
+    <meta name="auth-required" content="true">
+    <meta name="auth-roles" content="siswa,guru,wali_murid">
     <title>LMS | SMK Negeri 1 Terisi</title>
     <link rel="icon" type="image/png" href="asset/Logo SMK.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="/auth-guard.js"></script>
     <link rel="stylesheet" href="lms.css">
 </head>
 <body>
@@ -81,7 +84,7 @@
                 </div>
 
                 <p class="lf-hint"><i class="fas fa-info-circle"></i>
-                    Demo: NISN <strong>demo1234</strong> | Password <strong>smkn1terisi</strong>
+                    Gunakan akun EduGate yang sama dengan halaman Login utama.
                 </p>
             </div>
         </div>
@@ -156,7 +159,7 @@
                 <!-- Notif Dropdown -->
                 <div class="notif-dropdown" id="notif-dropdown">
                     <div class="nd-header"><h4>Notifikasi</h4><button onclick="toggleNotif()">✕</button></div>
-                    <div class="nd-list">
+                    <div class="nd-list" id="nd-list">
                         <div class="nd-item unread">
                             <i class="fas fa-tasks" style="color:#3b82f6;"></i>
                             <div><strong>Tugas baru:</strong> Laporan PKK Minggu Ini<span>2 jam lalu</span></div>
@@ -212,11 +215,11 @@
                     </div>
                     <div class="sc-card">
                         <div class="sc-icon green"><i class="fas fa-check-circle"></i></div>
-                        <div><span class="sc-val">12</span><label>Tugas Selesai</label></div>
+                        <div><span class="sc-val" id="sc-kehadiran">-</span><label>Kehadiran</label></div>
                     </div>
                     <div class="sc-card">
                         <div class="sc-icon purple"><i class="fas fa-star"></i></div>
-                        <div><span class="sc-val">82</span><label>Rata-rata Nilai</label></div>
+                        <div><span class="sc-val" id="sc-nilai">-</span><label>Rata-rata Nilai</label></div>
                     </div>
                 </div>
 

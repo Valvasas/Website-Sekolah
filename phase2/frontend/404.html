@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Halaman Tidak Ditemukan | SMKN 1 Terisi</title>
+    <link rel="icon" type="image/png" href="/asset/Logo SMK.png">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root { --navy:#002244; --navy-d:#001529; --gold:#D4AF37; --muted:#64748b; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family:'Sora',sans-serif;
+            min-height:100vh; background:var(--navy-d);
+            display:flex; align-items:center; justify-content:center;
+            padding:20px; overflow:hidden; position:relative;
+        }
+        .bg { position:fixed; inset:0; pointer-events:none; }
+        .orb {
+            position:absolute; border-radius:50%;
+            filter:blur(80px); opacity:.12;
+            animation:float 10s ease-in-out infinite alternate;
+        }
+        .o1 { width:500px;height:500px;background:var(--gold);top:-150px;right:-100px; }
+        .o2 { width:400px;height:400px;background:#3b82f6;bottom:-100px;left:-80px;animation-delay:3s; }
+        @keyframes float { from{transform:translate(0,0)} to{transform:translate(20px,20px)} }
+
+        .card {
+            position:relative; z-index:2; text-align:center;
+            max-width:480px; width:100%;
+        }
+        .num {
+            font-family:'Playfair Display',serif;
+            font-size:clamp(6rem,20vw,10rem);
+            color:var(--gold); line-height:1;
+            text-shadow: 0 0 60px rgba(212,175,55,.4);
+            margin-bottom:8px;
+        }
+        h1 {
+            font-family:'Playfair Display',serif;
+            font-size:clamp(1.4rem,4vw,2rem);
+            color:white; margin-bottom:12px;
+        }
+        p { color:rgba(255,255,255,.5); font-size:.95rem; line-height:1.7; margin-bottom:32px; }
+
+        .actions { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+        .btn {
+            padding:13px 24px; border-radius:10px;
+            font-family:'Sora',sans-serif; font-size:.9rem;
+            font-weight:700; cursor:pointer; text-decoration:none;
+            display:inline-flex; align-items:center; gap:8px;
+            transition:all .25s;
+        }
+        .btn-primary { background:var(--gold); color:var(--navy-d); border:none; box-shadow:0 6px 20px rgba(212,175,55,.3); }
+        .btn-primary:hover { background:#B5952F; transform:translateY(-2px); }
+        .btn-secondary { background:rgba(255,255,255,.07); color:white; border:1.5px solid rgba(255,255,255,.15); }
+        .btn-secondary:hover { background:rgba(255,255,255,.12); }
+
+        .links {
+            margin-top:40px; display:flex; gap:16px;
+            justify-content:center; flex-wrap:wrap;
+        }
+        .links a {
+            color:rgba(255,255,255,.35); font-size:.8rem;
+            text-decoration:none; transition:color .2s;
+            display:flex; align-items:center; gap:5px;
+        }
+        .links a:hover { color:var(--gold); }
+    </style>
+</head>
+<body>
+<div class="bg"><div class="orb o1"></div><div class="orb o2"></div></div>
+
+<div class="card">
+    <div class="num">404</div>
+    <h1>Halaman Tidak Ditemukan</h1>
+    <p>
+        Halaman yang kamu cari tidak ada atau sudah dipindahkan.<br>
+        Mungkin URL-nya salah ketik, atau halaman ini sudah dihapus.
+    </p>
+    <div class="actions">
+        <a href="/index.html" class="btn btn-primary">
+            <i class="fas fa-home"></i> Kembali ke Beranda
+        </a>
+        <button class="btn btn-secondary" onclick="history.back()">
+            <i class="fas fa-arrow-left"></i> Halaman Sebelumnya
+        </button>
+    </div>
+    <div class="links">
+        <a href="/login.html"><i class="fas fa-sign-in-alt"></i> Login</a>
+        <a href="/LMS.html"><i class="fas fa-book-open"></i> LMS</a>
+        <a href="/cbt.html"><i class="fas fa-edit"></i> CBT</a>
+        <a href="/ppdb.html"><i class="fas fa-clipboard-list"></i> PPDB</a>
+        <a href="/SKL.html"><i class="fas fa-certificate"></i> SKL</a>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</body>
+</html>

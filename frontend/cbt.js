@@ -118,6 +118,7 @@ const BANK_SOAL = {
 const CBT_API = window.location.hostname === 'localhost'
     ? 'http://localhost:3001/api/cbt'
     : '/api/cbt';
+const CBT_TOKEN_KEY = 'accessToken';
 
 /* ============================================================
    STATE APLIKASI
@@ -266,14 +267,13 @@ function showError(el, msgEl, msg) {
 /* ============================================================
    MULAI UJIAN
    ============================================================ */
-function startExam() {
-    const data       = BANK_SOAL[state.mapel];
-    state.soalList   = shuffle([...data.soal]); // Acak urutan soal
+function beginExamWithQuestions(data, questions) {
+    state.soalList   = questions;
     state.jawaban    = {};
     state.raguList   = new Set();
     state.current    = 0;
-    state.durasi     = data.durasi;
-    state.timerSisa  = data.durasi * 60;
+    state.durasi     = state.durasi || data.durasi || 90;
+    state.timerSisa  = state.durasi * 60;
     state.started    = true;
 
     document.getElementById('exam-mapel-label').textContent   = data.nama;
@@ -284,6 +284,11 @@ function startExam() {
     renderQuestion();
     startTimer();
     showScreen('screen-exam');
+}
+
+function startExam() {
+    const data = BANK_SOAL[state.mapel];
+    beginExamWithQuestions(data, shuffle([...data.soal]));
 }
 
 // Fisher-Yates shuffle
@@ -1320,16 +1325,41 @@ function finishWarmup() {
     document.getElementById('screen-warmup-result').classList.add('active');
 }
 
-function proceedToExam() {
+async function proceedToExam() {
     if (!precheckState.passed) {
         alert('Kamera dan lokasi wajib aktif sebelum ujian bisa dimulai.');
         showScreen('screen-precheck');
         return;
     }
     document.getElementById('screen-warmup-result').classList.remove('active');
-    // Panggil startExam() ASLI menggunakan _origStartExam agar tidak kembali ke warmup
-    window._origStartExam();
-    examLock.activate();
+
+    const localBank = BANK_SOAL[state.mapel];
+    const loading = document.createElement('div');
+    loading.id = 'soal-loading';
+    loading.style.cssText = 'position:fixed;inset:0;background:rgba(0,34,68,.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;gap:16px;';
+    loading.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:2.5rem;color:#D4AF37;"></i><p style="font-size:1rem;font-weight:700;">Memuat soal ujian...</p>';
+    document.body.appendChild(loading);
+
+    try {
+        const token = localStorage.getItem(CBT_TOKEN_KEY) || localStorage.getItem('smkn_token') || '';
+        const res = await fetch(`${CBT_API}/soal/ujian/${state.mapel}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const json = await res.json();
+
+        if (res.ok && json.success && Array.isArray(json.data) && json.data.length) {
+            beginExamWithQuestions(localBank || { nama: state.mapel, durasi: state.durasi }, json.data);
+        } else {
+            console.warn('[CBT] Soal API belum tersedia, memakai fallback lokal.');
+            window._origStartExam();
+        }
+    } catch (err) {
+        console.warn('[CBT] Gagal memuat soal API, memakai fallback lokal:', err.message);
+        window._origStartExam();
+    } finally {
+        loading.remove();
+        examLock.activate();
+    }
 }
 
 /* ──────────────────────────────────────────────────────────────
