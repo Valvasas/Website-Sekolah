@@ -85,6 +85,30 @@ async function sendOTPEmail(toEmail, namaUser, otp) {
     });
 }
 
+async function sendStaffActivatedEmail(toEmail, namaUser) {
+    await transporter.sendMail({
+        from: FROM,
+        to: toEmail,
+        subject: 'Akun Anda Telah Diaktifkan - Portal SMK Negeri 1 Terisi',
+        html: `
+        <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.10);font-family:Segoe UI,sans-serif;">
+            <div style="background:#002244;padding:30px;text-align:center;">
+                <h1 style="color:#D4AF37;margin:0;font-family:Georgia,serif;">SMK Negeri 1 Terisi</h1>
+                <p style="color:rgba(255,255,255,.7);margin:8px 0 0;">Portal EduGate</p>
+            </div>
+            <div style="padding:34px;">
+                <h2 style="color:#002244;margin-top:0;">Akun Anda Diaktifkan ✓</h2>
+                <p style="color:#475569;line-height:1.7;">Halo <strong>${namaUser}</strong>,</p>
+                <p style="color:#475569;line-height:1.7;">Akun Anda telah disetujui oleh administrator. Anda sekarang dapat masuk ke portal menggunakan email dan password Anda.</p>
+                <p style="text-align:center;margin:30px 0;">
+                    <a href="${BASE}/login.html" style="background:#059669;color:#fff;padding:14px 30px;border-radius:8px;font-weight:700;text-decoration:none;">Buka Portal</a>
+                </p>
+                <p style="color:#94a3b8;font-size:.82rem;line-height:1.6;">Jika tombol tidak bisa diklik, buka link ini: ${BASE}/login.html</p>
+            </div>
+        </div>`,
+    });
+}
+
 async function verifyConnection() {
     try {
         await transporter.verify();
@@ -100,5 +124,6 @@ module.exports = {
     sendPasswordResetEmail,
     sendVerificationEmail,
     sendOTPEmail,
+    sendStaffActivatedEmail,
     verifyConnection,
 };

@@ -22,71 +22,103 @@ function identifierField(role) {
 /* ── REGISTER ────────────────────────────────────────── */
 async function register(req, res) {
     const db = getDB();
-    const { nama_lengkap, email, password, role = 'siswa', nisn, nip, no_hp } = req.body;
+    const {
+        nama_lengkap, email, password,
+        role = 'siswa', nisn, nip, no_hp,
+        bidang, jabatan_detail, mata_pelajaran
+    } = req.body;
 
     try {
-        // Hanya peran ini yang boleh daftar sendiri
-        const selfRegisterRoles = ['siswa','wali_murid','calon_siswa'];
+        const selfRegisterRoles = ['siswa', 'wali_murid', 'calon_siswa', 'guru', 'tata_usaha'];
         if (!selfRegisterRoles.includes(role) && req.user?.role !== 'super_admin') {
-            return res.status(403).json({ success:false, message:'Pendaftaran role ini harus oleh Administrator.' });
+            return res.status(403).json({
+                success: false,
+                message: 'Pendaftaran role ini harus dilakukan oleh Administrator.'
+            });
         }
 
-        // Cek duplikat email
         if (email) {
             const ex = db.prepare('SELECT id FROM users WHERE email = :e').get({ e: email.toLowerCase() });
-            if (ex) return res.status(409).json({ success:false, message:'Email sudah terdaftar.' });
+            if (ex) return res.status(409).json({ success: false, message: 'Email sudah terdaftar.' });
         }
-        // Cek duplikat NISN
         if (nisn) {
             const ex = db.prepare('SELECT id FROM users WHERE nisn = :n').get({ n: nisn });
-            if (ex) return res.status(409).json({ success:false, message:'NISN sudah terdaftar.' });
+            if (ex) return res.status(409).json({ success: false, message: 'NISN sudah terdaftar.' });
         }
-        // Cek duplikat NIP
         if (nip) {
             const ex = db.prepare('SELECT id FROM users WHERE nip = :n').get({ n: nip });
-            if (ex) return res.status(409).json({ success:false, message:'NIP sudah terdaftar.' });
+            if (ex) return res.status(409).json({ success: false, message: 'NIP sudah terdaftar.' });
         }
 
         const password_hash = await bcrypt.hash(password, 12);
-        const userId        = uuidv4();
-        const isVerified    = selfRegisterRoles.includes(role) ? 0 : 1;
-        const now           = nowISO();
+        const userId = uuidv4();
+        const now = nowISO();
+
+        const isStaffRole = ['guru', 'tata_usaha'].includes(role);
+        const isActive = isStaffRole ? 0 : 1;
+        const isVerified = 0;
+        const bidangFinal = bidang || jabatan_detail || mata_pelajaran || null;
 
         db.prepare(`
             INSERT INTO users
-            (id,nama_lengkap,email,password_hash,role,nisn,nip,no_hp,is_active,is_verified,created_at,updated_at)
-            VALUES (:id,:nama,:email,:hash,:role,:nisn,:nip,:hp,1,:v,:now,:now)
+            (id,nama_lengkap,email,password_hash,role,nisn,nip,no_hp,bidang,jabatan_detail,is_active,is_verified,created_at,updated_at)
+            VALUES (:id,:nama,:email,:hash,:role,:nisn,:nip,:hp,:bidang,:jabatan,:active,:verified,:now,:now)
         `).run({
-            id:   userId, nama: nama_lengkap.trim(),
+            id: userId,
+            nama: nama_lengkap.trim(),
             email: email?.toLowerCase() || null,
-            hash: password_hash, role, nisn: nisn||null,
-            nip: nip||null, hp: no_hp||null, v: isVerified, now
+            hash: password_hash,
+            role,
+            nisn: nisn || null,
+            nip: nip || null,
+            hp: no_hp || null,
+            bidang: bidangFinal,
+            jabatan: jabatan_detail || null,
+            active: isActive,
+            verified: isVerified,
+            now
         });
 
-        // Kirim email verifikasi
         let verSent = false;
-        if (!isVerified && email) {
+        if (email) {
             try {
                 const tok = generateToken();
                 db.prepare(`
                     INSERT INTO email_verification_tokens (id,user_id,token,expires_at,used,created_at)
                     VALUES (:id,:uid,:tok,:exp,0,:now)
-                `).run({ id:uuidv4(), uid:userId, tok, exp:tokenExpiry(24*60), now });
+                `).run({ id: uuidv4(), uid: userId, tok, exp: tokenExpiry(24 * 60), now });
                 await mailer.sendVerificationEmail(email, nama_lengkap, tok);
                 verSent = true;
-            } catch(e) { console.warn('[Register] Email gagal:', e.message); }
+            } catch (e) {
+                console.warn('[Register] Email gagal:', e.message);
+            }
         }
 
         log(userId, 'USER_REGISTER', 'users', userId, { role, email }, req.ip);
 
+        const message = isStaffRole
+            ? `Akun ${role === 'guru' ? 'Guru' : 'Staff TU'} berhasil dibuat! Akun akan diaktifkan setelah disetujui administrator.`
+            : verSent
+                ? 'Akun berhasil dibuat! Cek email untuk verifikasi sebelum login.'
+                : 'Akun berhasil dibuat! Silakan login.';
+
         return res.status(201).json({
             success: true,
-            message: verSent ? 'Akun berhasil dibuat! Cek email untuk verifikasi.' : 'Akun berhasil dibuat! Silakan login.',
-            data: { id:userId, nama:nama_lengkap, role, email:email||null, nisn:nisn||null, verificationRequired:!isVerified }
+            message,
+            data: {
+                id: userId,
+                nama: nama_lengkap,
+                role,
+                email: email || null,
+                nisn: nisn || null,
+                bidang: bidangFinal,
+                verificationRequired: !isVerified,
+                pendingAdminApproval: isStaffRole
+            }
         });
     } catch (err) {
         console.error('[Register]', err);
-        return res.status(500).json({ success:false, message:'Terjadi kesalahan server.' });
+        return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
     }
 }
 
@@ -105,39 +137,40 @@ async function login(req, res) {
             return res.status(401).json({ success:false, message:`${field==='nisn'?'NISN':'Email'} atau password salah.` });
         }
 
-        // Cek lock
         if (user.locked_until && new Date(user.locked_until) > new Date()) {
             const mins = Math.ceil((new Date(user.locked_until) - new Date()) / 60000);
             return res.status(423).json({ success:false, message:`Akun terkunci ${mins} menit lagi.` });
         }
 
-        // Cek aktif
         if (!user.is_active) {
-            return res.status(403).json({ success:false, message:'Akun dinonaktifkan. Hubungi administrator.' });
+            const isStaff = ['guru', 'tata_usaha'].includes(user.role);
+            return res.status(403).json({
+                success: false,
+                message: isStaff
+                    ? 'Akun staf Anda sedang menunggu persetujuan administrator.'
+                    : 'Akun dinonaktifkan. Hubungi administrator.'
+            });
         }
 
-        // Cek password
         const match = await bcrypt.compare(password, user.password_hash || '');
         if (!match) {
             const attempts    = (user.login_attempts || 0) + 1;
             const maxAttempts = parseInt(process.env.LOGIN_MAX_ATTEMPTS) || 5;
             const lockMins    = parseInt(process.env.LOGIN_WINDOW_MINUTES) || 15;
-            const now         = nowISO();
 
             if (attempts >= maxAttempts) {
                 const lockedUntil = new Date(Date.now() + lockMins * 60000).toISOString();
                 db.prepare('UPDATE users SET login_attempts=:a, locked_until=:l, updated_at=:now WHERE id=:id')
-                  .run({ a:attempts, l:lockedUntil, now, id:user.id });
+                  .run({ a:attempts, l:lockedUntil, now:nowISO(), id:user.id });
                 log(user.id, 'ACCOUNT_LOCKED', 'users', user.id, { attempts }, req.ip);
                 return res.status(423).json({ success:false, message:`Akun terkunci ${lockMins} menit.` });
             }
 
             db.prepare('UPDATE users SET login_attempts=:a, updated_at=:now WHERE id=:id')
-              .run({ a:attempts, now, id:user.id });
+              .run({ a:attempts, now:nowISO(), id:user.id });
             return res.status(401).json({ success:false, message:`Password salah. Sisa percobaan: ${maxAttempts - attempts}.` });
         }
 
-        // Login sukses — reset attempts
         db.prepare('UPDATE users SET login_attempts=0, locked_until=NULL, last_login=:now, updated_at=:now WHERE id=:id')
           .run({ now:nowISO(), id:user.id });
 
@@ -170,7 +203,7 @@ async function login(req, res) {
                 user: {
                     id:user.id, nama:user.nama_lengkap, email:user.email,
                     role:user.role, nisn:user.nisn, nip:user.nip,
-                    foto:user.foto_profil, isVerified:!!user.is_verified
+                    bidang:user.bidang || null, foto:user.foto_profil, isVerified:!!user.is_verified
                 },
                 redirectTo: redirectMap[user.role] || '/'
             }
@@ -315,33 +348,63 @@ function verifyEmail(req, res) {
     if (!tok) return res.status(400).json({ success:false, message:'Token tidak ditemukan.' });
 
     const record = db.prepare(`
-        SELECT evt.*, u.id as uid FROM email_verification_tokens evt
+        SELECT evt.*, u.id as uid, u.role FROM email_verification_tokens evt
         JOIN users u ON evt.user_id = u.id
         WHERE evt.token = :tok AND evt.used = 0 AND evt.expires_at > :now
     `).get({ tok, now:nowISO() });
 
     if (!record) {
-        return res.redirect('/admin-panel/login.html?error=invalid_token');
+        return res.redirect('/login.html?error=invalid_token');
     }
 
     db.prepare('UPDATE users SET is_verified=1, updated_at=:now WHERE id=:id').run({ now:nowISO(), id:record.uid });
     db.prepare('UPDATE email_verification_tokens SET used=1 WHERE id=:id').run({ id:record.id });
     log(record.uid, 'EMAIL_VERIFIED', 'users', record.uid, null, req.ip);
 
-    return res.redirect('/admin-panel/login.html?verified=true');
+    const isStaff = ['guru', 'tata_usaha'].includes(record.role);
+    if (isStaff) {
+        return res.redirect('/login.html?verified=true&msg=Email+terverifikasi.+Tunggu+aktivasi+admin+untuk+login.');
+    }
+    return res.redirect('/login.html?verified=true');
 }
 
 /* ── GET PROFILE ─────────────────────────────────────── */
 function getProfile(req, res) {
     const db   = getDB();
     const user = db.prepare(`
-        SELECT id,nama_lengkap,email,role,nisn,nip,no_hp,foto_profil,
+        SELECT id,nama_lengkap,email,role,nisn,nip,no_hp,foto_profil,bidang,jabatan_detail,
                is_verified,last_login,created_at
         FROM users WHERE id=:id
     `).get({ id:req.user.sub });
 
     if (!user) return res.status(404).json({ success:false, message:'User tidak ditemukan.' });
     return res.status(200).json({ success:true, data:user });
+}
+
+async function activateStaffAccount(req, res) {
+    const db = getDB();
+    const { id } = req.params;
+
+    try {
+        const user = db.prepare('SELECT id,role,email,nama_lengkap FROM users WHERE id=:id').get({ id });
+        if (!user) return res.status(404).json({ success:false, message:'User tidak ditemukan.' });
+
+        db.prepare('UPDATE users SET is_active=1, updated_at=:now WHERE id=:id').run({ now:nowISO(), id });
+
+        if (user.email) {
+            try {
+                await mailer.sendStaffActivatedEmail(user.email, user.nama_lengkap);
+            } catch (e) {
+                console.warn('[ActivateStaff] Email gagal:', e.message);
+            }
+        }
+
+        log(req.user.sub, 'STAFF_ACCOUNT_ACTIVATED', 'users', id, { role:user.role }, req.ip);
+        return res.status(200).json({ success:true, message:'Akun staff berhasil diaktifkan.' });
+    } catch (err) {
+        console.error('[ActivateStaff]', err);
+        return res.status(500).json({ success:false, message:'Terjadi kesalahan server.' });
+    }
 }
 
 /* ── CHECK AUTH ──────────────────────────────────────── */
@@ -397,5 +460,6 @@ async function googleCallback(req, res) {
 module.exports = {
     register, login, logout, refreshToken,
     forgotPassword, resetPassword, changePassword,
-    verifyEmail, getProfile, checkAuth, googleCallback
+    verifyEmail, getProfile, checkAuth, googleCallback,
+    activateStaffAccount
 };

@@ -56,6 +56,18 @@ const registerRules = [
     body('no_hp')
         .optional({ nullable: true, checkFalsy: true })
         .matches(/^(\+62|62|0)[0-9]{8,13}$/).withMessage('Format nomor HP tidak valid.'),
+
+    body('bidang')
+        .optional({ nullable: true, checkFalsy: true })
+        .isLength({ max: 100 }).withMessage('Bidang maksimal 100 karakter.'),
+
+    body('jabatan_detail')
+        .optional({ nullable: true, checkFalsy: true })
+        .isLength({ max: 100 }).withMessage('Jabatan detail maksimal 100 karakter.'),
+
+    body('mata_pelajaran')
+        .optional({ nullable: true, checkFalsy: true })
+        .isLength({ max: 100 }).withMessage('Mata pelajaran maksimal 100 karakter.'),
 ];
 
 // ── Rules validasi Login ──────────────────────────────────

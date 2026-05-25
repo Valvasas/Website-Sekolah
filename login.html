@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Portal EduGate | SMK Negeri 1 Terisi</title>
+    <link rel="icon" type="image/png" href="/asset/Logo SMK.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --ink: #102033;
+            --navy: #002244;
+            --navy-2: #06345f;
+            --gold: #d4af37;
+            --teal: #0f9f8f;
+            --sky: #2f80ed;
+            --paper: #f7fafc;
+            --line: #d9e2ec;
+            --muted: #63758a;
+            --danger: #dc2626;
+            --success: #0f9f62;
+            --warning: #b7791f;
+            --white: #ffffff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            min-height: 100vh;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background:
+                linear-gradient(120deg, rgba(0, 34, 68, 0.94), rgba(16, 32, 51, 0.86)),
+                url("/asset/gedung-web.jpg") center / cover fixed;
+            color: var(--ink);
+        }
+
+        .page {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: minmax(340px, 0.9fr) minmax(420px, 1.1fr);
+        }
+
+        .brand-side {
+            color: var(--white);
+            padding: 44px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border-right: 1px solid rgba(255,255,255,0.14);
+            background: rgba(0, 20, 40, 0.42);
+            backdrop-filter: blur(8px);
+        }
+
+        .back-home {
+            color: rgba(255,255,255,0.78);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            width: fit-content;
+        }
+
+        .back-home:hover { color: var(--gold); }
+
+        .brand-main { max-width: 470px; }
+
+        .school-mark {
+            width: 82px;
+            height: 82px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.94);
+            padding: 9px;
+            object-fit: contain;
+            box-shadow: 0 18px 38px rgba(0,0,0,0.22);
+            margin-bottom: 26px;
+        }
+
+        .brand-kicker {
+            color: var(--gold);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .brand-title {
+            font-family: "Playfair Display", serif;
+            font-size: clamp(2.2rem, 4vw, 4.2rem);
+            line-height: 1.03;
+            letter-spacing: 0;
+            margin-bottom: 18px;
+        }
+
+        .brand-copy {
+            color: rgba(255,255,255,0.76);
+            line-height: 1.75;
+            font-size: 1rem;
+        }
+
+        .brand-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        .metric {
+            border: 1px solid rgba(255,255,255,0.16);
+            background: rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .metric strong {
+            display: block;
+            color: var(--gold);
+            font-size: 1.32rem;
+            margin-bottom: 4px;
+        }
+
+        .metric span {
+            color: rgba(255,255,255,0.64);
+            font-size: 0.74rem;
+            font-weight: 700;
+        }
+
+        .brand-footer {
+            color: rgba(255,255,255,0.58);
+            font-size: 0.82rem;
+            line-height: 1.6;
+        }
+
+        .work-side {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px;
+            background: rgba(247,250,252,0.94);
+        }
+
+        .auth-shell {
+            width: min(100%, 760px);
+            background: var(--white);
+            border: 1px solid rgba(16,32,51,0.1);
+            border-radius: 8px;
+            box-shadow: 0 28px 70px rgba(6, 52, 95, 0.22);
+            overflow: hidden;
+        }
+
+        .auth-top {
+            padding: 28px 30px 18px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .auth-top h1 {
+            font-size: 1.42rem;
+            color: var(--navy);
+            margin-bottom: 7px;
+        }
+
+        .auth-top p {
+            color: var(--muted);
+            line-height: 1.55;
+            font-size: 0.9rem;
+        }
+
+        .server-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 8px 11px;
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 800;
+            white-space: nowrap;
+            background: #f8fbfd;
+        }
+
+        .server-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--warning);
+        }
+
+        .server-pill.online .server-dot { background: var(--success); }
+        .server-pill.offline .server-dot { background: var(--danger); }
+
+        .mode-tabs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 22px;
+            background: #eef4f8;
+            padding: 6px;
+            border-radius: 8px;
+        }
+
+        .mode-tab,
+        .role-tab,
+        .btn,
+        .icon-btn {
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .mode-tab {
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--muted);
+            min-height: 42px;
+            font-size: 0.86rem;
+            font-weight: 800;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mode-tab.active {
+            background: var(--white);
+            color: var(--navy);
+            box-shadow: 0 6px 16px rgba(16,32,51,0.08);
+        }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        .role-tabs {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+
+        .role-tab {
+            border: 1px solid var(--line);
+            background: #fbfdff;
+            color: var(--muted);
+            border-radius: 8px;
+            padding: 12px 8px;
+            min-height: 58px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            font-size: 0.76rem;
+            font-weight: 800;
+        }
+
+        .role-tab i { font-size: 1rem; color: var(--sky); }
+
+        .role-tab.active {
+            border-color: rgba(15,159,143,0.45);
+            background: rgba(15,159,143,0.1);
+            color: var(--navy);
+        }
+
+        .role-tab.active i { color: var(--teal); }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+        }
+
+        .field {
+            margin-bottom: 15px;
+        }
+
+        .field label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: var(--navy);
+            margin-bottom: 7px;
+        }
+
+        .field label i { color: var(--teal); }
+
+        .field input,
+        .field select {
+            width: 100%;
+            min-height: 46px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 0 13px;
+            outline: none;
+            color: var(--ink);
+            background: #fbfdff;
+            font: inherit;
+            font-size: 0.92rem;
+        }
+
+        .field input:focus,
+        .field select:focus {
+            border-color: var(--teal);
+            box-shadow: 0 0 0 3px rgba(15,159,143,0.13);
+        }
+
+        .password-wrap { position: relative; }
+        .password-wrap input { padding-right: 46px; }
+
+        .icon-btn {
+            position: absolute;
+            right: 7px;
+            top: 7px;
+            width: 32px;
+            height: 32px;
+            border: 0;
+            background: transparent;
+            color: var(--muted);
+            border-radius: 6px;
+        }
+
+        .icon-btn:hover { color: var(--teal); background: #eef7f6; }
+
+        .inline-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 4px 0 18px;
+            color: var(--muted);
+            font-size: 0.84rem;
+        }
+
+        .inline-row label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .inline-row input { accent-color: var(--teal); }
+
+        .text-link {
+            color: var(--navy-2);
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .text-link:hover { color: var(--teal); }
+
+        .btn {
+            border: 0;
+            border-radius: 8px;
+            min-height: 48px;
+            padding: 0 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-weight: 900;
+            text-decoration: none;
+            transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+        }
+
+        .btn:disabled {
+            opacity: 0.64;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: var(--navy);
+            color: var(--white);
+            box-shadow: 0 12px 22px rgba(0,34,68,0.22);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            background: var(--navy-2);
+        }
+
+        .btn-google {
+            width: 100%;
+            background: var(--white);
+            border: 1px solid var(--line);
+            color: var(--ink);
+            margin-top: 12px;
+        }
+
+        .btn-google:hover:not(:disabled) {
+            background: #f8fbfd;
+            box-shadow: 0 8px 18px rgba(16,32,51,0.08);
+        }
+
+        .btn-google img {
+            width: 18px;
+            height: 18px;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #94a3b8;
+            margin: 18px 0 6px;
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: "";
+            height: 1px;
+            background: var(--line);
+            flex: 1;
+        }
+
+        .alert {
+            display: none;
+            align-items: flex-start;
+            gap: 10px;
+            border-radius: 8px;
+            padding: 12px 13px;
+            line-height: 1.45;
+            font-size: 0.84rem;
+            margin-bottom: 15px;
+            border: 1px solid transparent;
+        }
+
+        .alert.show { display: flex; }
+        .alert.error { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
+        .alert.success { color: #065f46; background: #ecfdf5; border-color: #a7f3d0; }
+        .alert.warning { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+        .alert.info { color: #1e3a8a; background: #eff6ff; border-color: #bfdbfe; }
+
+        .hint {
+            color: var(--muted);
+            font-size: 0.78rem;
+            line-height: 1.55;
+            margin-top: 10px;
+        }
+
+        .strength {
+            display: none;
+            margin-top: -4px;
+            margin-bottom: 14px;
+        }
+
+        .strength-track {
+            height: 5px;
+            background: #e6edf3;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .strength-bar {
+            width: 0;
+            height: 100%;
+            background: var(--danger);
+            transition: width .2s ease, background .2s ease;
+        }
+
+        .strength span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.75rem;
+            margin-top: 5px;
+            font-weight: 700;
+        }
+
+        .form-note {
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.82rem;
+            margin-top: 16px;
+            line-height: 1.55;
+        }
+
+        .ppdb-result {
+            display: none;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 14px;
+            margin-top: 14px;
+            background: #fbfdff;
+        }
+
+        .ppdb-result.show { display: block; }
+
+        .ppdb-result h3 {
+            font-size: 1rem;
+            color: var(--navy);
+            margin-bottom: 8px;
+        }
+
+        .ppdb-result dl {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 0.84rem;
+        }
+
+        .ppdb-result dd { color: var(--ink); font-weight: 700; }
+
+        .loading .btn-label { display: none; }
+        .btn-spinner { display: none; }
+        .loading .btn-spinner { display: inline-block; animation: spin .75s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg) } }
+
+        @media (max-width: 960px) {
+            .page { grid-template-columns: 1fr; }
+            .brand-side {
+                min-height: auto;
+                padding: 28px;
+                gap: 28px;
+            }
+            .brand-footer { display: none; }
+            .work-side {
+                min-height: auto;
+                padding: 22px;
+            }
+        }
+
+        @media (max-width: 620px) {
+            .auth-top {
+                flex-direction: column;
+                padding: 24px 22px 16px;
+            }
+            .auth-body { padding: 22px; }
+            .mode-tabs,
+            .role-tabs,
+            .grid-2,
+            .brand-metrics {
+                grid-template-columns: 1fr;
+            }
+            .inline-row {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <section class="brand-side">
+            <a href="/index.html" class="back-home"><i class="fas fa-arrow-left"></i> Kembali ke Beranda</a>
+
+            <div class="brand-main">
+                <img src="/asset/Logo SMK.png" alt="Logo SMK Negeri 1 Terisi" class="school-mark">
+                <p class="brand-kicker">Portal EduGate Terpadu</p>
+                <h2 class="brand-title">Masuk, daftar, dan pantau layanan sekolah.</h2>
+                <p class="brand-copy">
+                    Akses akademik siswa, panel guru dan tata usaha, pendaftaran akun baru,
+                    reset password email, autentikasi Google, serta pengecekan status PPDB dalam satu halaman.
+                </p>
+                <div class="brand-metrics">
+                    <div class="metric"><strong>750+</strong><span>Siswa Aktif</span></div>
+                    <div class="metric"><strong>50+</strong><span>Guru & Staff</span></div>
+                    <div class="metric"><strong>4</strong><span>Program Keahlian</span></div>
+                </div>
+            </div>
+
+            <p class="brand-footer">
+                Gunakan akun resmi sekolah. Akun Guru, Tata Usaha, Kepala Sekolah, dan Admin dibuat oleh administrator.
+            </p>
+        </section>
+
+        <section class="work-side">
+            <div class="auth-shell">
+                <div class="auth-top">
+                    <div>
+                        <h1>Login Portal EduGate</h1>
+                        <p>Masuk sesuai peran, atau buat akun baru untuk siswa, calon siswa, dan wali murid.</p>
+                    </div>
+                    <div class="server-pill" id="serverStatus">
+                        <span class="server-dot"></span>
+                        <span id="serverStatusText">Mengecek server</span>
+                    </div>
+                </div>
+
+                <div class="auth-body">
+                    <div class="mode-tabs" role="tablist" aria-label="Mode autentikasi">
+                        <button class="mode-tab active" data-panel="loginPanel" type="button"><i class="fas fa-right-to-bracket"></i> Login</button>
+                        <button class="mode-tab" data-panel="registerPanel" type="button"><i class="fas fa-user-plus"></i> Daftar</button>
+                        <button class="mode-tab" data-panel="ppdbPanel" type="button"><i class="fas fa-clipboard-check"></i> PPDB</button>
+                    </div>
+
+                    <div class="alert" id="mainAlert">
+                        <i class="fas fa-circle-info"></i>
+                        <span id="mainAlertText"></span>
+                    </div>
+
+                    <section class="panel active" id="loginPanel">
+                        <div class="role-tabs" id="roleTabs">
+                            <button class="role-tab active" type="button" data-role="siswa"><i class="fas fa-user-graduate"></i>Siswa</button>
+                            <button class="role-tab" type="button" data-role="guru"><i class="fas fa-chalkboard-user"></i>Guru</button>
+                            <button class="role-tab" type="button" data-role="tata_usaha"><i class="fas fa-briefcase"></i>TU</button>
+                            <button class="role-tab" type="button" data-role="kepala_sekolah"><i class="fas fa-user-tie"></i>Kepsek</button>
+                        </div>
+
+                        <form id="loginForm" novalidate>
+                            <div class="field">
+                                <label for="loginIdentifier"><i class="fas fa-id-card"></i><span id="identifierLabel">NISN Siswa</span></label>
+                                <input id="loginIdentifier" name="identifier" type="text" placeholder="10 digit NISN" autocomplete="username" required>
+                            </div>
+
+                            <div class="field">
+                                <label for="loginPassword"><i class="fas fa-lock"></i>Password</label>
+                                <div class="password-wrap">
+                                    <input id="loginPassword" name="password" type="password" placeholder="Masukkan password" autocomplete="current-password" required>
+                                    <button class="icon-btn" type="button" data-toggle-password="loginPassword" aria-label="Tampilkan password"><i class="fas fa-eye"></i></button>
+                                </div>
+                            </div>
+
+                            <div class="inline-row">
+                                <label><input type="checkbox" id="rememberMe"> Ingat saya</label>
+                                <a href="#" class="text-link" data-panel-link="forgotPanel">Lupa password?</a>
+                            </div>
+
+                            <button class="btn btn-primary" id="loginBtn" type="submit">
+                                <i class="fas fa-spinner btn-spinner"></i>
+                                <span class="btn-label"><i class="fas fa-right-to-bracket"></i> Masuk ke Portal</span>
+                            </button>
+                        </form>
+
+                        <div class="divider">atau masuk cepat</div>
+                        <button class="btn btn-google" id="googleBtn" type="button">
+                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="">
+                            <span>Masuk dengan Google</span>
+                        </button>
+
+                        <p class="form-note">
+                            Akun demo default: siswa NISN <strong>0012345678</strong>, password <strong>Smkn1Terisi@2024</strong>.
+                        </p>
+                    </section>
+
+                    <section class="panel" id="registerPanel">
+                        <form id="registerForm" novalidate>
+                            <div class="grid-2">
+                                <div class="field">
+                                    <label for="regRole"><i class="fas fa-user-tag"></i>Daftar Sebagai</label>
+                                    <select id="regRole" required>
+                                        <option value="siswa">Siswa</option>
+                                        <option value="calon_siswa">Calon Siswa</option>
+                                        <option value="wali_murid">Wali Murid</option>
+                                    </select>
+                                </div>
+                                <div class="field" id="regNisnWrap">
+                                    <label for="regNisn"><i class="fas fa-id-card"></i>NISN</label>
+                                    <input id="regNisn" type="text" placeholder="10 digit NISN" maxlength="10" inputmode="numeric">
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <label for="regName"><i class="fas fa-user"></i>Nama Lengkap</label>
+                                <input id="regName" type="text" placeholder="Nama sesuai dokumen resmi" autocomplete="name" required>
+                            </div>
+
+                            <div class="grid-2">
+                                <div class="field">
+                                    <label for="regEmail"><i class="fas fa-envelope"></i>Email Aktif</label>
+                                    <input id="regEmail" type="email" placeholder="nama@email.com" autocomplete="email" required>
+                                </div>
+                                <div class="field">
+                                    <label for="regPhone"><i class="fas fa-phone"></i>No. HP / WhatsApp</label>
+                                    <input id="regPhone" type="tel" placeholder="08xxxxxxxxxx" autocomplete="tel">
+                                </div>
+                            </div>
+
+                            <div class="grid-2">
+                                <div class="field">
+                                    <label for="regPassword"><i class="fas fa-lock"></i>Password</label>
+                                    <div class="password-wrap">
+                                        <input id="regPassword" type="password" placeholder="Minimal 8 karakter" autocomplete="new-password" required>
+                                        <button class="icon-btn" type="button" data-toggle-password="regPassword" aria-label="Tampilkan password"><i class="fas fa-eye"></i></button>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label for="regConfirm"><i class="fas fa-lock"></i>Konfirmasi Password</label>
+                                    <input id="regConfirm" type="password" placeholder="Ulangi password" autocomplete="new-password" required>
+                                </div>
+                            </div>
+
+                            <div class="strength" id="strengthBox">
+                                <div class="strength-track"><div class="strength-bar" id="strengthBar"></div></div>
+                                <span id="strengthText"></span>
+                            </div>
+
+                            <button class="btn btn-primary" id="registerBtn" type="submit">
+                                <i class="fas fa-spinner btn-spinner"></i>
+                                <span class="btn-label"><i class="fas fa-user-plus"></i> Buat Akun</span>
+                            </button>
+                        </form>
+                        <p class="hint">
+                            Pendaftaran mandiri hanya untuk siswa, calon siswa, dan wali murid. Akun staff dibuat oleh administrator.
+                        </p>
+                    </section>
+
+                    <section class="panel" id="ppdbPanel">
+                        <form id="ppdbCheckForm" novalidate>
+                            <div class="field">
+                                <label for="ppdbNumber"><i class="fas fa-file-lines"></i>Nomor Pendaftaran</label>
+                                <input id="ppdbNumber" type="text" placeholder="Contoh: PPDB-2026-ABC123" required>
+                            </div>
+                            <button class="btn btn-primary" id="ppdbBtn" type="submit">
+                                <i class="fas fa-spinner btn-spinner"></i>
+                                <span class="btn-label"><i class="fas fa-search"></i> Cek Status PPDB</span>
+                            </button>
+                        </form>
+                        <div class="ppdb-result" id="ppdbResult"></div>
+                    </section>
+
+                    <section class="panel" id="forgotPanel">
+                        <form id="forgotForm" novalidate>
+                            <div class="field">
+                                <label for="forgotEmail"><i class="fas fa-envelope"></i>Email Terdaftar</label>
+                                <input id="forgotEmail" type="email" placeholder="nama@email.com" autocomplete="email" required>
+                            </div>
+                            <button class="btn btn-primary" id="forgotBtn" type="submit">
+                                <i class="fas fa-spinner btn-spinner"></i>
+                                <span class="btn-label"><i class="fas fa-paper-plane"></i> Kirim Link Reset</span>
+                            </button>
+                        </form>
+                        <p class="form-note">
+                            <a href="#" class="text-link" data-panel-link="loginPanel"><i class="fas fa-arrow-left"></i> Kembali ke Login</a>
+                        </p>
+                    </section>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+        const AUTH_API = API_BASE + '/api/auth';
+        let currentRole = 'siswa';
+
+        const roleConfig = {
+            siswa: { label: 'NISN Siswa', placeholder: '10 digit NISN', type: 'text' },
+            guru: { label: 'Email Guru', placeholder: 'guru@smkn1terisi.sch.id', type: 'email' },
+            tata_usaha: { label: 'Email Tata Usaha', placeholder: 'tu@smkn1terisi.sch.id', type: 'email' },
+            kepala_sekolah: { label: 'Email Kepala Sekolah', placeholder: 'kepsek@smkn1terisi.sch.id', type: 'email' },
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            bindModeTabs();
+            bindRoleTabs();
+            bindForms();
+            bindPasswordToggles();
+            bindUrlMessages();
+            checkServerStatus();
+            checkExistingSession();
+            updateRegisterRole();
+        });
+
+        function bindModeTabs() {
+            document.querySelectorAll('.mode-tab').forEach(btn => {
+                btn.addEventListener('click', () => showPanel(btn.dataset.panel));
+            });
+            document.querySelectorAll('[data-panel-link]').forEach(link => {
+                link.addEventListener('click', event => {
+                    event.preventDefault();
+                    showPanel(link.dataset.panelLink);
+                });
+            });
+        }
+
+        function showPanel(panelId) {
+            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+            document.getElementById(panelId)?.classList.add('active');
+            document.querySelectorAll('.mode-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === panelId));
+            hideAlert();
+        }
+
+        function bindRoleTabs() {
+            document.querySelectorAll('.role-tab').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentRole = btn.dataset.role;
+                    document.querySelectorAll('.role-tab').forEach(item => item.classList.remove('active'));
+                    btn.classList.add('active');
+                    const cfg = roleConfig[currentRole];
+                    const input = document.getElementById('loginIdentifier');
+                    document.getElementById('identifierLabel').textContent = cfg.label;
+                    input.placeholder = cfg.placeholder;
+                    input.type = cfg.type;
+                    input.value = '';
+                });
+            });
+        }
+
+        function bindForms() {
+            const loginForm = document.getElementById('loginForm');
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('loginIdentifier').value.trim();
+                const pw = document.getElementById('loginPassword').value;
+                const remember = document.getElementById('rememberMe').checked;
+                const payload = { identifier: id, password: pw, role: currentRole, rememberMe: remember };
+                setLoading(loginForm, true);
+                try {
+                    const res = await fetch(AUTH_API + '/login', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const j = await res.json();
+                    if (!j.success) return showAlert('error', j.message || 'Login gagal');
+                    localStorage.setItem('accessToken', j.data.accessToken);
+                    localStorage.setItem('refreshToken', j.data.refreshToken || '');
+                    localStorage.setItem('userData', JSON.stringify(j.data.user));
+                    window.location.href = j.data.redirectTo || '/';
+                } catch (err) {
+                    showAlert('error', 'Gagal menghubungi server');
+                } finally { setLoading(loginForm, false); }
+            });
+
+            // register handler (simplified)
+            const registerForm = document.getElementById('registerForm');
+            registerForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const role = document.getElementById('regRole').value;
+                const nama = document.getElementById('regName').value.trim();
+                const email = document.getElementById('regEmail').value.trim();
+                const nisn = document.getElementById('regNisn').value.trim() || null;
+                const phone = document.getElementById('regPhone').value.trim() || null;
+                const pw = document.getElementById('regPassword').value;
+                const cpw = document.getElementById('regConfirm').value;
+                if (pw !== cpw) return showAlert('error', 'Konfirmasi password tidak cocok');
+                setLoading(registerForm, true);
+                try {
+                    const payload = { nama_lengkap: nama, email, password: pw, role, nisn, no_hp: phone };
+                    const res = await fetch(AUTH_API + '/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const j = await res.json();
+                    if (!j.success) return showAlert('error', j.message || 'Pendaftaran gagal');
+                    showAlert('success', j.message || 'Akun dibuat. Cek email.');
+                    showPanel('loginPanel');
+                } catch (err) { showAlert('error', 'Gagal menghubungi server'); }
+                finally { setLoading(registerForm, false); }
+            });
+        }
+
+        function bindPasswordToggles() {
+            document.querySelectorAll('[data-toggle-password]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.getAttribute('data-toggle-password');
+                    const inp = document.getElementById(id);
+                    if (!inp) return;
+                    inp.type = inp.type === 'password' ? 'text' : 'password';
+                });
+            });
+        }
+
+        function bindUrlMessages() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('verified')) showAlert('success', 'Email berhasil diverifikasi. Tunggu aktivasi admin jika staff.');
+            if (params.get('error')) showAlert('error', params.get('error'));
+        }
+
+        function checkServerStatus() {
+            fetch(AUTH_API + '/google/status').then(r => r.json()).then(j => {
+                const pill = document.getElementById('serverStatus');
+                const text = document.getElementById('serverStatusText');
+                if (j && j.configured) { pill.classList.add('online'); text.textContent = 'Server siap'; }
+                else { pill.classList.add('offline'); text.textContent = 'Server (offline atau tidak terkonfigurasi)'; }
+            }).catch(() => { const pill = document.getElementById('serverStatus'); pill.classList.add('offline'); document.getElementById('serverStatusText').textContent = 'Koneksi gagal'; });
+        }
+
+        function checkExistingSession() {
+            const tok = localStorage.getItem('accessToken');
+            const user = localStorage.getItem('userData');
+            if (tok && user) {
+                try { const u = JSON.parse(user); window.__edugate = { user: u, token: tok, role: u.role }; } catch {}
+            }
+        }
+
+        function updateRegisterRole() {
+            const sel = document.getElementById('regRole');
+            sel.addEventListener('change', () => {
+                const v = sel.value;
+                document.getElementById('regNisnWrap').style.display = v === 'siswa' ? 'block' : 'none';
+            });
+        }
+
+        function setLoading(form, state) {
+            if (state) form.classList.add('loading'); else form.classList.remove('loading');
+        }
+
+        function showAlert(type, msg) {
+            const a = document.getElementById('mainAlert');
+            const t = document.getElementById('mainAlertText');
+            a.className = 'alert show ' + type; t.textContent = msg;
+            setTimeout(() => { a.classList.remove('show'); }, 8000);
+        }
+    </script>
+</body>
+</html>

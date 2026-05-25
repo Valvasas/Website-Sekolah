@@ -51,15 +51,15 @@ function getAllUsers(req, res) {
     if (search) {
         // FIX: Sanitasi karakter khusus LIKE (%, _) agar tidak jadi wildcard yang tidak diinginkan
         const s = `%${search.replace(/[%_\\]/g, '\\$&')}%`;
-        conditions.push('(nama_lengkap LIKE ? OR email LIKE ? OR nisn LIKE ? OR nip LIKE ?)');
-        params.push(s, s, s, s);
+        conditions.push('(nama_lengkap LIKE ? OR email LIKE ? OR nisn LIKE ? OR nip LIKE ? OR bidang LIKE ? OR jabatan_detail LIKE ?)');
+        params.push(s, s, s, s, s, s);
     }
 
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
 
     // FIX: sortField dan sortOrder sudah divalidasi via whitelist Set di atas
     // Aman dipakai di template string karena nilainya tidak berasal dari input mentah
-    const userSQL  = `SELECT id,nama_lengkap,email,role,nisn,nip,no_hp,foto_profil,is_active,is_verified,last_login,created_at FROM users ${where} ORDER BY ${sortField} ${sortOrder} LIMIT ? OFFSET ?`;
+    const userSQL  = `SELECT id,nama_lengkap,email,role,nisn,nip,no_hp,foto_profil,bidang,jabatan_detail,is_active,is_verified,last_login,created_at FROM users ${where} ORDER BY ${sortField} ${sortOrder} LIMIT ? OFFSET ?`;
     const countSQL = `SELECT COUNT(*) as c FROM users ${where}`;
 
     try {
@@ -91,7 +91,7 @@ function getUserById(req, res) {
     try {
         const user = db.prepare(`
             SELECT id,nama_lengkap,email,role,nisn,nip,no_hp,
-                   foto_profil,is_active,is_verified,last_login,created_at,updated_at
+                   foto_profil,bidang,jabatan_detail,is_active,is_verified,last_login,created_at,updated_at
             FROM users WHERE id = :id
         `).get({ id: req.params.id });
 
@@ -106,7 +106,7 @@ function getUserById(req, res) {
 /* ── CREATE user (oleh admin) ────────────────────────── */
 async function createUser(req, res) {
     const db = getDB();
-    const { nama_lengkap, email, password, role, nisn, nip, no_hp } = req.body;
+    const { nama_lengkap, email, password, role, nisn, nip, no_hp, bidang, jabatan_detail } = req.body;
 
     try {
         if (email) {
@@ -128,13 +128,15 @@ async function createUser(req, res) {
 
         db.prepare(`
             INSERT INTO users
-            (id,nama_lengkap,email,password_hash,role,nisn,nip,no_hp,is_active,is_verified,created_at,updated_at)
-            VALUES (:id,:nama,:email,:hash,:role,:nisn,:nip,:hp,1,1,:now,:now)
+            (id,nama_lengkap,email,password_hash,role,nisn,nip,no_hp,bidang,jabatan_detail,is_active,is_verified,created_at,updated_at)
+            VALUES (:id,:nama,:email,:hash,:role,:nisn,:nip,:hp,:bidang,:jabatan,1,1,:now,:now)
         `).run({
             id: userId, nama: nama_lengkap.trim(),
             email: email?.toLowerCase() || null,
             hash, role,
-            nisn: nisn || null, nip: nip || null, hp: no_hp || null, now
+            nisn: nisn || null, nip: nip || null, hp: no_hp || null,
+            bidang: bidang || null, jabatan: jabatan_detail || null,
+            now
         });
 
         log(req.user.sub, 'USER_CREATED', 'users', userId, { role, email }, req.ip);
@@ -142,7 +144,7 @@ async function createUser(req, res) {
         return res.status(201).json({
             success: true,
             message: 'Akun berhasil dibuat.',
-            data:    { id: userId, nama_lengkap, role }
+            data:    { id: userId, nama_lengkap, role, bidang: bidang || null, jabatan_detail: jabatan_detail || null }
         });
     } catch (err) {
         console.error('[CreateUser]', err.message);
@@ -154,7 +156,7 @@ async function createUser(req, res) {
 async function updateUser(req, res) {
     const db = getDB();
     const { id } = req.params;
-    const { nama_lengkap, email, role, nisn, nip, no_hp, is_active, password } = req.body;
+    const { nama_lengkap, email, role, nisn, nip, no_hp, bidang, jabatan_detail, is_active, password } = req.body;
 
     try {
         const user = db.prepare('SELECT * FROM users WHERE id=:id').get({ id });
@@ -183,6 +185,8 @@ async function updateUser(req, res) {
         if (nisn !== undefined)      { fields.push('nisn=:nisn');          vals.nisn   = nisn || null; }
         if (nip  !== undefined)      { fields.push('nip=:nip');            vals.nip    = nip  || null; }
         if (no_hp !== undefined)     { fields.push('no_hp=:hp');           vals.hp     = no_hp || null; }
+        if (bidang !== undefined)    { fields.push('bidang=:bidang');      vals.bidang = bidang || null; }
+        if (jabatan_detail !== undefined) { fields.push('jabatan_detail=:jabatan'); vals.jabatan = jabatan_detail || null; }
         if (is_active !== undefined) { fields.push('is_active=:active');   vals.active = parseInt(is_active) === 1 ? 1 : 0; }
 
         if (password) {
@@ -250,6 +254,24 @@ function activateUser(req, res) {
     }
 }
 
+function getPendingStaff(req, res) {
+    const db = getDB();
+    try {
+        const users = db.prepare(`
+            SELECT id,nama_lengkap,email,role,bidang,jabatan_detail,no_hp,foto_profil,
+                   is_active,is_verified,last_login,created_at,updated_at
+            FROM users
+            WHERE role IN ('guru','tata_usaha') AND is_active = 0
+            ORDER BY created_at DESC
+        `).all();
+
+        return res.status(200).json({ success: true, data: users });
+    } catch (err) {
+        console.error('[GetPendingStaff]', err.message);
+        return res.status(500).json({ success: false, message: 'Gagal mengambil daftar staff pending.' });
+    }
+}
+
 /* ── STATS user ──────────────────────────────────────── */
 function getUserStats(req, res) {
     const db = getDB();
@@ -264,8 +286,12 @@ function getUserStats(req, res) {
         `).all();
 
         const total = db.prepare('SELECT COUNT(*) as c FROM users').get()?.c || 0;
+        const pendingStaff = db.prepare(`
+            SELECT COUNT(*) as c FROM users
+            WHERE role IN ('guru','tata_usaha') AND is_active = 0
+        `).get()?.c || 0;
 
-        return res.status(200).json({ success: true, data: { byRole: rows, total } });
+        return res.status(200).json({ success: true, data: { byRole: rows, total, pendingStaff } });
     } catch (err) {
         console.error('[GetUserStats]', err.message);
         return res.status(500).json({ success: false, message: 'Gagal mengambil statistik.' });
@@ -324,6 +350,6 @@ function getAuditLogs(req, res) {
 
 module.exports = {
     getAllUsers, getUserById, createUser,
-    updateUser, deactivateUser, activateUser,
+    updateUser, deactivateUser, activateUser, getPendingStaff,
     getUserStats, getAuditLogs
 };

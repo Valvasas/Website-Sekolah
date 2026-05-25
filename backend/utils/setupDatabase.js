@@ -25,7 +25,7 @@ function setup() {
         CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY, nama_lengkap TEXT NOT NULL, email TEXT UNIQUE,
             password_hash TEXT, role TEXT NOT NULL DEFAULT 'siswa',
-            nisn TEXT UNIQUE, nip TEXT UNIQUE, no_hp TEXT, foto_profil TEXT,
+            nisn TEXT UNIQUE, nip TEXT UNIQUE, no_hp TEXT, bidang TEXT, jabatan_detail TEXT, foto_profil TEXT,
             google_id TEXT UNIQUE, is_active INTEGER NOT NULL DEFAULT 1,
             is_verified INTEGER NOT NULL DEFAULT 0, last_login TEXT,
             login_attempts INTEGER NOT NULL DEFAULT 0, locked_until TEXT,
