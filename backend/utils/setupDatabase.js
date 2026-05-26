@@ -201,6 +201,22 @@ function setup() {
 
     console.log('✅ Semua tabel berhasil dibuat/diverifikasi');
 
+    db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_cbt_sessions_token   ON cbt_sessions(token);
+        CREATE INDEX IF NOT EXISTS idx_cbt_sessions_nisn    ON cbt_sessions(nisn);
+        CREATE INDEX IF NOT EXISTS idx_users_nisn           ON users(nisn) WHERE nisn IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_users_email          ON users(email) WHERE email IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_user      ON audit_logs(user_id);
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_created   ON audit_logs(created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_kehadiran_nisn       ON kehadiran(nisn, tanggal);
+        CREATE INDEX IF NOT EXISTS idx_nilai_nisn           ON nilai_siswa(nisn, semester);
+        CREATE INDEX IF NOT EXISTS idx_notifikasi_user      ON notifikasi(user_id, is_read);
+        CREATE INDEX IF NOT EXISTS idx_forum_user           ON forum_posts(user_id);
+        CREATE INDEX IF NOT EXISTS idx_submission_tugas     ON submission_tugas(tugas_id, nisn);
+    `);
+
+    console.log('✅ Database indexes created');
+
     // ── CEK APAKAH SUDAH ADA DATA ──────────────────────────────────
     const cnt = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
     if (cnt > 0) {

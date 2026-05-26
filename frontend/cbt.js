@@ -288,8 +288,11 @@ function beginExamWithQuestions(data, questions) {
 
 function startExam() {
     const data = BANK_SOAL[state.mapel];
+    if (!data) return;
     beginExamWithQuestions(data, shuffle([...data.soal]));
 }
+
+window._origStartExam = startExam;
 
 // Fisher-Yates shuffle
 function shuffle(arr) {
@@ -1466,7 +1469,6 @@ window.handleLogin = handleLogin;
 /* ──────────────────────────────────────────────────────────────
    PATCH startExam — tambah warmup sebelum ujian
    ────────────────────────────────────────────────────────────── */
-window._origStartExam = window.startExam;
 window.startExam = function() {
     if (!precheckState.passed) {
         alert('Kamera dan lokasi wajib aktif sebelum ujian bisa dimulai.');

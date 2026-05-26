@@ -77,6 +77,11 @@ const staticOpts = ENV.IS_PROD ? { maxAge: '1d', etag: true } : {};
 app.use('/asset',    express.static(path.join(projectRoot, 'asset'), staticOpts));
 app.use('/uploads',  express.static(uploadDir, staticOpts));
 app.use('/admin-panel', express.static(path.join(__dirname, 'admin-panel')));
+
+app.get(['/login', '/login.html'], (_req, res) => {
+    res.sendFile(path.join(frontendPath, 'login.html'));
+});
+
 app.use(express.static(frontendPath, { index: 'index.html', extensions: ['html'], ...staticOpts }));
 
 /* ── Health check (tanpa auth, tanpa rate limit) ──────────────────── */

@@ -232,7 +232,7 @@ function refreshToken(req, res) {
     const tok = req.body.refreshToken;
     if (!tok) return res.status(401).json({ success:false, message:'Refresh token tidak ditemukan.' });
 
-    const { valid, decoded } = jwtCfg.verifyToken(tok);
+    const { valid, decoded } = jwtCfg.verifyToken(tok, true);
     if (!valid) return res.status(401).json({ success:false, message:'Token tidak valid.' });
 
     const stored = db.prepare(`

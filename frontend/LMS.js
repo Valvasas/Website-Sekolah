@@ -174,6 +174,8 @@ async function initDashboard() {
         fetchJadwal(),
         fetchNotifikasi(),
     ]);
+
+    await fetchKelas();
 }
 
 /* ── Fetch: Dashboard stats ─────────────────────────────────── */
@@ -279,6 +281,79 @@ function renderMiniTugas() {
             </span>
         </div>`;
     }).join('');
+}
+
+async function fetchKelas() {
+    try {
+        const user = lmsState.user;
+        if (!user) return;
+
+        const mapelSet = new Set(lmsState.tugasData.map(t => t.mapel).filter(Boolean));
+        const kelasList = [...mapelSet].map((mapel, i) => ({
+            id: i,
+            nama: mapel,
+            guru: 'Guru Pengampu',
+            progress: Math.min(100, Math.max(0, Math.round(
+                (lmsState.tugasData.filter(t => t.mapel === mapel && t.submission_id).length /
+                Math.max(1, lmsState.tugasData.filter(t => t.mapel === mapel).length)) * 100
+            ))),
+            color: getMapelColor(mapel),
+            icon: getMapelIcon(mapel)
+        }));
+
+        renderKelas(kelasList);
+        renderMiniKelas(kelasList);
+    } catch(e) { console.warn('[Fetch kelas]', e.message); }
+}
+
+function renderKelas(kelasList) {
+    const el = document.getElementById('kelas-grid');
+    if (!el) return;
+    if (!kelasList.length) {
+        el.innerHTML = '<p style="text-align:center;color:#64748b;padding:40px 0;">Belum ada kelas terdaftar.</p>';
+        return;
+    }
+    el.innerHTML = kelasList.map(k => `
+        <div class="kelas-card">
+            <div class="kc-banner" style="background:linear-gradient(135deg,${k.color},${k.color}cc);">
+                <i class="${k.icon}"></i>
+                <span class="kc-badge">Aktif</span>
+            </div>
+            <div class="kc-body">
+                <h3>${escHtml(k.nama)}</h3>
+                <p>${escHtml(k.guru)}</p>
+                <div class="kc-progress">
+                    <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);">
+                        <span>Progress</span><span>${k.progress}%</span>
+                    </div>
+                    <div class="kc-prog-bar">
+                        <div class="kc-prog-fill" style="width:${k.progress}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderMiniKelas(kelasList) {
+    const el = document.getElementById('mini-kelas-list');
+    if (!el) return;
+    if (!kelasList.length) {
+        el.innerHTML = '<p style="text-align:center;color:#64748b;padding:20px 0;font-size:.85rem;">Belum ada kelas.</p>';
+        return;
+    }
+    el.innerHTML = kelasList.slice(0, 4).map(k => `
+        <div class="mini-kelas-item">
+            <div class="mk-icon" style="background:${k.color}20;">
+                <i class="${k.icon}" style="color:${k.color};font-size:1.2rem;"></i>
+            </div>
+            <div class="mk-info">
+                <h4>${escHtml(k.nama)}</h4>
+                <p>${k.progress}% selesai</p>
+            </div>
+            <i class="fas fa-chevron-right mk-arrow"></i>
+        </div>
+    `).join('');
 }
 
 function bukaSubmitTugas(id) {

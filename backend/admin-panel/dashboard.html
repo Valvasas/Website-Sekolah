@@ -351,9 +351,6 @@
 
         <hr class="nav-divider">
         <span class="sb-section-label">Konten</span>
-        <button class="nav-item" onclick="window.location.href='/admin.html'">
-            <i class="fas fa-chalkboard"></i> Panel CBT
-        </button>
         <button class="nav-item" onclick="window.location.href='/index.html'">
             <i class="fas fa-globe"></i> Lihat Website
         </button>
@@ -638,6 +635,7 @@ let currentSection = 'dashboard';
 
 function redirectToLogin() {
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userData');
     window.location.href = '/admin-panel/login.html';

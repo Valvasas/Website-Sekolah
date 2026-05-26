@@ -276,4 +276,46 @@ router.get('/results', authenticate, authorize(...STAFF), (req, res) => {
     }
 });
 
+/* ──────────────────────────────────────────────────────────────────
+   GET /api/cbt/soal/ujian/:mapel
+   Ambil soal aktif dari bank_soal untuk client CBT.
+   ────────────────────────────────────────────────────────────────── */
+router.get('/soal/ujian/:mapel', (req, res) => {
+    const db    = getDB();
+    const mapel = req.params.mapel;
+
+    const validMapel = ['matematika', 'bindo', 'basing', 'pkk', 'sejarah', 'produktif'];
+    if (!validMapel.includes(mapel)) {
+        return res.status(400).json({ success: false, message: 'Mapel tidak valid.' });
+    }
+
+    try {
+        const soal = db.prepare(`
+            SELECT id, soal, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, jawaban
+            FROM bank_soal
+            WHERE mapel = ? AND is_active = 1
+            ORDER BY RANDOM()
+            LIMIT 40
+        `).all(mapel);
+
+        if (!soal.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'Soal belum tersedia di database. Menggunakan soal lokal.'
+            });
+        }
+
+        const formatted = soal.map(s => ({
+            soal:    s.soal,
+            opsi:    [s.opsi_a, s.opsi_b, s.opsi_c, s.opsi_d, s.opsi_e].filter(Boolean),
+            jawaban: s.jawaban,
+        }));
+
+        return res.json({ success: true, data: formatted });
+    } catch (err) {
+        console.error('[CBT soal]', err.message);
+        return res.status(500).json({ success: false, message: 'Gagal mengambil soal.' });
+    }
+});
+
 module.exports = router;
