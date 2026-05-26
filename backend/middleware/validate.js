@@ -40,8 +40,8 @@ const registerRules = [
 
     body('role')
         .optional()
-        .isIn(['siswa', 'guru', 'tata_usaha', 'wali_murid', 'calon_siswa'])
-        .withMessage('Role tidak valid. Pilih: siswa, guru, tata_usaha, wali_murid.'),
+        .isIn(['siswa', 'guru', 'tata_usaha', 'wali_murid', 'calon_siswa', 'kepala_sekolah', 'super_admin'])
+        .withMessage('Role tidak valid.'),
 
     body('nisn')
         .optional({ nullable: true, checkFalsy: true })
@@ -68,6 +68,14 @@ const registerRules = [
     body('mata_pelajaran')
         .optional({ nullable: true, checkFalsy: true })
         .isLength({ max: 100 }).withMessage('Mata pelajaran maksimal 100 karakter.'),
+
+    body('kelas')
+        .optional({ nullable: true, checkFalsy: true })
+        .isLength({ max: 50 }).withMessage('Kelas maksimal 50 karakter.'),
+
+    body('jurusan')
+        .optional({ nullable: true, checkFalsy: true })
+        .isLength({ max: 100 }).withMessage('Jurusan maksimal 100 karakter.'),
 ];
 
 // ── Rules validasi Login ──────────────────────────────────

@@ -62,14 +62,49 @@ function setup() {
             updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         );
         CREATE TABLE IF NOT EXISTS cbt_results (
-            id TEXT PRIMARY KEY, nisn TEXT NOT NULL, mapel TEXT NOT NULL,
+            id TEXT PRIMARY KEY, exam_id TEXT, session_id TEXT,
+            nisn TEXT NOT NULL, mapel TEXT NOT NULL,
             benar INTEGER DEFAULT 0, salah INTEGER DEFAULT 0,
             kosong INTEGER DEFAULT 0, nilai REAL DEFAULT 0,
             selesai_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         );
+        CREATE TABLE IF NOT EXISTS cbt_exams (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            mapel TEXT NOT NULL,
+            kelas TEXT NOT NULL,
+            durasi_menit INTEGER NOT NULL DEFAULT 90,
+            question_count INTEGER NOT NULL DEFAULT 40,
+            start_at TEXT,
+            end_at TEXT,
+            status TEXT NOT NULL DEFAULT 'draft',
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
+        CREATE TABLE IF NOT EXISTS cbt_exam_questions (
+            id TEXT PRIMARY KEY,
+            exam_id TEXT NOT NULL,
+            question_id TEXT NOT NULL,
+            urutan INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            UNIQUE(exam_id, question_id)
+        );
+        CREATE TABLE IF NOT EXISTS cbt_answers (
+            id TEXT PRIMARY KEY,
+            exam_id TEXT,
+            session_id TEXT NOT NULL,
+            nisn TEXT NOT NULL,
+            question_id TEXT NOT NULL,
+            jawaban TEXT,
+            is_correct INTEGER,
+            answered_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            UNIQUE(session_id, question_id)
+        );
         CREATE TABLE IF NOT EXISTS cbt_sessions (
-            id TEXT PRIMARY KEY, nisn TEXT NOT NULL, mapel TEXT NOT NULL,
+            id TEXT PRIMARY KEY, exam_id TEXT, nisn TEXT NOT NULL, mapel TEXT NOT NULL,
             token TEXT NOT NULL UNIQUE, used INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'issued',
             start_time TEXT, end_time TEXT,
             durasi_menit INTEGER NOT NULL DEFAULT 90,
             expires_at TEXT NOT NULL,
@@ -201,9 +236,22 @@ function setup() {
 
     console.log('✅ Semua tabel berhasil dibuat/diverifikasi');
 
+    const sessionCols = db.pragma('table_info(cbt_sessions)').map(c => c.name);
+    if (!sessionCols.includes('exam_id')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN exam_id TEXT');
+    if (!sessionCols.includes('status')) db.exec("ALTER TABLE cbt_sessions ADD COLUMN status TEXT NOT NULL DEFAULT 'issued'");
+
+    const resultCols = db.pragma('table_info(cbt_results)').map(c => c.name);
+    if (!resultCols.includes('exam_id')) db.exec('ALTER TABLE cbt_results ADD COLUMN exam_id TEXT');
+    if (!resultCols.includes('session_id')) db.exec('ALTER TABLE cbt_results ADD COLUMN session_id TEXT');
+
     db.exec(`
         CREATE INDEX IF NOT EXISTS idx_cbt_sessions_token   ON cbt_sessions(token);
         CREATE INDEX IF NOT EXISTS idx_cbt_sessions_nisn    ON cbt_sessions(nisn);
+        CREATE INDEX IF NOT EXISTS idx_cbt_sessions_exam    ON cbt_sessions(exam_id, nisn);
+        CREATE INDEX IF NOT EXISTS idx_cbt_exams_status     ON cbt_exams(status, kelas, mapel);
+        CREATE INDEX IF NOT EXISTS idx_cbt_exam_questions   ON cbt_exam_questions(exam_id, urutan);
+        CREATE INDEX IF NOT EXISTS idx_cbt_answers_session  ON cbt_answers(session_id, question_id);
+        CREATE INDEX IF NOT EXISTS idx_cbt_results_exam     ON cbt_results(exam_id, nisn);
         CREATE INDEX IF NOT EXISTS idx_users_nisn           ON users(nisn) WHERE nisn IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_users_email          ON users(email) WHERE email IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_audit_logs_user      ON audit_logs(user_id);
@@ -216,6 +264,78 @@ function setup() {
     `);
 
     console.log('✅ Database indexes created');
+
+    const bankCnt = db.prepare('SELECT COUNT(*) as c FROM bank_soal').get().c;
+    if (bankCnt === 0) {
+        const now = new Date().toISOString();
+        const demoSoal = [
+            ['matematika','Nilai dari 2 pangkat 3 dikali 4 adalah...','16','24','32','40','48','C'],
+            ['matematika','Akar kuadrat dari 225 adalah...','13','14','15','16','17','C'],
+            ['matematika','Jika f(x)=3x+5, maka f(4)=...','15','17','19','21','23','B'],
+            ['matematika','Luas persegi panjang 12 cm x 8 cm adalah...','80','88','96','104','112','C'],
+            ['matematika','FPB dari 36 dan 48 adalah...','6','8','12','16','24','C'],
+            ['bindo','Antonim dari kata boros adalah...','Hemat','Kikir','Mahal','Murah','Banyak','A'],
+            ['bindo','Kalimat dengan kata baku yang benar adalah...','Saya pergi ke apotek','Saya pergi ke apotik','Saya pergi ke aptek','Saya pergi ke apotheke','Saya pergi ke apoteks','A'],
+            ['bindo','Paragraf yang kalimat utamanya di akhir disebut...','Deduktif','Induktif','Campuran','Naratif','Deskriptif','B'],
+            ['bindo','Majas yang melebih-lebihkan disebut...','Metafora','Hiperbola','Simile','Ironi','Litotes','B'],
+            ['bindo','Tanda baca untuk kalimat tanya adalah...','Titik','Koma','Tanda tanya','Titik dua','Tanda seru','C'],
+            ['basing','The past tense of go is...','Goed','Went','Gone','Goes','Going','B'],
+            ['basing','She ___ to school every day.','go','goes','going','went','gone','B'],
+            ['basing','The synonym of big is...','Small','Tiny','Large','Short','Narrow','C'],
+            ['basing','The plural form of child is...','Childs','Childes','Children','Childrens','Childen','C'],
+            ['basing','The opposite of beautiful is...','Handsome','Ugly','Pretty','Cute','Lovely','B'],
+            ['pkk','SWOT adalah analisis...','Sales Work Order Team','Strength Weakness Opportunity Threat','Stock Work Output Target','System Work Online Trade','Standard Workflow Task','B'],
+            ['pkk','Dokumen rencana bisnis disebut...','Invoice','Business Plan','Nota','Kuitansi','SIUP','B'],
+            ['pkk','Modal awal untuk memulai usaha disebut...','Modal tetap','Modal awal','Modal akhir','Modal sosial','Modal pasif','B'],
+            ['pkk','E-commerce adalah...','Perdagangan elektronik','Gudang barang','Toko fisik','Distribusi manual','Pemasaran offline','A'],
+            ['pkk','BEP terjadi saat...','Pendapatan sama dengan biaya','Biaya nol','Untung besar','Rugi besar','Produksi maksimum','A'],
+            ['sejarah','Proklamasi Kemerdekaan RI dibacakan pada...','17 Agustus 1944','17 Agustus 1945','17 Agustus 1946','18 Agustus 1945','20 Mei 1908','B'],
+            ['sejarah','Budi Utomo berdiri pada...','20 Mei 1906','20 Mei 1908','28 Oktober 1928','17 Agustus 1945','1 Juni 1945','B'],
+            ['sejarah','Sumpah Pemuda diikrarkan pada...','28 Oktober 1926','28 Oktober 1927','28 Oktober 1928','28 Oktober 1929','28 Oktober 1930','C'],
+            ['sejarah','PPKI adalah singkatan dari...','Panitia Persiapan Kemerdekaan Indonesia','Panitia Penyidik Kemerdekaan Indonesia','Persatuan Pemuda Kemerdekaan Indonesia','Panitia Pusat Kebangsaan Indonesia','Persatuan Pekerja Indonesia','A'],
+            ['sejarah','Konferensi Asia-Afrika dilaksanakan di...','Jakarta','Surabaya','Bandung','Yogyakarta','Medan','C'],
+            ['produktif','OSI Layer untuk pengiriman end-to-end adalah...','Physical','Data Link','Network','Transport','Application','D'],
+            ['produktif','IP 192.168.1.1 termasuk kelas...','A','B','C','D','E','C'],
+            ['produktif','Port default HTTPS adalah...','21','22','80','443','8080','D'],
+            ['produktif','DNS berfungsi untuk...','Membatasi bandwidth','Menerjemahkan domain ke IP','Membuat kabel','Mematikan server','Menghapus cache','B'],
+            ['produktif','VPN adalah singkatan dari...','Virtual Private Network','Very Private Network','Virtual Public Network','Verified Private Network','Visual Protocol Network','A'],
+        ];
+        const insertSoal = db.prepare(`
+            INSERT INTO bank_soal (id,mapel,jenis_ujian,soal,opsi_a,opsi_b,opsi_c,opsi_d,opsi_e,jawaban,tingkat,created_by,is_active,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?, 'sedang', NULL, 1, ?, ?)
+        `);
+        const seedBank = db.transaction(() => {
+            for (const s of demoSoal) {
+                insertSoal.run(uuidv4(), s[0], 'DEMO', s[1], s[2], s[3], s[4], s[5], s[6], s[7], now, now);
+            }
+        });
+        seedBank();
+        console.log('✅ Demo bank soal CBT dibuat untuk testing');
+    }
+
+    const profilCnt = db.prepare('SELECT COUNT(*) as c FROM siswa_profil').get().c;
+    if (profilCnt === 0) {
+        const now = new Date().toISOString();
+        const demoProfiles = [
+            ['0012345678', 'XI TKJ 1', 'Teknik Komputer & Jaringan'],
+            ['0023456789', 'XI AKL 1', 'Akuntansi & Keuangan Lembaga'],
+            ['0034567890', 'XI TBSM 2', 'Teknik Bisnis Sepeda Motor'],
+            ['1234567890', 'XI TKJ 1', 'Teknik Komputer & Jaringan'],
+        ];
+        const findUser = db.prepare('SELECT id FROM users WHERE nisn = ?');
+        const insertProfile = db.prepare(`
+            INSERT OR IGNORE INTO siswa_profil (id,user_id,nisn,kelas,jurusan,updated_at)
+            VALUES (?,?,?,?,?,?)
+        `);
+        const seedProfiles = db.transaction(() => {
+            for (const p of demoProfiles) {
+                const user = findUser.get(p[0]);
+                if (user) insertProfile.run(uuidv4(), user.id, p[0], p[1], p[2], now);
+            }
+        });
+        seedProfiles();
+        console.log('✅ Demo profil siswa dibuat untuk testing kelas CBT');
+    }
 
     // ── CEK APAKAH SUDAH ADA DATA ──────────────────────────────────
     const cnt = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
@@ -251,6 +371,21 @@ function setup() {
         { id:uuidv4(), nama:'Rizky Aditya Pratama',                   email:'rizky.aditya@siswa.smkn1terisi.sch.id',  role:'siswa',          nisn:'0034567890', nip:null,                hp:'081200000009', hash, now },
         { id:uuidv4(), nama:'Supriadi',                               email:'supriadi@gmail.com',                     role:'wali_murid',     nisn:null,         nip:null,                hp:'081200000010', hash, now },
     ]);
+
+    const seededProfiles = [
+        ['0012345678', 'XI TKJ 1', 'Teknik Komputer & Jaringan'],
+        ['0023456789', 'XI AKL 1', 'Akuntansi & Keuangan Lembaga'],
+        ['0034567890', 'XI TBSM 2', 'Teknik Bisnis Sepeda Motor'],
+    ];
+    const findSeedUser = db.prepare('SELECT id FROM users WHERE nisn = ?');
+    const insertSeedProfile = db.prepare(`
+        INSERT OR IGNORE INTO siswa_profil (id,user_id,nisn,kelas,jurusan,updated_at)
+        VALUES (?,?,?,?,?,?)
+    `);
+    for (const p of seededProfiles) {
+        const user = findSeedUser.get(p[0]);
+        if (user) insertSeedProfile.run(uuidv4(), user.id, p[0], p[1], p[2], now);
+    }
 
     // Seed announcements
     const insertAnn = db.prepare(`INSERT OR IGNORE INTO announcements (id,judul,isi,tipe,is_active,urutan,created_at,updated_at) VALUES (@id,@judul,@isi,@tipe,1,@urutan,@now,@now)`);

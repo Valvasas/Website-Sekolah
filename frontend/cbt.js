@@ -6,119 +6,21 @@
 'use strict';
 
 /* ============================================================
-   DATA SOAL PER MATA PELAJARAN
-   Format: { soal, opsi:[...], jawaban:'A'/'B'/... }
+   METADATA MAPEL CBT
+   Soal ujian dan kunci jawaban wajib dimuat dari backend.
    ============================================================ */
 const BANK_SOAL = {
-    matematika: {
-        nama: 'Matematika',
-        jenis: 'Penilaian Akhir Semester (PAS)',
-        durasi: 90,
-        soal: [
-            { soal:'Nilai dari 2³ × 4² adalah...', opsi:['32','64','128','256','512'], jawaban:'C' },
-            { soal:'Akar pangkat dua dari 225 adalah...', opsi:['13','14','15','16','17'], jawaban:'C' },
-            { soal:'Jika f(x) = 3x + 5, maka f(4) = ...', opsi:['17','19','20','21','22'], jawaban:'A' },
-            { soal:'Hasil dari 5! (5 faktorial) adalah...', opsi:['60','100','120','150','200'], jawaban:'C' },
-            { soal:'Sebuah persegi panjang memiliki panjang 12 cm dan lebar 8 cm. Luasnya adalah...', opsi:['80 cm²','88 cm²','96 cm²','100 cm²','104 cm²'], jawaban:'C' },
-            { soal:'Nilai sin 30° adalah...', opsi:['½','½√2','½√3','1','√3'], jawaban:'A' },
-            { soal:'Gradien garis 4x - 2y + 8 = 0 adalah...', opsi:['2','-2','4','-4','1'], jawaban:'A' },
-            { soal:'Jika p = 3 dan q = -2, maka 2p² - 3q = ...', opsi:['12','18','24','10','20'], jawaban:'C' },
-            { soal:'Jumlah deret aritmetika 2 + 5 + 8 + ... + 29 adalah...', opsi:['155','160','165','170','175'], jawaban:'A' },
-            { soal:'FPB dari 36 dan 48 adalah...', opsi:['6','8','12','16','24'], jawaban:'C' },
-        ]
-    },
-    bindo: {
-        nama: 'Bahasa Indonesia',
-        jenis: 'Penilaian Akhir Semester (PAS)',
-        durasi: 90,
-        soal: [
-            { soal:'Kalimat yang menggunakan kata baku yang benar adalah...', opsi:['Saya pergi ke apotek membeli obat','Saya pergi ke apotik membeli obat','Saya pergi ke aptek membeli obat','Saya pergi ke apotheek membeli obat','Saya pergi ke apoteks membeli obat'], jawaban:'A' },
-            { soal:'Antonim dari kata "boros" adalah...', opsi:['Hemat','Miskin','Kikir','Sederhana','Murah'], jawaban:'A' },
-            { soal:'Penulisan huruf kapital yang benar terdapat pada kalimat...', opsi:['Dia tinggal di jalan Merdeka','Dia tinggal di Jalan Merdeka','Dia tinggal di Jalan merdeka','Dia tinggal di jalan merdeka','Dia Tinggal di jalan Merdeka'], jawaban:'B' },
-            { soal:'Jenis paragraf yang kalimat utamanya berada di akhir paragraf disebut...', opsi:['Deduktif','Induktif','Campuran','Naratif','Deskriptif'], jawaban:'B' },
-            { soal:'Majas yang melebih-lebihkan sesuatu disebut...', opsi:['Simile','Metafora','Hiperbola','Personifikasi','Ironi'], jawaban:'C' },
-            { soal:'Kata "menggubah" dalam kalimat "Ia menggubah sebuah lagu" bermakna...', opsi:['Menyanyikan','Menciptakan','Merekam','Memainkan','Memperbaiki'], jawaban:'B' },
-            { soal:'Tanda baca yang digunakan untuk mengakhiri kalimat tanya adalah...', opsi:['Titik (.)','Koma (,)','Tanda tanya (?)','Tanda seru (!)','Titik dua (:)'], jawaban:'C' },
-            { soal:'Sinonim dari kata "genuine" adalah...', opsi:['Asli','Palsu','Baru','Lama','Kuno'], jawaban:'A' },
-            { soal:'"Suaranya menggelegar memecah langit." Kalimat tersebut mengandung majas...', opsi:['Metafora','Personifikasi','Hiperbola','Simile','Alegori'], jawaban:'C' },
-            { soal:'Penulisan angka yang benar dalam kalimat adalah...', opsi:['Saya membeli 5 buah buku','Saya membeli lima buah buku','Saya membeli Lima buah buku','Saya membeli 5 Buah buku','Saya membeli limah buah buku'], jawaban:'B' },
-        ]
-    },
-    basing: {
-        nama: 'Bahasa Inggris',
-        jenis: 'Penilaian Akhir Semester (PAS)',
-        durasi: 90,
-        soal: [
-            { soal:'The correct past tense of "go" is...', opsi:['Goed','Went','Gone','Goes','Going'], jawaban:'B' },
-            { soal:'"She ___ to school every day." The correct verb is...', opsi:['go','goes','going','went','gone'], jawaban:'B' },
-            { soal:'The synonym of "big" is...', opsi:['Small','Tiny','Large','Narrow','Short'], jawaban:'C' },
-            { soal:'Which sentence is correct?', opsi:['I am going to school yesterday','She was cooked dinner last night','They played football this morning','He go to market every day','We was happy yesterday'], jawaban:'C' },
-            { soal:'The antonym of "beautiful" is...', opsi:['Handsome','Ugly','Pretty','Cute','Lovely'], jawaban:'B' },
-            { soal:'"___ you like coffee?" The correct question word is...', opsi:['Are','Is','Do','Does','Did'], jawaban:'C' },
-            { soal:'The plural form of "child" is...', opsi:['Childs','Childes','Children','Childrens','Childen'], jawaban:'C' },
-            { soal:'"I have been studying for 2 hours." This sentence uses...', opsi:['Simple Present','Simple Past','Present Perfect','Present Continuous','Past Perfect Continuous'], jawaban:'C' },
-            { soal:'The correct spelling is...', opsi:['Recieve','Receive','Recive','Receieve','Receeive'], jawaban:'B' },
-            { soal:'What does "ambitious" mean?', opsi:['Lazy','Humble','Having strong desire to succeed','Careless','Generous'], jawaban:'C' },
-        ]
-    },
-    pkk: {
-        nama: 'Produk Kreatif & Kewirausahaan',
-        jenis: 'Penilaian Akhir Semester (PAS)',
-        durasi: 90,
-        soal: [
-            { soal:'Ciri utama seorang wirausaha yang sukses adalah...', opsi:['Takut gagal','Berani mengambil risiko yang terukur','Menunggu peluang datang','Bergantung pada bantuan pemerintah','Mudah menyerah'], jawaban:'B' },
-            { soal:'Apa yang dimaksud dengan analisis SWOT?', opsi:['Strategi pemasaran produk','Analisis Strength, Weakness, Opportunity, Threat','Teknik pengelolaan keuangan','Metode produksi barang','Sistem distribusi produk'], jawaban:'B' },
-            { soal:'Dokumen yang berisi rencana bisnis secara menyeluruh disebut...', opsi:['Invoice','Business Plan','Nota Penjualan','Kuitansi','SIUP'], jawaban:'B' },
-            { soal:'Apa kepanjangan dari UMKM?', opsi:['Usaha Maju Kreatif Mandiri','Usaha Mikro Kecil Menengah','Unit Modal Kerja Mandiri','Usaha Modern Kreatif Mandiri','Unit Mikro Karya Mandiri'], jawaban:'B' },
-            { soal:'Modal awal yang digunakan untuk memulai usaha disebut...', opsi:['Modal kerja','Modal tetap','Modal investasi','Modal awal','Modal ventura'], jawaban:'D' },
-            { soal:'Strategi penetapan harga di bawah harga pasar untuk menarik konsumen disebut...', opsi:['Skimming pricing','Penetration pricing','Premium pricing','Cost plus pricing','Value pricing'], jawaban:'B' },
-            { soal:'Hak eksklusif yang diberikan negara atas hasil karya/invensi seseorang disebut...', opsi:['Hak Cipta','Paten','Merek Dagang','Desain Industri','Lisensi'], jawaban:'B' },
-            { soal:'Proses mengubah bahan baku menjadi produk jadi disebut...', opsi:['Distribusi','Produksi','Konsumsi','Pemasaran','Investasi'], jawaban:'B' },
-            { soal:'E-commerce adalah...', opsi:['Perdagangan elektronik berbasis internet','Toko elektronik fisik','Pasar tradisional modern','Sistem pembayaran tunai','Gudang penyimpanan barang'], jawaban:'A' },
-            { soal:'Break Even Point (BEP) adalah kondisi di mana...', opsi:['Usaha mendapat keuntungan besar','Total pendapatan sama dengan total biaya','Usaha mengalami kerugian','Modal sudah kembali berlipat','Produksi mencapai maksimum'], jawaban:'B' },
-        ]
-    },
-    sejarah: {
-        nama: 'Sejarah Indonesia',
-        jenis: 'Penilaian Akhir Semester (PAS)',
-        durasi: 60,
-        soal: [
-            { soal:'Proklamasi Kemerdekaan Indonesia dibacakan pada tanggal...', opsi:['17 Agustus 1944','17 Agustus 1945','17 Agustus 1946','17 Agustus 1947','17 Agustus 1950'], jawaban:'B' },
-            { soal:'Kerajaan Majapahit mencapai puncak kejayaannya pada masa pemerintahan...', opsi:['Raden Wijaya','Hayam Wuruk','Brawijaya V','Ken Arok','Sindok'], jawaban:'B' },
-            { soal:'Budi Utomo didirikan pada tanggal...', opsi:['20 Mei 1906','20 Mei 1908','20 Mei 1910','20 Mei 1912','20 Mei 1915'], jawaban:'B' },
-            { soal:'Peristiwa Rengasdengklok terjadi pada...', opsi:['15 Agustus 1945','16 Agustus 1945','17 Agustus 1945','18 Agustus 1945','19 Agustus 1945'], jawaban:'B' },
-            { soal:'Sumpah Pemuda diikrarkan pada tanggal...', opsi:['28 Oktober 1926','28 Oktober 1927','28 Oktober 1928','28 Oktober 1929','28 Oktober 1930'], jawaban:'C' },
-            { soal:'PPKI singkatan dari...', opsi:['Panitia Penyidik Kemerdekaan Indonesia','Panitia Persiapan Kemerdekaan Indonesia','Persatuan Pejuang Kemerdekaan Indonesia','Panitia Penyusun Konstitusi Indonesia','Persatuan Pemuda Kemerdekaan Indonesia'], jawaban:'B' },
-            { soal:'Siapa yang membacakan teks Proklamasi Kemerdekaan RI?', opsi:['Soekarno saja','Hatta saja','Soekarno dan Hatta','BPUPKI','PPKI'], jawaban:'C' },
-            { soal:'Konferensi Asia-Afrika dilaksanakan di...', opsi:['Jakarta','Surabaya','Bandung','Yogyakarta','Medan'], jawaban:'C' },
-            { soal:'Penjajahan Belanda di Indonesia berlangsung selama kurang lebih...', opsi:['150 tahun','200 tahun','250 tahun','300 tahun','350 tahun'], jawaban:'D' },
-            { soal:'Organisasi pergerakan nasional pertama di Indonesia adalah...', opsi:['Sarekat Islam','Indische Partij','Budi Utomo','PNI','PKI'], jawaban:'C' },
-        ]
-    },
-    produktif: {
-        nama: 'Kompetensi Keahlian',
-        jenis: 'Ujian Kompetensi Keahlian (UKK)',
-        durasi: 120,
-        soal: [
-            { soal:'OSI Layer yang bertanggung jawab untuk pengiriman data end-to-end adalah...', opsi:['Physical Layer','Data Link Layer','Network Layer','Transport Layer','Application Layer'], jawaban:'D' },
-            { soal:'IP Address 192.168.1.1 termasuk dalam kelas...', opsi:['Kelas A','Kelas B','Kelas C','Kelas D','Kelas E'], jawaban:'C' },
-            { soal:'Protokol yang digunakan untuk mengirim email adalah...', opsi:['HTTP','FTP','SMTP','SSH','DNS'], jawaban:'C' },
-            { soal:'Subnet mask /24 setara dengan...', opsi:['255.0.0.0','255.255.0.0','255.255.255.0','255.255.255.128','255.255.255.192'], jawaban:'C' },
-            { soal:'Port default yang digunakan protokol HTTPS adalah...', opsi:['21','22','80','443','8080'], jawaban:'D' },
-            { soal:'Topologi jaringan yang semua perangkat terhubung ke satu pusat disebut...', opsi:['Bus','Ring','Star','Mesh','Tree'], jawaban:'C' },
-            { soal:'Perintah untuk melihat konfigurasi IP di Linux adalah...', opsi:['ipconfig','ifconfig','netstat','tracert','nslookup'], jawaban:'B' },
-            { soal:'DNS berfungsi untuk...', opsi:['Mengamankan jaringan','Mentranslasi nama domain ke IP Address','Mengatur bandwidth','Membagi IP Address','Menghubungkan dua jaringan'], jawaban:'B' },
-            { soal:'Jenis kabel fiber optik yang menggunakan satu jalur cahaya disebut...', opsi:['Multi Mode','Single Mode','UTP','STP','Coaxial'], jawaban:'B' },
-            { soal:'VPN singkatan dari...', opsi:['Very Private Network','Virtual Private Network','Virtual Public Network','Verified Private Network','Virtual Protocol Network'], jawaban:'B' },
-        ]
-    }
+    matematika: { nama: 'Matematika', jenis: 'Ujian CBT', durasi: 90 },
+    bindo:      { nama: 'Bahasa Indonesia', jenis: 'Ujian CBT', durasi: 90 },
+    basing:     { nama: 'Bahasa Inggris', jenis: 'Ujian CBT', durasi: 90 },
+    pkk:        { nama: 'Produk Kreatif & Kewirausahaan', jenis: 'Ujian CBT', durasi: 90 },
+    sejarah:    { nama: 'Sejarah Indonesia', jenis: 'Ujian CBT', durasi: 60 },
+    produktif:  { nama: 'Kompetensi Keahlian', jenis: 'Ujian CBT', durasi: 120 },
 };
-
 // URL base API — sesuaikan jika backend di server berbeda
 const CBT_API = window.location.hostname === 'localhost'
     ? 'http://localhost:3001/api/cbt'
     : '/api/cbt';
-const CBT_TOKEN_KEY = 'accessToken';
 
 /* ============================================================
    STATE APLIKASI
@@ -128,6 +30,9 @@ const state = {
     siswa:       '',
     nisn:        '',   // FIX: simpan NISN untuk WS handshake
     token:       '',   // FIX: simpan CBT token untuk WS handshake
+    sessionId:   null,
+    examId:      null,
+    examTitle:   null,
     soalList:    [],
     jawaban:     {},     // { nomor: 'A'/'B'/... }
     raguList:    new Set(),
@@ -136,6 +41,8 @@ const state = {
     timerSisa:   0,      // detik
     timerInterval: null,
     started:     false,
+    submitting:   false,
+    lastResult:   null,
 };
 
 /* ============================================================
@@ -157,6 +64,12 @@ function closeModal(id) {
     if (el) el.classList.remove('open');
 }
 
+function escHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+    }[c]));
+}
+
 /* ============================================================
    LOGIN
    ============================================================ */
@@ -169,9 +82,11 @@ if (togglePw) {
         if (inp.type === 'password') {
             inp.type = 'text';
             icon.className = 'fas fa-eye-slash';
+            togglePw.setAttribute('aria-label', 'Sembunyikan token');
         } else {
             inp.type = 'password';
             icon.className = 'fas fa-eye';
+            togglePw.setAttribute('aria-label', 'Tampilkan token');
         }
     });
 }
@@ -229,16 +144,19 @@ async function handleLogin() {
         state.siswa  = data.data.siswa_nama || `NISN: ${nisn}`;
         state.nisn   = nisn;
         state.token  = token;
+        state.sessionId = data.data.session_id || null;
+        state.examId    = data.data.exam_id || null;
+        state.examTitle = data.data.exam_title || null;
 
-        const bankData = BANK_SOAL[state.mapel];
+        const bankData = BANK_SOAL[state.mapel] || { nama: state.mapel, jenis: 'Ujian CBT', durasi: data.data.durasi_menit || 90, soal: [] };
         if (!bankData) {
             showErr('Data soal untuk mata pelajaran ini tidak tersedia.');
             return;
         }
 
-        document.getElementById('brief-mapel-name').textContent = bankData.nama;
+        document.getElementById('brief-mapel-name').textContent = state.examTitle || bankData.nama;
         document.getElementById('brief-type').textContent       = bankData.jenis;
-        document.getElementById('brief-jumlah').textContent     = bankData.soal.length;
+        document.getElementById('brief-jumlah').textContent     = data.data.jumlah_soal || bankData.soal?.length || '-';
         document.getElementById('brief-durasi').textContent     = data.data.durasi_menit || bankData.durasi;
         state.durasi = data.data.durasi_menit || bankData.durasi;
 
@@ -257,13 +175,6 @@ async function handleLogin() {
     }
 }
 
-function showError(el, msgEl, msg) {
-    msgEl.textContent = msg;
-    el.classList.remove('hidden');
-    el.style.animation = 'none';
-    requestAnimationFrame(() => { el.style.animation = ''; });
-}
-
 /* ============================================================
    MULAI UJIAN
    ============================================================ */
@@ -276,31 +187,16 @@ function beginExamWithQuestions(data, questions) {
     state.timerSisa  = state.durasi * 60;
     state.started    = true;
 
-    document.getElementById('exam-mapel-label').textContent   = data.nama;
+    document.getElementById('exam-mapel-label').textContent   = state.examTitle || data.nama;
     document.getElementById('exam-student-label').textContent = state.siswa;
     document.getElementById('q-total').textContent            = state.soalList.length;
 
     buildNavGrid();
+    updateExamProgress();
+    updateTimerDisplay();
     renderQuestion();
     startTimer();
     showScreen('screen-exam');
-}
-
-function startExam() {
-    const data = BANK_SOAL[state.mapel];
-    if (!data) return;
-    beginExamWithQuestions(data, shuffle([...data.soal]));
-}
-
-window._origStartExam = startExam;
-
-// Fisher-Yates shuffle
-function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
 }
 
 /* ============================================================
@@ -345,7 +241,7 @@ function renderQuestion() {
 
     // Teks soal
     document.getElementById('q-text').innerHTML =
-        `<p>${soal.soal}</p>`;
+        `<p>${escHtml(soal.soal)}</p>`;
 
     // Opsi
     const container = document.getElementById('q-options');
@@ -354,26 +250,40 @@ function renderQuestion() {
         const letter  = LETTERS[i];
         const isChosen= state.jawaban[idx] === letter;
         const btn     = document.createElement('button');
+        btn.type = 'button';
         btn.className = 'option-btn' + (isChosen ? ' selected' : '');
-        btn.innerHTML = `<span class="option-letter">${letter}</span><span>${opt}</span>`;
+        btn.setAttribute('aria-pressed', String(isChosen));
+        btn.innerHTML = `<span class="option-letter">${letter}</span><span>${escHtml(opt)}</span>`;
         btn.addEventListener('click', () => selectAnswer(letter));
         container.appendChild(btn);
     });
 
     // Ragu-ragu
     document.getElementById('ragu-check').checked = state.raguList.has(idx);
+    const clearBtn = document.getElementById('btn-clear-answer');
+    if (clearBtn) clearBtn.disabled = !state.jawaban[idx];
 
     // Nav buttons
     document.getElementById('btn-prev').disabled = idx === 0;
     document.getElementById('btn-next').disabled = idx === state.soalList.length - 1;
 
     updateNavGrid();
+    updateExamProgress();
+    setSaveStatus(state.jawaban[idx] ? 'saved' : 'idle');
 }
 
 function selectAnswer(letter) {
     state.jawaban[state.current] = letter;
+    setSaveStatus('pending');
+    sendToAdmin({
+        type: 'answer_update',
+        nisn: state.nisn,
+        mapel: state.mapel,
+        answered: Object.keys(state.jawaban).length,
+        total: state.soalList.length,
+        current: state.current + 1
+    });
     renderQuestion();
-    updateFabBadge();
 }
 
 function toggleRagu() {
@@ -381,6 +291,21 @@ function toggleRagu() {
     if (state.raguList.has(idx)) state.raguList.delete(idx);
     else state.raguList.add(idx);
     updateNavGrid();
+    updateExamProgress();
+}
+
+function clearCurrentAnswer() {
+    if (!state.jawaban[state.current]) return;
+    delete state.jawaban[state.current];
+    sendToAdmin({
+        type: 'answer_update',
+        nisn: state.nisn,
+        mapel: state.mapel,
+        answered: Object.keys(state.jawaban).length,
+        total: state.soalList.length,
+        current: state.current + 1
+    });
+    renderQuestion();
 }
 
 /* ============================================================
@@ -415,8 +340,10 @@ function buildNavGrid() {
     grid.innerHTML = '';
     state.soalList.forEach((_, i) => {
         const btn = document.createElement('button');
+        btn.type = 'button';
         btn.className = 'nav-num';
         btn.textContent = i + 1;
+        btn.setAttribute('aria-label', `Buka soal ${i + 1}`);
         btn.addEventListener('click', () => jumpTo(i));
         grid.appendChild(btn);
     });
@@ -429,13 +356,73 @@ function updateNavGrid() {
         if (i === state.current)         btn.classList.add('current');
         else if (state.raguList.has(i))  btn.classList.add('ragu');
         else if (state.jawaban[i])       btn.classList.add('answered');
+        btn.setAttribute('aria-current', i === state.current ? 'true' : 'false');
     });
 }
 
 function updateFabBadge() {
-    const count = Object.keys(state.jawaban).length;
+    const count = Math.max(state.soalList.length - Object.keys(state.jawaban).length, 0);
     const el    = document.getElementById('fab-badge');
     if (el) el.textContent = count;
+}
+
+function getExamCounts() {
+    const total = state.soalList.length;
+    const answered = Object.keys(state.jawaban).length;
+    const ragu = state.raguList.size;
+    return {
+        total,
+        answered,
+        ragu,
+        unanswered: Math.max(total - answered, 0)
+    };
+}
+
+function updateExamProgress() {
+    const { total, answered, ragu, unanswered } = getExamCounts();
+    const percent = total ? Math.round((answered / total) * 100) : 0;
+    const progressText = document.getElementById('exam-progress-text');
+    const examBar = document.getElementById('exam-progress-bar');
+    const qBar = document.getElementById('q-progress-bar');
+    const summaryAnswered = document.getElementById('summary-answered');
+    const summaryRagu = document.getElementById('summary-ragu');
+    const summaryUnanswered = document.getElementById('summary-unanswered');
+
+    if (progressText) progressText.textContent = `${answered} / ${total} dijawab`;
+    if (examBar) examBar.style.width = `${percent}%`;
+    if (qBar) qBar.style.width = `${state.soalList.length ? ((state.current + 1) / state.soalList.length) * 100 : 0}%`;
+    if (summaryAnswered) summaryAnswered.textContent = answered;
+    if (summaryRagu) summaryRagu.textContent = ragu;
+    if (summaryUnanswered) summaryUnanswered.textContent = unanswered;
+    updateFabBadge();
+}
+
+function setSaveStatus(type) {
+    const el = document.getElementById('save-status');
+    if (!el) return;
+    el.classList.remove('pending', 'error');
+    if (type === 'pending') {
+        el.classList.add('pending');
+        el.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Mencatat';
+        return;
+    }
+    if (type === 'idle') {
+        el.innerHTML = '<i class="fas fa-minus-circle"></i> Belum dijawab';
+        return;
+    }
+    el.innerHTML = '<i class="fas fa-check-circle"></i> Pilihan tercatat';
+}
+
+function jumpToStatus(status) {
+    let target = -1;
+    if (status === 'unanswered') {
+        target = state.soalList.findIndex((_, i) => !state.jawaban[i]);
+    } else if (status === 'ragu') {
+        target = Array.from(state.raguList).sort((a, b) => a - b)[0] ?? -1;
+    } else if (status === 'answered') {
+        target = state.soalList.findIndex((_, i) => !!state.jawaban[i]);
+    }
+    if (target >= 0) jumpTo(target);
 }
 
 function toggleNavPanel() {
@@ -450,43 +437,90 @@ function confirmFinish() {
     const total    = state.soalList.length;
     const dijawab  = Object.keys(state.jawaban).length;
     const belum    = total - dijawab;
+    const ragu     = state.raguList.size;
     const summary  = document.getElementById('modal-summary');
+    const breakdown = document.getElementById('finish-breakdown');
 
     if (belum > 0) {
         summary.innerHTML = `Masih ada <strong>${belum} soal</strong> yang belum dijawab. Yakin ingin mengumpulkan?`;
+    } else if (ragu > 0) {
+        summary.innerHTML = `Semua soal sudah dijawab, tapi ada <strong>${ragu} soal</strong> yang masih ditandai ragu.`;
     } else {
         summary.innerHTML = 'Semua soal sudah dijawab. Kumpulkan sekarang?';
+    }
+    if (breakdown) {
+        breakdown.innerHTML = `
+            <div class="finish-pill"><strong>${dijawab}</strong><span>Dijawab</span></div>
+            <div class="finish-pill"><strong>${ragu}</strong><span>Ragu</span></div>
+            <div class="finish-pill"><strong>${belum}</strong><span>Belum</span></div>
+        `;
     }
     openModal('modal-finish');
 }
 
-function finishExam() {
+async function finishExam() {
+    if (state.submitting) return;
     clearInterval(state.timerInterval);
     closeModal('modal-finish');
     closeModal('modal-timeout');
-    calculateResult();
-    state.started = false;
-    examLock.deactivate();
-    showScreen('screen-result');
+    state.submitting = true;
+
+    try {
+        const result = await submitExamToServer();
+        state.lastResult = result;
+        renderResult(result);
+        state.started = false;
+        examLock.deactivate();
+        sendToAdmin({
+            type: 'student_finish',
+            nisn: state.nisn,
+            mapel: state.mapel,
+            nilai: result.nilai,
+            benar: result.benar,
+            salah: result.salah,
+            kosong: result.kosong,
+            serverVerified: true
+        });
+        showScreen('screen-result');
+    } catch (err) {
+        openModal('modal-finish');
+        alert(err.message || 'Gagal mengumpulkan jawaban. Cek koneksi lalu coba lagi.');
+    } finally {
+        state.submitting = false;
+    }
 }
 
 /* ============================================================
-   HITUNG NILAI
+   KUMPULKAN & TAMPILKAN HASIL
    ============================================================ */
-function calculateResult() {
-    const total   = state.soalList.length;
-    let benar     = 0;
-    let salah     = 0;
-    let kosong    = 0;
+async function submitExamToServer() {
+    const answers = state.soalList.map((soal, i) => ({
+        question_id: soal.id,
+        jawaban: state.jawaban[i] || null,
+    })).filter(item => item.question_id);
 
-    state.soalList.forEach((soal, i) => {
-        const jwb = state.jawaban[i];
-        if (!jwb) { kosong++; }
-        else if (jwb === soal.jawaban) { benar++; }
-        else { salah++; }
+    const res = await fetch(`${CBT_API}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            nisn: state.nisn,
+            token: state.token,
+            answers,
+        })
     });
 
-    const nilai = Math.round((benar / total) * 100);
+    const json = await res.json().catch(() => ({ success: false, message: 'Response server tidak valid.' }));
+    if (!res.ok || !json.success) {
+        throw new Error(json.message || 'Gagal mengumpulkan jawaban.');
+    }
+    return json.data;
+}
+
+function renderResult(result) {
+    const benar  = result.benar || 0;
+    const salah  = result.salah || 0;
+    const kosong = result.kosong || 0;
+    const nilai  = result.nilai || 0;
     const lulus = nilai >= 70;
 
     // Update UI
@@ -655,9 +689,9 @@ const PRECHECK_RULES = {
     minScreenW: 800,
     minScreenH: 480,
     minCores: 2,
-    networkTestBytes: 8 * 1024 * 1024,
-    networkWarmupMs: 1200,
-    networkMaxMs: 12000
+    networkTestBytes: 2 * 1024 * 1024,
+    networkWarmupMs: 700,
+    networkMaxMs: 8000
 };
 
 /* ──────────────────────────────────────────────────────────────
@@ -665,95 +699,63 @@ const PRECHECK_RULES = {
    ────────────────────────────────────────────────────────────── */
 const examLock = {
     violations: 0,
-    maxViolations: 3,
+    maxViolations: 5,
     active: false,
     listenersBound: false,
-    fullscreenRetryTimer: null,
-    focusRetryTimer: null,
     muteTimer: null,
     violationCooldowns: {},
     audioCtx: null,
     originalAudioContext: window.AudioContext || window.webkitAudioContext,
 
     activate() {
-        if (this.active) {
-            this._enforceFullscreen(true);
-            this._activateExamMute();
-            return;
-        }
         this.active = true;
-
-        // Fullscreen wajib
-        if (this.listenersBound) {
-            this._enforceFullscreen(true);
-        } else {
-            this._requestFullscreen();
-        }
         this._activateExamMute();
+        this._showFullscreenPrompt();
+
         if (this.listenersBound) return;
         this.listenersBound = true;
 
-        // Blokir klik kanan
         document.addEventListener('contextmenu', e => {
-            if (state.started) { e.preventDefault(); this._warn('Klik kanan dinonaktifkan.'); }
+            if (state.started) { e.preventDefault(); this._warn('Klik kanan dinonaktifkan selama ujian.'); }
         });
 
-        // Blokir shortcut berbahaya
         document.addEventListener('keydown', e => {
             if (!state.started) return;
-            const blocked = [
-                e.key === 'F12',
-                e.ctrlKey && ['c','v','u','s','a','p','w','r','t','n','Tab'].includes(e.key.toLowerCase()),
-                e.altKey  && ['Tab','F4'].includes(e.key),
-                e.metaKey,
-                e.key === 'Escape' && document.fullscreenElement,
-                ['F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11'].includes(e.key),
-            ];
-            if (blocked.some(Boolean)) {
+            const blocked =
+                e.key === 'F12' ||
+                (e.ctrlKey && ['u','s','p','w','r','t','n'].includes(e.key.toLowerCase())) ||
+                e.metaKey;
+
+            if (blocked) {
                 e.preventDefault();
                 e.stopPropagation();
-                this._warn('Shortcut keyboard diblokir selama ujian.');
+                this._warn('Shortcut browser diblokir selama ujian.');
             }
         }, true);
 
-        // Blokir copy/paste/select
-        ['copy','cut','paste','selectstart'].forEach(ev =>
+        ['copy','cut','paste'].forEach(ev =>
             document.addEventListener(ev, e => { if (state.started) e.preventDefault(); })
         );
 
-        // Deteksi tab tidak aktif / minimize
         document.addEventListener('visibilitychange', () => {
             if (!state.started) return;
             if (document.hidden) {
-                this._recordViolation('tab_switch', 'Tab berpindah terdeteksi!');
-            } else {
-                this._enforceFullscreen(false);
-                this._recoverFocus();
+                this._recordViolation('tab_switch', 'Tab berpindah terdeteksi.');
             }
         });
 
-        // Blokir navigasi browser (back/forward)
+        document.addEventListener('fullscreenchange', () => this._handleFullscreenChange());
+        document.addEventListener('webkitfullscreenchange', () => this._handleFullscreenChange());
+
         history.pushState(null, '', location.href);
         window.addEventListener('popstate', () => {
             history.pushState(null, '', location.href);
-            if (state.started) this._warn('Tombol Back/Forward diblokir.');
+            if (state.started) this._warn('Tombol Back/Forward diblokir selama ujian.');
         });
 
-        // Deteksi DevTools (resize trick)
-        setInterval(() => {
-            if (!state.started) return;
-            const diff = window.outerWidth - window.innerWidth;
-            if (diff > 200) {
-                this._warn('DevTools terdeteksi! Segera tutup.');
-                sendToAdmin({ type: 'violation', reason: 'devtools_open' });
-            }
-        }, 2000);
-
-        // Deteksi window blur (beralih aplikasi)
         window.addEventListener('blur', () => {
             if (!state.started) return;
-            this._recordViolation('window_blur', 'Aplikasi tidak fokus!');
-            this._recoverFocus();
+            this._recordViolation('window_blur', 'Jendela ujian kehilangan fokus.');
         });
 
         window.addEventListener('beforeunload', e => {
@@ -766,73 +768,43 @@ const examLock = {
 
     deactivate() {
         this.active = false;
-        clearInterval(this.fullscreenRetryTimer);
-        clearInterval(this.focusRetryTimer);
         clearInterval(this.muteTimer);
         this.violationCooldowns = {};
+        this._hideFullscreenPrompt();
     },
 
-    _requestFullscreen() {
-        this._enforceFullscreen(true);
-
-        // Jika keluar fullscreen, paksa masuk lagi
-        document.addEventListener('fullscreenchange', () => {
-            if (!state.started) return;
-            if (!document.fullscreenElement) {
-                this._recordViolation('fullscreen', 'Mode layar penuh wajib aktif!');
-                this._startFullscreenRecovery();
-            }
-        });
-        document.addEventListener('webkitfullscreenchange', () => {
-            if (!state.started) return;
-            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                this._recordViolation('fullscreen', 'Mode layar penuh wajib aktif!');
-                this._startFullscreenRecovery();
-            }
-        });
-
-        ['click','pointerdown','keydown'].forEach(ev => {
-            document.addEventListener(ev, () => {
-                if (state.started && !document.fullscreenElement) this._enforceFullscreen(false);
-            }, true);
-        });
-    },
-
-    _enforceFullscreen(isInitial = false) {
+    returnToFullscreen() {
         const el = document.documentElement;
         const rfs = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen;
-        if (!rfs || document.fullscreenElement || document.webkitFullscreenElement) return;
-
-        rfs.call(el).catch(() => {
-            if (isInitial) this._warn('Klik halaman ujian untuk mengaktifkan layar penuh.');
-        });
+        if (!rfs) {
+            this._hideFullscreenPrompt();
+            this._warn('Browser tidak mendukung mode layar penuh.');
+            return;
+        }
+        rfs.call(el)
+            .then(() => this._hideFullscreenPrompt())
+            .catch(() => this._warn('Klik tombol sekali lagi untuk masuk layar penuh.'));
     },
 
-    _startFullscreenRecovery() {
-        clearInterval(this.fullscreenRetryTimer);
-        let attempts = 0;
-        this.fullscreenRetryTimer = setInterval(() => {
-            if (!state.started || document.fullscreenElement || attempts >= 12) {
-                clearInterval(this.fullscreenRetryTimer);
-                return;
-            }
-            attempts++;
-            this._enforceFullscreen(false);
-        }, 500);
+    _handleFullscreenChange() {
+        if (!state.started) return;
+        const isFullscreen = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+        if (isFullscreen) {
+            this._hideFullscreenPrompt();
+            return;
+        }
+        this._recordViolation('fullscreen_exit', 'Mode layar penuh dinonaktifkan.');
+        this._showFullscreenPrompt();
     },
 
-    _recoverFocus() {
-        clearInterval(this.focusRetryTimer);
-        let attempts = 0;
-        this.focusRetryTimer = setInterval(() => {
-            if (!state.started || attempts >= 8) {
-                clearInterval(this.focusRetryTimer);
-                return;
-            }
-            attempts++;
-            window.focus();
-            this._enforceFullscreen(false);
-        }, 400);
+    _showFullscreenPrompt() {
+        if (!state.started) return;
+        if (document.fullscreenElement || document.webkitFullscreenElement) return;
+        document.getElementById('fullscreen-return')?.classList.add('show');
+    },
+
+    _hideFullscreenPrompt() {
+        document.getElementById('fullscreen-return')?.classList.remove('show');
     },
 
     _activateExamMute() {
@@ -886,7 +858,9 @@ const examLock = {
         this.violations++;
         this._showViolation(`${message} (${this.violations}/${this.maxViolations})`);
         sendToAdmin({ type: 'violation', reason, count: this.violations });
-        if (this.violations >= this.maxViolations) this._forceFinish();
+        if (this.violations >= this.maxViolations) {
+            this._warn('Batas pelanggaran tercapai. Pengawas akan meninjau sesi ini.');
+        }
     },
 
     _warn(msg) {
@@ -908,11 +882,9 @@ const examLock = {
         setTimeout(() => el.classList.remove('show'), 4000);
     },
 
-    _forceFinish() {
-        alert('Batas pelanggaran tercapai. Ujian dikumpulkan otomatis.');
-        finishExam();
-    }
+    _forceFinish() {}
 };
+window.examLock = examLock;
 
 /* ──────────────────────────────────────────────────────────────
    2. TES KECEPATAN JARINGAN (file uji besar + warmup)
@@ -1334,35 +1306,40 @@ async function proceedToExam() {
         showScreen('screen-precheck');
         return;
     }
+    const returnScreen = document.getElementById('screen-warmup')?.classList.contains('active')
+        ? 'screen-warmup'
+        : 'screen-warmup-result';
     document.getElementById('screen-warmup-result').classList.remove('active');
 
-    const localBank = BANK_SOAL[state.mapel];
+    const localBank = BANK_SOAL[state.mapel] || { nama: state.mapel, durasi: state.durasi };
     const loading = document.createElement('div');
     loading.id = 'soal-loading';
-    loading.style.cssText = 'position:fixed;inset:0;background:rgba(0,34,68,.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;gap:16px;';
-    loading.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:2.5rem;color:#D4AF37;"></i><p style="font-size:1rem;font-weight:700;">Memuat soal ujian...</p>';
+    loading.className = 'loading-overlay';
+    loading.innerHTML = '<i class="fas fa-spinner fa-spin"></i><p>Memuat soal ujian...</p>';
     document.body.appendChild(loading);
 
     try {
-        const token = localStorage.getItem(CBT_TOKEN_KEY) || localStorage.getItem('smkn_token') || '';
-        const res = await fetch(`${CBT_API}/soal/ujian/${state.mapel}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
+        const params = new URLSearchParams({ nisn: state.nisn, token: state.token });
+        const res = await fetch(`${CBT_API}/soal/ujian/${state.mapel}?${params.toString()}`);
         const json = await res.json();
 
         if (res.ok && json.success && Array.isArray(json.data) && json.data.length) {
-            beginExamWithQuestions(localBank || { nama: state.mapel, durasi: state.durasi }, json.data);
+            beginExamWithQuestions(localBank, json.data);
         } else {
-            console.warn('[CBT] Soal API belum tersedia, memakai fallback lokal.');
-            window._origStartExam();
+            throw new Error(json.message || 'Soal ujian belum tersedia.');
         }
     } catch (err) {
-        console.warn('[CBT] Gagal memuat soal API, memakai fallback lokal:', err.message);
-        window._origStartExam();
+        alert(err.message || 'Gagal memuat soal ujian. Hubungi pengawas.');
+        showScreen(returnScreen);
     } finally {
         loading.remove();
-        examLock.activate();
+        if (state.started) examLock.activate();
     }
+}
+
+function skipWarmup() {
+    warmupState.done = true;
+    proceedToExam();
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -1390,8 +1367,12 @@ async function runPreExamCheck(mapel, nisn) {
         { id: 'step-device', label: 'Baca info device', fn: collectDeviceInfo, required: false },
     ];
 
+    let completedSteps = 0;
+    updatePrecheckProgress(completedSteps, steps.length, 'Mulai pengecekan');
+
     for (const step of steps) {
         const stepEl = document.getElementById(step.id);
+        updatePrecheckProgress(completedSteps, steps.length, step.label);
         if (stepEl) {
             stepEl.classList.remove('done', 'warning', 'error');
             stepEl.querySelector('.step-icon').className = 'step-icon loading';
@@ -1409,6 +1390,8 @@ async function runPreExamCheck(mapel, nisn) {
                 const detailEl = stepEl.querySelector('small') || stepEl.querySelector('.device-tags');
                 if (hasWarning && detailEl && !detailEl.textContent) detailEl.textContent = result.warning;
             }
+            completedSteps++;
+            updatePrecheckProgress(completedSteps, steps.length, step.label);
         } catch(e) {
             if (stepEl) {
                 stepEl.classList.add(step.required ? 'error' : 'warning');
@@ -1421,6 +1404,7 @@ async function runPreExamCheck(mapel, nisn) {
             precheckState.results[step.id] = { error: getPrecheckErrorMessage(e) };
             if (step.required) {
                 precheckState.passed = false;
+                updatePrecheckProgress(completedSteps, steps.length, 'Perlu izin ulang');
                 if (nextBtn) {
                     nextBtn.disabled = false;
                     nextBtn.textContent = 'Coba Ulang Pre-check';
@@ -1444,12 +1428,21 @@ async function runPreExamCheck(mapel, nisn) {
     precheckState.passed = true;
     if (nextBtn) {
         nextBtn.disabled = false;
-        nextBtn.textContent = 'Lanjut ke Briefing ->';
+        nextBtn.textContent = 'Lanjut ke Briefing';
         nextBtn.onclick = () => showScreen('screen-briefing');
     }
+    updatePrecheckProgress(steps.length, steps.length, 'Siap');
     return true;
+}
 
-    document.getElementById('precheck-next-btn').textContent = 'Lanjut ke Briefing →';
+function updatePrecheckProgress(done, total, label) {
+    const text = document.getElementById('precheck-progress-text');
+    const bar = document.getElementById('precheck-progress-bar');
+    const labelEl = document.getElementById('precheck-progress-label');
+    const percent = total ? Math.round((done / total) * 100) : 0;
+    if (text) text.textContent = `${done} / ${total} siap`;
+    if (bar) bar.style.width = `${percent}%`;
+    if (labelEl) labelEl.textContent = label || 'Menunggu';
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -1486,6 +1479,21 @@ window.startExam = function() {
    INIT
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.getElementById('login-form');
+    const nisnInput = document.getElementById('login-nisn');
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleLogin();
+        });
+    }
+    if (nisnInput) {
+        nisnInput.addEventListener('input', () => {
+            nisnInput.value = nisnInput.value.replace(/\D/g, '').slice(0, 10);
+        });
+    }
+
     // Tombol precheck lanjut ke briefing
     const nextBtn = document.getElementById('precheck-next-btn');
     if (nextBtn) {

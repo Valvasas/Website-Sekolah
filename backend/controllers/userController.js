@@ -5,6 +5,7 @@ const bcrypt  = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const getDB   = require('../config/database');
 const { log } = require('../middleware/auditLog');
+const { findSchoolClass } = require('../utils/schoolClasses');
 
 const nowISO = () => new Date().toISOString();
 
@@ -90,9 +91,12 @@ function getUserById(req, res) {
     const db   = getDB();
     try {
         const user = db.prepare(`
-            SELECT id,nama_lengkap,email,role,nisn,nip,no_hp,
-                   foto_profil,bidang,jabatan_detail,is_active,is_verified,last_login,created_at,updated_at
-            FROM users WHERE id = :id
+            SELECT u.id,u.nama_lengkap,u.email,u.role,u.nisn,u.nip,u.no_hp,
+                   u.foto_profil,u.bidang,u.jabatan_detail,u.is_active,u.is_verified,u.last_login,u.created_at,u.updated_at,
+                   sp.kelas, sp.jurusan
+            FROM users u
+            LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
+            WHERE u.id = :id
         `).get({ id: req.params.id });
 
         if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan.' });
@@ -106,7 +110,7 @@ function getUserById(req, res) {
 /* ── CREATE user (oleh admin) ────────────────────────── */
 async function createUser(req, res) {
     const db = getDB();
-    const { nama_lengkap, email, password, role, nisn, nip, no_hp, bidang, jabatan_detail } = req.body;
+    const { nama_lengkap, email, password, role, nisn, nip, no_hp, bidang, jabatan_detail, kelas, jurusan } = req.body;
 
     try {
         if (email) {
@@ -120,6 +124,10 @@ async function createUser(req, res) {
         if (nip) {
             const ex = db.prepare('SELECT id FROM users WHERE nip = :n').get({ n: nip });
             if (ex) return res.status(409).json({ success: false, message: 'NIP sudah terdaftar.' });
+        }
+        const classInfo = kelas ? findSchoolClass(kelas) : null;
+        if (role === 'siswa' && !classInfo) {
+            return res.status(400).json({ success: false, message: 'Kelas siswa wajib dipilih dan harus valid.' });
         }
 
         const hash   = await bcrypt.hash(password, 12);
@@ -139,6 +147,17 @@ async function createUser(req, res) {
             now
         });
 
+        if (nisn && ['siswa', 'calon_siswa'].includes(role)) {
+            const finalJurusan = classInfo?.jurusan || jurusan || null;
+            db.prepare(`
+                INSERT OR IGNORE INTO siswa_profil (id,user_id,nisn,kelas,jurusan,updated_at)
+                VALUES (?,?,?,?,?,?)
+            `).run(uuidv4(), userId, nisn, classInfo?.kelas || kelas || null, finalJurusan, now);
+            db.prepare(`
+                UPDATE siswa_profil SET user_id=?, kelas=?, jurusan=?, updated_at=? WHERE nisn=?
+            `).run(userId, classInfo?.kelas || kelas || null, finalJurusan, now, nisn);
+        }
+
         log(req.user.sub, 'USER_CREATED', 'users', userId, { role, email }, req.ip);
 
         return res.status(201).json({
@@ -156,7 +175,7 @@ async function createUser(req, res) {
 async function updateUser(req, res) {
     const db = getDB();
     const { id } = req.params;
-    const { nama_lengkap, email, role, nisn, nip, no_hp, bidang, jabatan_detail, is_active, password } = req.body;
+    const { nama_lengkap, email, role, nisn, nip, no_hp, bidang, jabatan_detail, is_active, password, kelas, jurusan } = req.body;
 
     try {
         const user = db.prepare('SELECT * FROM users WHERE id=:id').get({ id });
@@ -199,13 +218,40 @@ async function updateUser(req, res) {
             vals.hash = hash;
         }
 
-        if (!fields.length) return res.status(400).json({ success: false, message: 'Tidak ada data yang diubah.' });
+        const hasProfileUpdate = kelas !== undefined || jurusan !== undefined;
+        const classInfo = kelas ? findSchoolClass(kelas) : null;
+        const profileRole = role || user.role;
+        if (profileRole === 'siswa' && kelas !== undefined && !classInfo) {
+            return res.status(400).json({ success: false, message: 'Kelas siswa wajib valid.' });
+        }
+        if (!fields.length && !hasProfileUpdate) return res.status(400).json({ success: false, message: 'Tidak ada data yang diubah.' });
 
-        fields.push('updated_at=:now');
-        vals.now = nowISO();
-        vals.id  = id;
+        if (fields.length) {
+            fields.push('updated_at=:now');
+            vals.now = nowISO();
+            vals.id  = id;
+            db.prepare(`UPDATE users SET ${fields.join(',')} WHERE id=:id`).run(vals);
+        }
 
-        db.prepare(`UPDATE users SET ${fields.join(',')} WHERE id=:id`).run(vals);
+        const finalRole = role || user.role;
+        const finalNisn = nisn !== undefined ? nisn : user.nisn;
+        if (finalNisn && ['siswa', 'calon_siswa'].includes(finalRole) && (kelas !== undefined || jurusan !== undefined || nisn !== undefined)) {
+            const finalKelas = classInfo?.kelas || kelas || null;
+            const finalJurusan = classInfo?.jurusan || jurusan || null;
+            const existingProfile = db.prepare('SELECT id FROM siswa_profil WHERE nisn = ?').get(finalNisn);
+            if (existingProfile) {
+                db.prepare(`
+                    UPDATE siswa_profil
+                    SET user_id=?, kelas=COALESCE(?, kelas), jurusan=COALESCE(?, jurusan), updated_at=?
+                    WHERE nisn=?
+                `).run(id, finalKelas, finalJurusan, nowISO(), finalNisn);
+            } else {
+                db.prepare(`
+                    INSERT INTO siswa_profil (id,user_id,nisn,kelas,jurusan,updated_at)
+                    VALUES (?,?,?,?,?,?)
+                `).run(uuidv4(), id, finalNisn, finalKelas, finalJurusan, nowISO());
+            }
+        }
         log(req.user.sub, 'USER_UPDATED', 'users', id, { fields: fields.map(f => f.split('=')[0]) }, req.ip);
 
         return res.status(200).json({ success: true, message: 'Data user berhasil diperbarui.' });

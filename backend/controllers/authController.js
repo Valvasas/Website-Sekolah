@@ -8,6 +8,7 @@ const getDB   = require('../config/database');
 const jwtCfg  = require('../config/jwt');
 const mailer  = require('../config/mailer');
 const { log } = require('../middleware/auditLog');
+const { getSchoolClasses, findSchoolClass } = require('../utils/schoolClasses');
 
 /* ── Helpers ─────────────────────────────────────────── */
 const generateToken = () => crypto.randomBytes(32).toString('hex');
@@ -25,7 +26,8 @@ async function register(req, res) {
     const {
         nama_lengkap, email, password,
         role = 'siswa', nisn, nip, no_hp,
-        bidang, jabatan_detail, mata_pelajaran
+        bidang, jabatan_detail, mata_pelajaran,
+        kelas
     } = req.body;
 
     try {
@@ -48,6 +50,10 @@ async function register(req, res) {
         if (nip) {
             const ex = db.prepare('SELECT id FROM users WHERE nip = :n').get({ n: nip });
             if (ex) return res.status(409).json({ success: false, message: 'NIP sudah terdaftar.' });
+        }
+        const classInfo = kelas ? findSchoolClass(kelas) : null;
+        if (role === 'siswa' && !classInfo) {
+            return res.status(400).json({ success: false, message: 'Kelas siswa wajib dipilih dan harus valid.' });
         }
 
         const password_hash = await bcrypt.hash(password, 12);
@@ -78,6 +84,25 @@ async function register(req, res) {
             verified: isVerified,
             now
         });
+
+        if (role === 'siswa' && nisn && classInfo) {
+            db.prepare(`
+                INSERT INTO siswa_profil (id,user_id,nisn,kelas,jurusan,updated_at)
+                VALUES (:id,:uid,:nisn,:kelas,:jurusan,:now)
+                ON CONFLICT(nisn) DO UPDATE SET
+                    user_id = excluded.user_id,
+                    kelas = excluded.kelas,
+                    jurusan = excluded.jurusan,
+                    updated_at = excluded.updated_at
+            `).run({
+                id: uuidv4(),
+                uid: userId,
+                nisn,
+                kelas: classInfo.kelas,
+                jurusan: classInfo.jurusan,
+                now
+            });
+        }
 
         let verSent = false;
         if (email) {
@@ -111,6 +136,8 @@ async function register(req, res) {
                 role,
                 email: email || null,
                 nisn: nisn || null,
+                kelas: classInfo?.kelas || null,
+                jurusan: classInfo?.jurusan || null,
                 bidang: bidangFinal,
                 verificationRequired: !isVerified,
                 pendingAdminApproval: isStaffRole
@@ -190,7 +217,7 @@ async function login(req, res) {
         const redirectMap = {
             super_admin:'/admin-panel/dashboard.html', kepala_sekolah:'/admin-panel/dashboard.html',
             guru:'/admin-panel/dashboard.html',        tata_usaha:'/admin-panel/dashboard.html',
-            siswa:'/DATA.html',                        wali_murid:'/DATA.html',
+            siswa:'/LMS.html',                         wali_murid:'/LMS.html',
             calon_siswa:'/ppdb.html',
         };
 
@@ -457,9 +484,14 @@ async function googleCallback(req, res) {
     }
 }
 
+function getClasses(_req, res) {
+    return res.json({ success: true, data: getSchoolClasses() });
+}
+
 module.exports = {
     register, login, logout, refreshToken,
     forgotPassword, resetPassword, changePassword,
     verifyEmail, getProfile, checkAuth, googleCallback,
-    activateStaffAccount
+    activateStaffAccount,
+    getClasses
 };

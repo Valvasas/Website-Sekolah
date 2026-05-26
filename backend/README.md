@@ -31,7 +31,7 @@ Server: http://localhost:3001
 |------|-----------|
 | auth-guard.js | BARU — proteksi JWT per halaman |
 | DATA.js | Fetch dari /api/siswa/*, fallback offline |
-| DATA.html | Tambah script auth-guard.js |
+| LMS.html | Tambah script auth-guard.js |
 | login.html | Form ke /api/auth/login |
 | SKL.js | Fetch dari /api/content/skl/cari |
 | script.js | Ticker dari /api/content/announcements |

@@ -584,7 +584,7 @@
                 <div class="auth-top">
                     <div>
                         <h1>Login Portal EduGate</h1>
-                        <p>Masuk sesuai peran, atau buat akun baru untuk siswa, calon siswa, dan wali murid.</p>
+                        <p>Masuk sebagai siswa, atau buat akun baru untuk siswa, calon siswa, dan wali murid.</p>
                     </div>
                     <div class="server-pill" id="serverStatus">
                         <span class="server-dot"></span>
@@ -607,9 +607,6 @@
                     <section class="panel active" id="loginPanel">
                         <div class="role-tabs" id="roleTabs">
                             <button class="role-tab active" type="button" data-role="siswa"><i class="fas fa-user-graduate"></i>Siswa</button>
-                            <button class="role-tab" type="button" data-role="guru"><i class="fas fa-chalkboard-user"></i>Guru</button>
-                            <button class="role-tab" type="button" data-role="tata_usaha"><i class="fas fa-briefcase"></i>TU</button>
-                            <button class="role-tab" type="button" data-role="kepala_sekolah"><i class="fas fa-user-tie"></i>Kepsek</button>
                         </div>
 
                         <form id="loginForm" novalidate>
@@ -663,6 +660,13 @@
                                     <label for="regNisn"><i class="fas fa-id-card"></i>NISN</label>
                                     <input id="regNisn" type="text" placeholder="10 digit NISN" maxlength="10" inputmode="numeric">
                                 </div>
+                            </div>
+
+                            <div class="field" id="regKelasWrap">
+                                <label for="regKelas"><i class="fas fa-school"></i>Kelas</label>
+                                <select id="regKelas">
+                                    <option value="">Memuat kelas...</option>
+                                </select>
                             </div>
 
                             <div class="field">
@@ -748,12 +752,10 @@
         const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
         const AUTH_API = API_BASE + '/api/auth';
         let currentRole = 'siswa';
+        let schoolClasses = [];
 
         const roleConfig = {
             siswa: { label: 'NISN Siswa', placeholder: '10 digit NISN', type: 'text' },
-            guru: { label: 'Email Guru', placeholder: 'guru@smkn1terisi.sch.id', type: 'email' },
-            tata_usaha: { label: 'Email Tata Usaha', placeholder: 'tu@smkn1terisi.sch.id', type: 'email' },
-            kepala_sekolah: { label: 'Email Kepala Sekolah', placeholder: 'kepsek@smkn1terisi.sch.id', type: 'email' },
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -763,6 +765,7 @@
             bindPasswordToggles();
             bindUrlMessages();
             checkServerStatus();
+            loadSchoolClasses();
             checkExistingSession();
             updateRegisterRole();
         });
@@ -863,6 +866,25 @@
             }
         }
 
+        async function loadSchoolClasses() {
+            const select = document.getElementById('regKelas');
+            if (!select) return;
+            try {
+                const res = await fetch(AUTH_API + '/classes', { cache: 'no-store' });
+                const json = await res.json();
+                schoolClasses = json.success ? (json.data || []) : [];
+                if (!schoolClasses.length) {
+                    select.innerHTML = '<option value="">Kelas belum tersedia</option>';
+                    return;
+                }
+                select.innerHTML = '<option value="">Pilih kelas</option>' + schoolClasses.map(k =>
+                    `<option value="${escapeHtml(k.kelas)}">${escapeHtml(k.kelas)} - ${escapeHtml(k.jurusan)}</option>`
+                ).join('');
+            } catch {
+                select.innerHTML = '<option value="">Gagal memuat kelas</option>';
+            }
+        }
+
         async function checkExistingSession() {
             const token = localStorage.getItem('smkn_token') || localStorage.getItem('accessToken');
             if (!token) return;
@@ -914,7 +936,13 @@
                 no_hp: document.getElementById('regPhone').value.trim(),
             };
             const nisn = document.getElementById('regNisn').value.trim();
+            const kelas = document.getElementById('regKelas').value;
             if (role === 'siswa' && nisn) payload.nisn = nisn;
+            if (role === 'siswa') {
+                if (!nisn) return showAlert('error', 'NISN wajib diisi untuk akun siswa.');
+                if (!kelas) return showAlert('error', 'Kelas wajib dipilih untuk akun siswa.');
+                payload.kelas = kelas;
+            }
 
             const btn = document.getElementById('registerBtn');
             setLoading(btn, true);
@@ -1011,8 +1039,8 @@
                 kepala_sekolah: '/admin-panel/dashboard.html',
                 guru: '/admin-panel/dashboard.html',
                 tata_usaha: '/admin-panel/dashboard.html',
-                siswa: '/DATA.html',
-                wali_murid: '/DATA.html',
+                siswa: '/LMS.html',
+                wali_murid: '/LMS.html',
                 calon_siswa: '/ppdb.html',
             };
             return map[role] || '/index.html';
@@ -1036,9 +1064,16 @@
             const role = document.getElementById('regRole').value;
             const wrap = document.getElementById('regNisnWrap');
             const nisn = document.getElementById('regNisn');
+            const kelasWrap = document.getElementById('regKelasWrap');
+            const kelas = document.getElementById('regKelas');
             wrap.style.display = role === 'siswa' ? '' : 'none';
             nisn.required = role === 'siswa';
-            if (role !== 'siswa') nisn.value = '';
+            kelasWrap.style.display = role === 'siswa' ? '' : 'none';
+            kelas.required = role === 'siswa';
+            if (role !== 'siswa') {
+                nisn.value = '';
+                kelas.value = '';
+            }
         }
 
         function updateStrength() {

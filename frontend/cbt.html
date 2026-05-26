@@ -16,11 +16,7 @@
 
     <!-- SCREEN 1: LOGIN CBT -->
     <div id="screen-login" class="screen active">
-        <div class="login-bg">
-            <div class="bg-orb orb-1"></div>
-            <div class="bg-orb orb-2"></div>
-            <div class="bg-orb orb-3"></div>
-        </div>
+        <div class="login-bg" aria-hidden="true"></div>
 
         <div class="login-wrap">
             <a href="index.html" class="back-link"><i class="fas fa-arrow-left"></i> Kembali ke Beranda</a>
@@ -33,34 +29,36 @@
                 <h1 class="login-title">CBT <span>Online</span></h1>
                 <p class="login-sub">SMK Negeri 1 Terisi — Portal Ujian Digital</p>
 
-                <div class="form-group">
-                    <label><i class="fas fa-id-card"></i> NISN Siswa</label>
-                    <input type="text" id="login-nisn" placeholder="Contoh: 0012345678" maxlength="10" inputmode="numeric">
-                </div>
-                <div class="form-group">
-                    <label><i class="fas fa-lock"></i> Token / Password</label>
-                    <div class="input-pw">
-                        <input type="password" id="login-token" placeholder="Masukkan token ujian">
-                        <button type="button" id="toggle-pw"><i class="fas fa-eye"></i></button>
+                <form id="login-form" class="login-form" novalidate>
+                    <div class="form-group">
+                        <label for="login-nisn"><i class="fas fa-id-card"></i> NISN Siswa</label>
+                        <input type="text" id="login-nisn" name="nisn" placeholder="Contoh: 0012345678" maxlength="10" inputmode="numeric" autocomplete="username" enterkeyhint="next" aria-describedby="login-error-msg">
                     </div>
-                </div>
-                <div class="form-group">
-                    <label><i class="fas fa-book-open"></i> Pilih Mata Pelajaran</label>
-                    <select id="login-mapel">
-                        <option value="">— Pilih Mapel —</option>
-                        <option value="matematika">Matematika</option>
-                        <option value="bindo">Bahasa Indonesia</option>
-                        <option value="basing">Bahasa Inggris</option>
-                        <option value="pkk">Produk Kreatif & Kewirausahaan</option>
-                        <option value="sejarah">Sejarah Indonesia</option>
-                        <option value="produktif">Kompetensi Keahlian</option>
-                    </select>
-                </div>
+                    <div class="form-group">
+                        <label for="login-token"><i class="fas fa-lock"></i> Token / Password</label>
+                        <div class="input-pw">
+                            <input type="password" id="login-token" name="token" placeholder="Masukkan token ujian" autocomplete="current-password" enterkeyhint="next" aria-describedby="login-error-msg">
+                            <button type="button" id="toggle-pw" aria-label="Tampilkan token"><i class="fas fa-eye"></i></button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-mapel"><i class="fas fa-book-open"></i> Pilih Mata Pelajaran</label>
+                        <select id="login-mapel" name="mapel" autocomplete="off" aria-describedby="login-error-msg">
+                            <option value="">Pilih Mapel</option>
+                            <option value="matematika">Matematika</option>
+                            <option value="bindo">Bahasa Indonesia</option>
+                            <option value="basing">Bahasa Inggris</option>
+                            <option value="pkk">Produk Kreatif & Kewirausahaan</option>
+                            <option value="sejarah">Sejarah Indonesia</option>
+                            <option value="produktif">Kompetensi Keahlian</option>
+                        </select>
+                    </div>
 
-                <button class="btn-masuk" id="btn-masuk" onclick="handleLogin()">
-                    <span>Mulai Ujian</span>
-                    <i class="fas fa-arrow-right"></i>
-                </button>
+                    <button class="btn-masuk" id="btn-masuk" type="submit">
+                        <span>Mulai Ujian</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </form>
 
                 <div id="login-error" class="login-error hidden">
                     <i class="fas fa-exclamation-circle"></i>
@@ -126,6 +124,10 @@
                 <span class="exam-mapel" id="exam-mapel-label">Matematika</span>
                 <span class="exam-student" id="exam-student-label">Siswa</span>
             </div>
+            <div class="exam-progress" aria-label="Progress jawaban">
+                <span id="exam-progress-text">0 / 0 dijawab</span>
+                <div class="exam-progress-track"><span id="exam-progress-bar"></span></div>
+            </div>
             <div class="timer-box" id="timer-box">
                 <i class="fas fa-clock"></i>
                 <span id="timer-display">90:00</span>
@@ -139,11 +141,13 @@
             <div class="question-panel">
                 <div class="q-meta">
                     <span class="q-num">Soal <span id="q-current">1</span> / <span id="q-total">40</span></span>
+                    <span class="save-status" id="save-status" aria-live="polite"><i class="fas fa-check-circle"></i> Tersimpan</span>
                     <label class="ragu-label">
                         <input type="checkbox" id="ragu-check" onchange="toggleRagu()">
                         <span><i class="fas fa-flag"></i> Ragu-ragu</span>
                     </label>
                 </div>
+                <div class="q-progress"><span id="q-progress-bar"></span></div>
 
                 <div class="q-text" id="q-text">
                     <!-- Teks soal diisi oleh JS -->
@@ -151,6 +155,11 @@
 
                 <div class="q-options" id="q-options">
                     <!-- Opsi jawaban diisi oleh JS -->
+                </div>
+                <div class="q-tools">
+                    <button type="button" class="btn-clear-answer" id="btn-clear-answer" onclick="clearCurrentAnswer()">
+                        <i class="fas fa-eraser"></i> Kosongkan jawaban
+                    </button>
                 </div>
 
                 <div class="q-nav-btns">
@@ -173,6 +182,20 @@
                     <span class="leg answered">Dijawab</span>
                     <span class="leg ragu">Ragu-ragu</span>
                     <span class="leg unanswered">Belum</span>
+                </div>
+                <div class="answer-summary">
+                    <button type="button" class="summary-tile answered" onclick="jumpToStatus('answered')">
+                        <strong id="summary-answered">0</strong>
+                        <span>Dijawab</span>
+                    </button>
+                    <button type="button" class="summary-tile ragu" onclick="jumpToStatus('ragu')">
+                        <strong id="summary-ragu">0</strong>
+                        <span>Ragu</span>
+                    </button>
+                    <button type="button" class="summary-tile unanswered" onclick="jumpToStatus('unanswered')">
+                        <strong id="summary-unanswered">0</strong>
+                        <span>Belum</span>
+                    </button>
                 </div>
                 <div class="nav-grid" id="nav-grid">
                     <!-- Tombol nomor diisi JS -->
@@ -242,6 +265,7 @@
             <div class="modal-icon warn"><i class="fas fa-exclamation-triangle"></i></div>
             <h3>Kumpulkan Jawaban?</h3>
             <p id="modal-summary">Kamu masih memiliki <strong>5 soal</strong> yang belum dijawab.</p>
+            <div class="finish-breakdown" id="finish-breakdown"></div>
             <div class="modal-btns">
                 <button class="btn-secondary" onclick="closeModal('modal-finish')">Periksa Lagi</button>
                 <button class="btn-danger" onclick="finishExam()"><i class="fas fa-paper-plane"></i> Ya, Kumpulkan</button>
@@ -268,6 +292,13 @@
                 <i class="fas fa-shield-alt"></i>
                 <h2>Persiapan Ujian</h2>
                 <p>Sistem sedang memverifikasi perangkat dan jaringan kamu.</p>
+            </div>
+            <div class="precheck-progress" aria-label="Progress persiapan">
+                <div class="precheck-progress-top">
+                    <span id="precheck-progress-text">0 / 5 siap</span>
+                    <span id="precheck-progress-label">Menunggu</span>
+                </div>
+                <div class="precheck-progress-track"><span id="precheck-progress-bar"></span></div>
             </div>
 
             <div class="precheck-steps">
@@ -342,6 +373,9 @@
                     <button class="btn-prev" id="wu-btn-prev"><i class="fas fa-chevron-left"></i> Sebelumnya</button>
                     <button class="btn-next" id="wu-btn-next">Berikutnya <i class="fas fa-chevron-right"></i></button>
                 </div>
+                <button type="button" class="btn-skip-warmup" onclick="skipWarmup()">
+                    Lewati latihan <i class="fas fa-forward"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -374,6 +408,18 @@
     <div id="violation-overlay" class="violation-overlay">
         <i class="fas fa-exclamation-triangle"></i>
         <p id="violation-msg">Pelanggaran terdeteksi!</p>
+    </div>
+
+    <!-- Overlay kembali fullscreen -->
+    <div id="fullscreen-return" class="fullscreen-return">
+        <div class="fullscreen-return-box">
+            <i class="fas fa-expand"></i>
+            <h3>Mode Layar Penuh Nonaktif</h3>
+            <p>Untuk melanjutkan ujian, kembali ke mode layar penuh. Tindakan keluar layar penuh akan dicatat oleh sistem.</p>
+            <button class="btn-primary-cbt" onclick="examLock.returnToFullscreen()">
+                <i class="fas fa-expand-arrows-alt"></i> Kembali ke Layar Penuh
+            </button>
+        </div>
     </div>
 
     <script src="cbt.js"></script>

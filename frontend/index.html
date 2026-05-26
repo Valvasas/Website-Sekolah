@@ -54,7 +54,7 @@
                 <li><a href="fasilitas.html" class="nav-link">Fasilitas</a></li>
                 <li><a href="kesiswaan.html" class="nav-link">Kesiswaan</a></li>
                 <li><a href="galeri.html" class="nav-link">Galeri</a></li>
-                <li><a href="login.html" class="nav-link"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+                <li><a href="/login.html" class="nav-link"><i class="fas fa-sign-in-alt"></i> Login Siswa</a></li>
                 <li><a href="ppdb.html" class="btn-nav">PPDB Online</a></li>
                 <li>
                     <button id="darkModeToggle" class="dark-mode-btn" aria-label="Aktifkan Dark Mode">
@@ -140,7 +140,7 @@
                 </a>
 
                 <!-- 3. Data Siswa -->
-                <a href="DATA.html" target="_blank" rel="noopener" class="l-card">
+                <a href="LMS.html" target="_blank" rel="noopener" class="l-card">
                     <div class="l-card-icon">
                         <i class="fas fa-users-cog"></i>
                     </div>
@@ -513,7 +513,7 @@
                 <div class="footer-links">
                     <h3 style="color:#fff; margin-bottom: 20px;">Tautan Resmi</h3>
                     <ul>
-                        <li><a href="https://edugate.smkn1terisi.sch.id" target="_blank" rel="noopener noreferrer">Portal Kedisiplinan (EduGate)</a></li>
+                        <li><a href="/login.html">Portal Siswa & Wali</a></li>
                         <li><a href="https://kemdikbud.go.id" target="_blank">Kementerian Pendidikan</a></li>
                         <li><a href="https://dapo.kemdikbud.go.id/" target="_blank">Dapodikdasmen</a></li>
                         <li><a href="#">E-Raport Sekolah</a></li>
@@ -529,51 +529,19 @@
         <div class="login-modal-box">
             <button class="close-modal" id="closeLoginBtn"><i class="fas fa-times"></i></button>
             <div class="login-header">
-                <h2>Portal <span class="highlight">EduGate</span></h2>
-                <p>Pilih peran Anda untuk masuk ke sistem</p>
-            </div>
-            
-            <div class="login-tabs">
-                <button class="login-tab active" data-target="form-siswa">Siswa</button>
-                <button class="login-tab" data-target="form-calon">Calon Siswa</button>
-                <button class="login-tab" data-target="form-guru">Guru/Staff</button>
+                <h2>Portal <span class="highlight">Siswa</span></h2>
+                <p>Masuk ke portal siswa, wali murid, atau cek status PPDB.</p>
             </div>
 
-            <form class="login-form active" id="form-siswa">
-                <div class="input-group">
-                    <i class="fas fa-user"></i>
-                    <input type="text" placeholder="NISN / Username Siswa" required>
-                </div>
-                <div class="input-group">
-                    <i class="fas fa-lock"></i>
-                    <input type="password" placeholder="Password" required>
-                </div>
-                <button type="button" class="btn btn-primary w-100">Login Siswa</button>
-            </form>
-
-            <form class="login-form" id="form-calon">
-                <div class="input-group">
-                    <i class="fas fa-id-card"></i>
-                    <input type="text" placeholder="Nomor Pendaftaran PPDB" required>
-                </div>
-                <div class="input-group">
-                    <i class="fas fa-key"></i>
-                    <input type="password" placeholder="PIN / Password" required>
-                </div>
-                <button type="button" class="btn btn-primary w-100">Cek Status PPDB</button>
-            </form>
-
-            <form class="login-form" id="form-guru">
-                <div class="input-group">
-                    <i class="fas fa-chalkboard-teacher"></i>
-                    <input type="text" placeholder="NIP / Email Guru" required>
-                </div>
-                <div class="input-group">
-                    <i class="fas fa-lock"></i>
-                    <input type="password" placeholder="Password" required>
-                </div>
-                <button type="button" class="btn btn-primary w-100">Masuk Dashboard</button>
-            </form>
+            <a href="/login.html" class="btn btn-primary w-100" style="justify-content:center;margin-bottom:12px;">
+                <i class="fas fa-user-graduate"></i> Login Siswa / Wali
+            </a>
+            <a href="/login.html" class="btn btn-outline w-100" style="justify-content:center;margin-bottom:12px;">
+                <i class="fas fa-clipboard-check"></i> Cek PPDB / Daftar Akun
+            </a>
+            <p style="text-align:center;font-size:0.78rem;color:#64748b;margin-top:10px;">
+                Guru dan staf masuk melalui <a href="/admin-panel/login.html" style="color:var(--secondary);font-weight:700;">Admin Panel</a>.
+            </p>
         </div>
     </div>
     </footer>

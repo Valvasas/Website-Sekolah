@@ -28,6 +28,8 @@ router.get('/verify-email',                                                     
 router.get('/me',               authenticate,                                                ctrl.getProfile);
 // Auth check
 router.get('/check',            authenticate,                                                ctrl.checkAuth);
+// Public class list for registration dropdown
+router.get('/classes',                                                                       ctrl.getClasses);
 
 // Google OAuth — hanya aktif jika credentials dikonfigurasi
 const googleConfigured = Boolean(

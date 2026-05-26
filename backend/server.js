@@ -238,6 +238,7 @@ function setupWebSocket() {
     function fwdAdmin(msg) { send(adminWs, msg); }
 
     function saveCBT(data, fallbackNisn) {
+        if (data.serverVerified) return;
         try {
             require('./config/database')().prepare(
                 `INSERT INTO cbt_results (id,nisn,mapel,benar,salah,kosong,nilai,selesai_at) VALUES (?,?,?,?,?,?,?,datetime('now'))`

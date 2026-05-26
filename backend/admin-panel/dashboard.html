@@ -345,6 +345,9 @@
             <i class="fas fa-users"></i> Manajemen User
             <span class="nav-badge blue" id="navUserCount">0</span>
         </button>
+        <button class="nav-item" onclick="switchPage('cbt', this)">
+            <i class="fas fa-laptop-code"></i> CBT
+        </button>
         <button class="nav-item" onclick="switchPage('auditlog', this)">
             <i class="fas fa-history"></i> Audit Log
         </button>
@@ -493,6 +496,134 @@
         </div>
     </div>
 
+    <!-- ══ PAGE: CBT ══ -->
+    <div class="content page" id="page-cbt">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-laptop-code"></i> Sesi CBT</div>
+                <button class="btn-primary" onclick="createCbtExam()"><i class="fas fa-plus"></i> Buat Sesi</button>
+            </div>
+            <div class="card-body">
+                <div class="toolbar">
+                    <input type="text" class="search-input" id="cbtTitle" placeholder="Judul sesi ujian" style="min-width:220px;">
+                    <select class="filter-select" id="cbtMapel">
+                        <option value="matematika">Matematika</option>
+                        <option value="bindo">Bahasa Indonesia</option>
+                        <option value="basing">Bahasa Inggris</option>
+                        <option value="pkk">PKK</option>
+                        <option value="sejarah">Sejarah Indonesia</option>
+                        <option value="produktif">Kompetensi Keahlian</option>
+                    </select>
+                    <select class="filter-select" id="cbtKelas"></select>
+                    <input type="number" class="search-input" id="cbtDurasi" value="90" min="1" placeholder="Durasi" style="width:110px;min-width:110px;">
+                    <input type="number" class="search-input" id="cbtJumlahSoal" value="40" min="1" max="100" placeholder="Soal" style="width:100px;min-width:100px;">
+                </div>
+                <p style="color:var(--muted);font-size:0.78rem;margin-top:10px;">Sesi dibuat sebagai draft. Pasang soal, generate token kelas, lalu buka sesi saat ujian dimulai.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-question-circle"></i> Bank Soal CBT</div>
+                <button class="btn-act" onclick="loadCbtQuestions()"><i class="fas fa-sync"></i> Refresh Soal</button>
+            </div>
+            <div class="card-body">
+                <div class="toolbar">
+                    <select class="filter-select" id="qMapel" onchange="loadCbtQuestions()">
+                        <option value="matematika">Matematika</option>
+                        <option value="bindo">Bahasa Indonesia</option>
+                        <option value="basing">Bahasa Inggris</option>
+                        <option value="pkk">PKK</option>
+                        <option value="sejarah">Sejarah Indonesia</option>
+                        <option value="produktif">Kompetensi Keahlian</option>
+                    </select>
+                    <input type="text" class="search-input" id="qSoal" placeholder="Tulis pertanyaan" style="min-width:260px;">
+                    <input type="text" class="search-input" id="qA" placeholder="Opsi A">
+                    <input type="text" class="search-input" id="qB" placeholder="Opsi B">
+                    <input type="text" class="search-input" id="qC" placeholder="Opsi C">
+                    <input type="text" class="search-input" id="qD" placeholder="Opsi D">
+                    <input type="text" class="search-input" id="qE" placeholder="Opsi E">
+                    <select class="filter-select" id="qJawaban">
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
+                    </select>
+                    <button class="btn-primary" onclick="createCbtQuestion()"><i class="fas fa-plus"></i> Tambah Soal</button>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Soal</th><th>Mapel</th><th>Jawaban</th><th>Status</th><th>Aksi</th></tr>
+                    </thead>
+                    <tbody id="cbtQuestionsTbody">
+                        <tr><td colspan="5" class="empty-cell">Memuat...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-list-check"></i> Daftar Sesi CBT</div>
+                <button class="btn-act" onclick="loadCbtExams()"><i class="fas fa-sync"></i> Refresh</button>
+            </div>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Judul</th>
+                            <th>Kelas / Mapel</th>
+                            <th>Durasi</th>
+                            <th>Status</th>
+                            <th>Soal / Token</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cbtExamsTbody">
+                        <tr><td colspan="6" class="empty-cell">Memuat...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-key"></i> Token Sesi Terpilih</div>
+                <button class="btn-export" onclick="exportCbtTokens()"><i class="fas fa-download"></i> Export Token</button>
+            </div>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Nama</th><th>NISN</th><th>Token</th><th>Status</th><th>Mulai</th><th>Selesai</th></tr>
+                    </thead>
+                    <tbody id="cbtTokensTbody">
+                        <tr><td colspan="6" class="empty-cell">Pilih sesi untuk melihat token.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-chart-line"></i> Hasil Sesi Terpilih</div>
+                <button class="btn-export" onclick="exportCbtResults()"><i class="fas fa-download"></i> Export Hasil</button>
+            </div>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Nama</th><th>NISN</th><th>Nilai</th><th>Benar</th><th>Salah</th><th>Kosong</th><th>Waktu</th></tr>
+                    </thead>
+                    <tbody id="cbtResultsTbody">
+                        <tr><td colspan="7" class="empty-cell">Pilih sesi untuk melihat hasil.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- ══ PAGE: AUDIT LOG ══ -->
     <div class="content page" id="page-auditlog">
         <div class="card">
@@ -551,6 +682,16 @@
                     <div class="form-group" id="nisnGroup" style="display:none">
                         <label>NISN (10 digit)</label>
                         <input type="text" id="fNisn" placeholder="0012345678" maxlength="10">
+                    </div>
+                    <div class="form-group" id="kelasGroup" style="display:none">
+                        <label>Kelas</label>
+                        <select id="fKelas" onchange="syncJurusanFromKelas()">
+                            <option value="">Pilih kelas</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="jurusanGroup" style="display:none">
+                        <label>Jurusan</label>
+                        <input type="text" id="fJurusan" placeholder="Teknik Komputer & Jaringan">
                     </div>
                     <div class="form-group" id="nipGroup" style="display:none">
                         <label>NIP (18 digit)</label>
@@ -613,6 +754,11 @@ let userData= JSON.parse(localStorage.getItem('userData') || '{}');
 let currentPage = 1;
 let logPage     = 1;
 let currentSection = 'dashboard';
+let selectedCbtExam = null;
+let cbtTokenRows = [];
+let cbtResultRows = [];
+let cbtQuestionRows = [];
+let schoolClasses = [];
 
 /* ══════════════════════════════════════════
    AUTH GUARD — redirect jika belum login
@@ -670,6 +816,7 @@ function initDashboard(user) {
     }
 
     loadDashboard();
+    loadSchoolClasses();
     startClock();
 }
 
@@ -684,13 +831,14 @@ function switchPage(name, btn) {
     if (btn) btn.classList.add('active');
 
     currentSection = name;
-    const titles = { dashboard:'Dashboard', users:'Manajemen User', auditlog:'Audit Log' };
+    const titles = { dashboard:'Dashboard', users:'Manajemen User', cbt:'CBT', auditlog:'Audit Log' };
     document.getElementById('topbarTitle').textContent = titles[name] || 'Dashboard';
 
     if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
 
     // Load data untuk page
     if (name === 'users')    loadUsers();
+    if (name === 'cbt')      loadCbtDashboard();
     if (name === 'auditlog') loadAuditLogs();
     if (name === 'dashboard') loadDashboard();
 }
@@ -846,6 +994,315 @@ async function loadUsers(page = currentPage) {
 }
 
 /* ══════════════════════════════════════════
+   CBT ADMIN
+══════════════════════════════════════════ */
+async function loadCbtDashboard() {
+    await loadCbtKelas();
+    await loadCbtQuestions();
+    await loadCbtExams();
+}
+
+async function loadSchoolClasses() {
+    try {
+        const data = await apiFetch('/auth/classes');
+        schoolClasses = data.success ? (data.data || []) : [];
+        populateClassSelects();
+    } catch(e) {
+        schoolClasses = [];
+    }
+}
+
+function populateClassSelects() {
+    const userSelect = document.getElementById('fKelas');
+    if (userSelect) {
+        const current = userSelect.value;
+        userSelect.innerHTML = '<option value="">Pilih kelas</option>' + schoolClasses.map(k =>
+            `<option value="${escapeAttr(k.kelas)}">${escapeHtml(k.kelas)} - ${escapeHtml(k.jurusan)}</option>`
+        ).join('');
+        if (current) userSelect.value = current;
+    }
+}
+
+async function loadCbtKelas() {
+    const select = document.getElementById('cbtKelas');
+    if (!select) return;
+    try {
+        const data = await apiFetch('/cbt/kelas');
+        if (!data.success) return;
+        if (!data.data.length) {
+            select.innerHTML = '<option value="">Belum ada kelas</option>';
+            return;
+        }
+        select.innerHTML = data.data.map(k =>
+            `<option value="${escapeAttr(k.kelas)}">${k.kelas} (${k.total_siswa || 0} siswa)</option>`
+        ).join('');
+    } catch(e) {
+        select.innerHTML = '<option value="">Gagal memuat kelas</option>';
+    }
+}
+
+async function loadCbtQuestions() {
+    const tbody = document.getElementById('cbtQuestionsTbody');
+    if (!tbody) return;
+    const mapel = document.getElementById('qMapel')?.value || 'matematika';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-cell"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
+    try {
+        const data = await apiFetch(`/cbt/bank-soal?mapel=${encodeURIComponent(mapel)}&limit=100`);
+        cbtQuestionRows = data.data?.questions || [];
+        if (!cbtQuestionRows.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Belum ada soal untuk mapel ini. Tambahkan soal dulu sebelum membuat sesi.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = cbtQuestionRows.map(q => `
+            <tr>
+                <td>
+                    <strong>${escapeHtml(q.soal)}</strong>
+                    <div style="font-size:0.7rem;color:var(--muted);">A. ${escapeHtml(q.opsi_a)} · B. ${escapeHtml(q.opsi_b)} · C. ${escapeHtml(q.opsi_c)} · D. ${escapeHtml(q.opsi_d)}${q.opsi_e ? ` · E. ${escapeHtml(q.opsi_e)}` : ''}</div>
+                </td>
+                <td>${formatMapel(q.mapel)}</td>
+                <td><strong>${escapeHtml(q.jawaban)}</strong></td>
+                <td><span class="badge ${q.is_active ? 'badge-active' : 'badge-inactive'}">${q.is_active ? 'Aktif' : 'Nonaktif'}</span></td>
+                <td>
+                    <button class="btn-act edit" onclick="editCbtQuestion('${q.id}')"><i class="fas fa-edit"></i></button>
+                    <button class="btn-act del" onclick="deleteCbtQuestion('${q.id}')"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+    } catch(err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-cell">Gagal memuat soal: ${err.message}</td></tr>`;
+    }
+}
+
+async function createCbtQuestion() {
+    const payload = {
+        mapel: document.getElementById('qMapel').value,
+        soal: document.getElementById('qSoal').value.trim(),
+        opsi_a: document.getElementById('qA').value.trim(),
+        opsi_b: document.getElementById('qB').value.trim(),
+        opsi_c: document.getElementById('qC').value.trim(),
+        opsi_d: document.getElementById('qD').value.trim(),
+        opsi_e: document.getElementById('qE').value.trim() || null,
+        jawaban: document.getElementById('qJawaban').value,
+        jenis_ujian: 'CBT',
+        tingkat: 'sedang'
+    };
+    if (!payload.soal || !payload.opsi_a || !payload.opsi_b || !payload.opsi_c || !payload.opsi_d) {
+        return showToast('Soal dan opsi A-D wajib diisi.', 'error');
+    }
+    try {
+        const data = await apiFetch('/cbt/bank-soal', 'POST', payload);
+        showToast(data.message || 'Soal ditambahkan.', data.success ? 'success' : 'error');
+        if (data.success) {
+            ['qSoal','qA','qB','qC','qD','qE'].forEach(id => document.getElementById(id).value = '');
+            await loadCbtQuestions();
+        }
+    } catch(e) {
+        showToast('Gagal menambahkan soal.', 'error');
+    }
+}
+
+async function editCbtQuestion(id) {
+    const q = cbtQuestionRows.find(item => item.id === id);
+    if (!q) return;
+    const soal = prompt('Edit pertanyaan:', q.soal);
+    if (soal === null) return;
+    const jawaban = prompt('Jawaban benar (A-E):', q.jawaban);
+    if (jawaban === null) return;
+    try {
+        const data = await apiFetch(`/cbt/bank-soal/${id}`, 'PUT', {
+            soal: soal.trim(),
+            jawaban: jawaban.trim().toUpperCase()
+        });
+        showToast(data.message || 'Soal diperbarui.', data.success ? 'success' : 'error');
+        await loadCbtQuestions();
+    } catch(e) {
+        showToast('Gagal memperbarui soal.', 'error');
+    }
+}
+
+async function deleteCbtQuestion(id) {
+    if (!confirm('Nonaktifkan soal ini?')) return;
+    try {
+        const data = await apiFetch(`/cbt/bank-soal/${id}`, 'DELETE');
+        showToast(data.message || 'Soal dinonaktifkan.', data.success ? 'success' : 'error');
+        await loadCbtQuestions();
+    } catch(e) {
+        showToast('Gagal menonaktifkan soal.', 'error');
+    }
+}
+
+async function loadCbtExams() {
+    const tbody = document.getElementById('cbtExamsTbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-cell"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
+    try {
+        const data = await apiFetch('/cbt/exams?limit=50');
+        if (!data.success) return;
+        const exams = data.data.exams || [];
+        if (!exams.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">Belum ada sesi CBT.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = exams.map(e => `
+            <tr class="${selectedCbtExam === e.id ? 'selected' : ''}">
+                <td>
+                    <strong>${escapeHtml(e.title)}</strong>
+                    <div style="font-size:0.7rem;color:var(--muted);">${e.created_at ? formatTime(e.created_at) : '-'}</div>
+                </td>
+                <td>
+                    ${escapeHtml(e.kelas)}
+                    <div style="font-size:0.7rem;color:var(--muted);">${formatMapel(e.mapel)}</div>
+                </td>
+                <td>${e.durasi_menit} menit</td>
+                <td><span class="badge ${e.status === 'open' ? 'badge-active' : e.status === 'closed' ? 'badge-inactive' : 'badge-unverified'}">${e.status}</span></td>
+                <td>${e.total_soal || 0} soal / ${e.total_token || 0} token</td>
+                <td>
+                    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                        <button class="btn-act" onclick="selectCbtExam('${e.id}')"><i class="fas fa-eye"></i></button>
+                        <button class="btn-act active" onclick="assignCbtQuestions('${e.id}')"><i class="fas fa-list-ol"></i></button>
+                        <button class="btn-act edit" onclick="generateCbtTokens('${e.id}')"><i class="fas fa-key"></i></button>
+                        ${e.status === 'open'
+                            ? `<button class="btn-act del" onclick="setCbtStatus('${e.id}','closed')"><i class="fas fa-lock"></i></button>`
+                            : `<button class="btn-act active" onclick="setCbtStatus('${e.id}','open')"><i class="fas fa-unlock"></i></button>`}
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    } catch(err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-cell">Gagal memuat CBT: ${err.message}</td></tr>`;
+    }
+}
+
+async function createCbtExam() {
+    const title = document.getElementById('cbtTitle').value.trim();
+    const mapel = document.getElementById('cbtMapel').value;
+    const kelas = document.getElementById('cbtKelas').value;
+    const durasi = parseInt(document.getElementById('cbtDurasi').value) || 90;
+    const jumlah = parseInt(document.getElementById('cbtJumlahSoal').value) || 40;
+    if (!title || !mapel || !kelas) return showToast('Judul, mapel, dan kelas wajib diisi.', 'error');
+
+    try {
+        const data = await apiFetch('/cbt/exams', 'POST', {
+            title, mapel, kelas,
+            durasi_menit: durasi,
+            question_count: jumlah,
+            status: 'draft'
+        });
+        if (!data.success) return showToast(data.message || 'Gagal membuat sesi.', 'error');
+        showToast(data.message, 'success');
+        document.getElementById('cbtTitle').value = '';
+        await loadCbtExams();
+    } catch(e) {
+        showToast('Gagal membuat sesi CBT.', 'error');
+    }
+}
+
+async function assignCbtQuestions(examId) {
+    try {
+        const data = await apiFetch(`/cbt/exams/${examId}/questions/assign`, 'POST', {});
+        showToast(data.message || (data.success ? 'Soal dipasang.' : 'Gagal memasang soal.'), data.success ? 'success' : 'error');
+        await loadCbtExams();
+    } catch(e) {
+        showToast('Gagal memasang soal.', 'error');
+    }
+}
+
+async function generateCbtTokens(examId) {
+    try {
+        const data = await apiFetch(`/cbt/exams/${examId}/tokens`, 'POST', {});
+        showToast(data.message || (data.success ? 'Token dibuat.' : 'Gagal membuat token.'), data.success ? 'success' : 'error');
+        selectedCbtExam = examId;
+        await loadCbtExams();
+        await loadCbtTokens(examId);
+    } catch(e) {
+        showToast('Gagal membuat token kelas.', 'error');
+    }
+}
+
+async function setCbtStatus(examId, status) {
+    try {
+        const data = await apiFetch(`/cbt/exams/${examId}/status`, 'PATCH', { status });
+        showToast(data.message || 'Status CBT diperbarui.', data.success ? 'success' : 'error');
+        await loadCbtExams();
+    } catch(e) {
+        showToast('Gagal mengubah status CBT.', 'error');
+    }
+}
+
+async function selectCbtExam(examId) {
+    selectedCbtExam = examId;
+    await loadCbtExams();
+    await Promise.all([loadCbtTokens(examId), loadCbtResults(examId)]);
+}
+
+async function loadCbtTokens(examId) {
+    const tbody = document.getElementById('cbtTokensTbody');
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-cell"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
+    try {
+        const data = await apiFetch(`/cbt/exams/${examId}/tokens`);
+        cbtTokenRows = data.data || [];
+        if (!cbtTokenRows.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">Belum ada token. Klik tombol kunci pada sesi.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = cbtTokenRows.map(t => `
+            <tr>
+                <td>${escapeHtml(t.nama_lengkap || '-')}</td>
+                <td>${escapeHtml(t.nisn)}</td>
+                <td><code>${escapeHtml(t.token)}</code></td>
+                <td>${t.used ? 'Selesai' : escapeHtml(t.status || 'issued')}</td>
+                <td>${t.start_time ? formatTime(t.start_time) : '-'}</td>
+                <td>${t.end_time ? formatTime(t.end_time) : '-'}</td>
+            </tr>
+        `).join('');
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">Gagal memuat token.</td></tr>';
+    }
+}
+
+async function loadCbtResults(examId) {
+    const tbody = document.getElementById('cbtResultsTbody');
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
+    try {
+        const data = await apiFetch(`/cbt/results?exam_id=${encodeURIComponent(examId)}&limit=100`);
+        cbtResultRows = data.data?.results || [];
+        if (!cbtResultRows.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Belum ada hasil.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = cbtResultRows.map(r => `
+            <tr>
+                <td>${escapeHtml(r.nama_lengkap || '-')}</td>
+                <td>${escapeHtml(r.nisn)}</td>
+                <td><strong>${r.nilai}</strong></td>
+                <td>${r.benar}</td>
+                <td>${r.salah}</td>
+                <td>${r.kosong}</td>
+                <td>${formatTime(r.selesai_at)}</td>
+            </tr>
+        `).join('');
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Gagal memuat hasil.</td></tr>';
+    }
+}
+
+function exportCbtTokens() {
+    if (!cbtTokenRows.length) return showToast('Tidak ada token untuk diexport.', 'warning');
+    downloadCSV([
+        ['Nama','NISN','Token','Status','Mulai','Selesai'],
+        ...cbtTokenRows.map(t => [t.nama_lengkap || '', t.nisn, t.token, t.used ? 'Selesai' : (t.status || ''), t.start_time || '', t.end_time || ''])
+    ], `cbt_tokens_${new Date().toISOString().slice(0,10)}.csv`);
+}
+
+function exportCbtResults() {
+    if (!cbtResultRows.length) return showToast('Tidak ada hasil untuk diexport.', 'warning');
+    downloadCSV([
+        ['Nama','NISN','Nilai','Benar','Salah','Kosong','Waktu'],
+        ...cbtResultRows.map(r => [r.nama_lengkap || '', r.nisn, r.nilai, r.benar, r.salah, r.kosong, r.selesai_at || ''])
+    ], `cbt_results_${new Date().toISOString().slice(0,10)}.csv`);
+}
+
+/* ══════════════════════════════════════════
    AUDIT LOG
 ══════════════════════════════════════════ */
 async function loadAuditLogs(page = logPage) {
@@ -904,6 +1361,7 @@ function openCreateModal() {
     document.getElementById('fConfirmPassword').required= true;
     document.getElementById('passwordGroup').style.display = '';
     document.getElementById('confirmPwGroup').style.display= '';
+    onRoleChange();
     hideModalAlert();
     openModal('userModal');
 }
@@ -927,6 +1385,8 @@ async function openEditModal(userId) {
         document.getElementById('fRole').value  = u.role;
         document.getElementById('fNisn').value  = u.nisn    || '';
         document.getElementById('fNip').value   = u.nip     || '';
+        document.getElementById('fKelas').value = u.kelas   || '';
+        document.getElementById('fJurusan').value = u.jurusan || '';
         document.getElementById('fHp').value    = u.no_hp   || '';
         document.getElementById('fPassword').value        = '';
         document.getElementById('fConfirmPassword').value = '';
@@ -940,8 +1400,19 @@ async function openEditModal(userId) {
 function onRoleChange() {
     const role = document.getElementById('fRole').value;
     const staffRoles = ['guru','tata_usaha','kepala_sekolah','super_admin'];
-    document.getElementById('nisnGroup').style.display = ['siswa','calon_siswa'].includes(role) ? '' : 'none';
+    const studentRole = ['siswa','calon_siswa'].includes(role);
+    document.getElementById('nisnGroup').style.display = studentRole ? '' : 'none';
+    document.getElementById('kelasGroup').style.display = studentRole ? '' : 'none';
+    document.getElementById('jurusanGroup').style.display = studentRole ? '' : 'none';
     document.getElementById('nipGroup').style.display  = staffRoles.includes(role) ? '' : 'none';
+    syncJurusanFromKelas();
+}
+
+function syncJurusanFromKelas() {
+    const kelas = document.getElementById('fKelas')?.value;
+    const jurusanInput = document.getElementById('fJurusan');
+    const found = schoolClasses.find(k => k.kelas === kelas);
+    if (found && jurusanInput && !jurusanInput.value) jurusanInput.value = found.jurusan;
 }
 
 async function submitUserForm(e) {
@@ -964,6 +1435,8 @@ async function submitUserForm(e) {
         role:         document.getElementById('fRole').value,
         nisn:         document.getElementById('fNisn').value.trim() || null,
         nip:          document.getElementById('fNip').value.trim()  || null,
+        kelas:        document.getElementById('fKelas').value.trim() || null,
+        jurusan:      document.getElementById('fJurusan').value.trim() || null,
         no_hp:        document.getElementById('fHp').value.trim()   || null,
     };
     if (password) payload.password = password;
@@ -1142,6 +1615,28 @@ function renderPagination(containerId, pagination, loadFn) {
     }
     html += `<button class="page-btn" onclick="${loadFn.name}(${page+1})" ${page>=totalPages?'disabled':''}><i class="fas fa-chevron-right"></i></button>`;
     el.innerHTML = html;
+}
+
+function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, c => ({
+        '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'
+    }[c]));
+}
+
+function escapeAttr(value) {
+    return escapeHtml(value).replace(/`/g, '&#096;');
+}
+
+function formatMapel(mapel) {
+    const m = {
+        matematika:'Matematika',
+        bindo:'Bahasa Indonesia',
+        basing:'Bahasa Inggris',
+        pkk:'PKK',
+        sejarah:'Sejarah Indonesia',
+        produktif:'Kompetensi Keahlian'
+    };
+    return m[mapel] || mapel || '-';
 }
 
 function formatRole(role) {

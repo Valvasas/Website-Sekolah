@@ -343,15 +343,12 @@
             <i class="fas fa-arrow-left"></i> Kembali ke Beranda
         </a>
 
-        <h2 class="form-title">Selamat Datang</h2>
-        <p class="form-sub">Masuk ke portal sesuai peran Anda</p>
+        <h2 class="form-title">Portal Admin & Staf</h2>
+        <p class="form-sub">Masuk sebagai guru, tata usaha, kepala sekolah, atau admin</p>
 
         <!-- Role Selector -->
         <div class="role-tabs" id="roleTabs">
-            <button class="role-tab active" data-role="siswa" onclick="switchRole('siswa', this)">
-                <i class="fas fa-user-graduate"></i> Siswa
-            </button>
-            <button class="role-tab" data-role="guru" onclick="switchRole('guru', this)">
+            <button class="role-tab active" data-role="guru" onclick="switchRole('guru', this)">
                 <i class="fas fa-chalkboard-teacher"></i> Guru
             </button>
             <button class="role-tab" data-role="tata_usaha" onclick="switchRole('tata_usaha', this)">
@@ -359,6 +356,9 @@
             </button>
             <button class="role-tab" data-role="kepala_sekolah" onclick="switchRole('kepala_sekolah', this)">
                 <i class="fas fa-user-tie"></i> Kepsek
+            </button>
+            <button class="role-tab" data-role="super_admin" onclick="switchRole('super_admin', this)">
+                <i class="fas fa-user-shield"></i> Admin
             </button>
         </div>
 
@@ -373,10 +373,10 @@
             <div class="field-group">
                 <label id="identifierLabel">
                     <i class="fas fa-id-card"></i>
-                    <span id="identifierLabelText">NISN Siswa</span>
+                    <span id="identifierLabelText">Email Guru</span>
                 </label>
-                <input type="text" id="identifier" name="identifier"
-                       placeholder="Masukkan NISN" autocomplete="username" required>
+                <input type="email" id="identifier" name="identifier"
+                       placeholder="email@smkn1terisi.sch.id" autocomplete="username" required>
             </div>
 
             <div class="field-group">
@@ -403,8 +403,8 @@
             </button>
         </form>
 
-        <!-- Google Login (hanya untuk siswa) -->
-        <div id="googleLoginSection">
+        <!-- Login siswa/Google berada di /login.html -->
+        <div id="googleLoginSection" style="display:none">
             <div class="divider">atau</div>
             <button class="btn-google" onclick="loginWithGoogle()">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
@@ -413,7 +413,7 @@
         </div>
 
         <!-- Register Link -->
-        <p class="register-link" id="registerLink">
+        <p class="register-link" id="registerLink" style="display:none">
             Belum punya akun? <a href="#" onclick="showRegisterModal()">Daftar di sini</a>
         </p>
     </div>
@@ -577,7 +577,8 @@ if (oauthToken) {
 /* ══════════════════════════════════════
    ROLE SWITCHER
 ══════════════════════════════════════ */
-let currentRole = 'siswa';
+const STAFF_ROLES = new Set(['guru', 'tata_usaha', 'kepala_sekolah', 'super_admin']);
+let currentRole = 'guru';
 
 function switchRole(role, btn) {
     currentRole = role;
@@ -590,17 +591,16 @@ function switchRole(role, btn) {
     const registerLink = document.getElementById('registerLink');
 
     const config = {
-        siswa:           { label:'NISN Siswa', placeholder:'10 digit NISN', google: true,  register: true  },
         guru:            { label:'Email Guru', placeholder:'email@smkn1terisi.sch.id', google: false, register: false },
         tata_usaha:      { label:'Email Staff TU', placeholder:'email@smkn1terisi.sch.id', google: false, register: false },
         kepala_sekolah:  { label:'Email Kepala Sekolah', placeholder:'email@smkn1terisi.sch.id', google: false, register: false },
         super_admin:     { label:'Email Admin', placeholder:'admin@smkn1terisi.sch.id', google: false, register: false },
     };
 
-    const c = config[role] || config.siswa;
+    const c = config[role] || config.guru;
     labelEl.textContent    = c.label;
     inputEl.placeholder    = c.placeholder;
-    inputEl.type           = (role === 'siswa') ? 'text' : 'email';
+    inputEl.type           = 'email';
     inputEl.value          = '';
     googleSec.style.display  = c.google   ? '' : 'none';
     registerLink.style.display= c.register ? '' : 'none';
@@ -628,6 +628,10 @@ async function handleLogin(e) {
     setLoading(btn, true);
 
     try {
+        if (!STAFF_ROLES.has(currentRole)) {
+            showAlert('error', 'Halaman ini khusus admin dan staf. Siswa masuk lewat /login.html.', 'alertBox', 'alertMsg');
+            return;
+        }
         const res  = await fetch(`${API}/login`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -636,6 +640,10 @@ async function handleLogin(e) {
         const data = await res.json();
 
         if (data.success) {
+            if (!STAFF_ROLES.has(data.data.user.role)) {
+                showAlert('error', 'Akun ini bukan akun staf. Silakan masuk lewat /login.html.', 'alertBox', 'alertMsg');
+                return;
+            }
             // Simpan token & data user
             localStorage.setItem('accessToken',  data.data.accessToken);
             localStorage.setItem('refreshToken', data.data.refreshToken);
@@ -852,8 +860,8 @@ function redirectByRole(role) {
         kepala_sekolah:  '/admin-panel/dashboard.html',
         guru:            '/admin-panel/dashboard.html',
         tata_usaha:      '/admin-panel/dashboard.html',
-        siswa:           '/DATA.html',
-        wali_murid:      '/DATA.html',
+        siswa:           '/LMS.html',
+        wali_murid:      '/LMS.html',
         calon_siswa:     '/ppdb.html',
     };
     window.location.href = map[role] || '/';

@@ -27,8 +27,8 @@
     kepala_sekolah:  '/admin-panel/dashboard.html',
     guru:            '/admin-panel/dashboard.html',
     tata_usaha:      '/admin-panel/dashboard.html',
-    siswa:           '/DATA.html',
-    wali_murid:      '/DATA.html',
+    siswa:           '/LMS.html',
+    wali_murid:      '/LMS.html',
     calon_siswa:     '/ppdb.html',
   };
 
