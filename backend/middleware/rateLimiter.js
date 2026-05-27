@@ -43,6 +43,22 @@ const passwordResetLimiter = rateLimit({
     }
 });
 
+// ── SKL publik — tahan brute force NISN/tanggal lahir ──────────────
+const sklSearchLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max:      8,
+    standardHeaders: true,
+    legacyHeaders:   false,
+    message: {
+        success: false,
+        message: 'Terlalu banyak percobaan. Coba lagi beberapa menit lagi.'
+    },
+    keyGenerator: (req) => {
+        const nisn = String(req.body?.nisn || 'unknown').replace(/\D/g, '').slice(0, 10);
+        return `${req.ip}_${nisn}`;
+    }
+});
+
 // ── API umum — 100 request per menit ──────────────────────
 const apiLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -57,5 +73,6 @@ module.exports = {
     loginLimiter,
     registerLimiter,
     passwordResetLimiter,
+    sklSearchLimiter,
     apiLimiter,
 };

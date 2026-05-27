@@ -42,6 +42,36 @@ function sanitizeQuestion(row) {
     };
 }
 
+function cleanText(value, max = 240) {
+    if (value === undefined || value === null) return null;
+    return String(value).replace(/[<>]/g, '').trim().slice(0, max) || null;
+}
+
+function notifyStudents(db, students, { judul, pesan, tipe = 'cbt', link = '/LMS.html' }) {
+    if (!students.length) return 0;
+    const insert = db.prepare(`
+        INSERT INTO notifikasi (id,user_id,judul,pesan,tipe,link,created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    let count = 0;
+    for (const s of students) {
+        if (!s.id) continue;
+        insert.run(uuidv4(), s.id, cleanText(judul, 120), cleanText(pesan, 500), tipe, link, nowISO());
+        count++;
+    }
+    return count;
+}
+
+function getActiveStudentsByClass(db, kelas) {
+    return db.prepare(`
+        SELECT u.id, u.nisn, u.nama_lengkap
+        FROM users u
+        JOIN siswa_profil sp ON sp.nisn = u.nisn
+        WHERE sp.kelas = ? AND u.role = 'siswa' AND u.is_active = 1 AND u.nisn IS NOT NULL
+        ORDER BY u.nama_lengkap ASC
+    `).all(kelas);
+}
+
 function getExam(db, examId) {
     if (!examId) return null;
     return db.prepare('SELECT * FROM cbt_exams WHERE id = ?').get(examId);
@@ -386,6 +416,15 @@ router.patch('/exams/:id/status', authenticate, authorize(...STAFF), (req, res) 
     try {
         const info = db.prepare('UPDATE cbt_exams SET status = ?, updated_at = ? WHERE id = ?').run(status, nowISO(), req.params.id);
         if (!info.changes) return res.status(404).json({ success: false, message: 'Sesi CBT tidak ditemukan.' });
+        if (status === 'open') {
+            const exam = getExam(db, req.params.id);
+            const siswaList = getActiveStudentsByClass(db, exam.kelas);
+            notifyStudents(db, siswaList, {
+                judul: 'Sesi CBT dibuka',
+                pesan: `${exam.title} untuk ${exam.kelas} sudah dibuka. Masuk melalui layanan CBT di dashboard siswa.`,
+                link: '/LMS.html'
+            });
+        }
         return res.json({ success: true, message: `Sesi CBT diset ke ${status}.` });
     } catch (err) {
         return res.status(500).json({ success: false, message: 'Gagal mengubah status sesi CBT.' });
@@ -444,13 +483,7 @@ router.post('/exams/:id/tokens', authenticate, authorize(...STAFF), (req, res) =
     if (exam.status === 'archived') return res.status(400).json({ success: false, message: 'Sesi CBT sudah diarsipkan.' });
 
     try {
-        const siswaList = db.prepare(`
-            SELECT u.nisn, u.nama_lengkap
-            FROM users u
-            JOIN siswa_profil sp ON sp.nisn = u.nisn
-            WHERE sp.kelas = ? AND u.role = 'siswa' AND u.is_active = 1 AND u.nisn IS NOT NULL
-            ORDER BY u.nama_lengkap ASC
-        `).all(exam.kelas);
+        const siswaList = getActiveStudentsByClass(db, exam.kelas);
         if (!siswaList.length) {
             return res.status(400).json({ success: false, message: `Belum ada siswa aktif di kelas ${exam.kelas}. Lengkapi profil siswa terlebih dahulu.` });
         }
@@ -469,6 +502,11 @@ router.post('/exams/:id/tokens', authenticate, authorize(...STAFF), (req, res) =
                 insert.run(uuidv4(), exam.id, s.nisn, exam.mapel, token, exam.durasi_menit, expiry, nowISO());
                 results.push({ nisn: s.nisn, nama_lengkap: s.nama_lengkap, token, expires_at: expiry });
             });
+            notifyStudents(db, siswaList, {
+                judul: 'Token CBT tersedia',
+                pesan: `Token ${exam.title}: lihat token ujianmu di layanan CBT dashboard siswa.`,
+                link: '/LMS.html'
+            });
         });
         tx();
 
@@ -485,6 +523,11 @@ router.get('/exams/:id/tokens', authenticate, authorize(...STAFF), (req, res) =>
         const rows = db.prepare(`
             SELECT cs.id, cs.nisn, cs.mapel, cs.token, cs.used, cs.status,
                    cs.start_time, cs.end_time, cs.expires_at, cs.created_at,
+                   cs.last_seen_at, cs.location_lat, cs.location_lng,
+                   cs.device_info, cs.browser_info, cs.network_mbps,
+                   cs.camera_status, cs.screen_status,
+                   cs.progress_answered, cs.progress_total, cs.current_question,
+                   cs.violation_count,
                    u.nama_lengkap
             FROM cbt_sessions cs
             LEFT JOIN users u ON u.nisn = cs.nisn
@@ -494,6 +537,36 @@ router.get('/exams/:id/tokens', authenticate, authorize(...STAFF), (req, res) =>
         return res.json({ success: true, data: rows });
     } catch (err) {
         return res.status(500).json({ success: false, message: 'Gagal mengambil token sesi CBT.' });
+    }
+});
+
+router.get('/exams/:id/monitor', authenticate, authorize(...STAFF), (req, res) => {
+    const db = getDB();
+    try {
+        const exam = getExam(db, req.params.id);
+        if (!exam) return res.status(404).json({ success: false, message: 'Sesi CBT tidak ditemukan.' });
+        const rows = db.prepare(`
+            SELECT cs.id, cs.nisn, cs.mapel, cs.status, cs.used, cs.start_time, cs.end_time,
+                   cs.last_seen_at, cs.location_lat, cs.location_lng, cs.device_info, cs.browser_info,
+                   cs.network_mbps, cs.camera_status, cs.screen_status,
+                   cs.progress_answered, cs.progress_total, cs.current_question,
+                   cs.violation_count, cs.last_camera_frame, cs.last_screen_frame,
+                   u.nama_lengkap,
+                   cr.nilai, cr.benar, cr.salah, cr.kosong, cr.selesai_at
+            FROM cbt_sessions cs
+            LEFT JOIN users u ON u.nisn = cs.nisn
+            LEFT JOIN cbt_results cr ON cr.session_id = cs.id
+            WHERE cs.exam_id = ?
+            ORDER BY u.nama_lengkap ASC
+        `).all(req.params.id).map(row => ({
+            ...row,
+            device_info: safeParseJson(row.device_info),
+            browser_info: safeParseJson(row.browser_info)
+        }));
+        return res.json({ success: true, data: { exam, students: rows } });
+    } catch (err) {
+        console.error('[CBT monitor]', err.message);
+        return res.status(500).json({ success: false, message: 'Gagal mengambil monitoring CBT.' });
     }
 });
 
@@ -606,6 +679,28 @@ router.get('/tokens', authenticate, authorize(...STAFF), (req, res) => {
         return res.json({ success: true, data: { tokens: rows, pagination: { total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / parseInt(limit)) } } });
     } catch (err) {
         return res.status(500).json({ success: false, message: 'Gagal mengambil data token.' });
+    }
+});
+
+router.get('/student/sessions', authenticate, (req, res) => {
+    const db = getDB();
+    if (req.user.role !== 'siswa') return res.status(403).json({ success: false, message: 'Hanya siswa.' });
+    try {
+        const rows = db.prepare(`
+            SELECT e.id as exam_id, e.title, e.mapel, e.kelas, e.durasi_menit, e.question_count,
+                   e.start_at, e.end_at, e.status,
+                   cs.token, cs.used, cs.status as token_status, cs.expires_at, cs.start_time, cs.end_time
+            FROM cbt_sessions cs
+            JOIN cbt_exams e ON e.id = cs.exam_id
+            WHERE cs.nisn = ?
+              AND e.status IN ('draft','open')
+              AND cs.status != 'revoked'
+            ORDER BY e.status = 'open' DESC, e.created_at DESC
+            LIMIT 10
+        `).all(req.user.nisn);
+        return res.json({ success: true, data: rows });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: 'Gagal mengambil sesi CBT siswa.' });
     }
 });
 
@@ -760,14 +855,21 @@ router.get('/results', authenticate, authorize(...STAFF), (req, res) => {
         if (exam_id) { conds.push('cr.exam_id = ?'); params.push(exam_id); }
         const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
         const rows = db.prepare(`
-            SELECT cr.*, u.nama_lengkap, u.no_hp, e.title as exam_title, e.kelas
+            SELECT cr.*, u.nama_lengkap, u.no_hp, e.title as exam_title, e.kelas,
+                   cs.location_lat, cs.location_lng, cs.device_info, cs.browser_info,
+                   cs.network_mbps, cs.camera_status, cs.screen_status, cs.violation_count
             FROM cbt_results cr
             LEFT JOIN users u ON cr.nisn = u.nisn
             LEFT JOIN cbt_exams e ON e.id = cr.exam_id
+            LEFT JOIN cbt_sessions cs ON cs.id = cr.session_id
             ${where}
             ORDER BY cr.selesai_at DESC
             LIMIT ? OFFSET ?
-        `).all(...params, parseInt(limit), offset);
+        `).all(...params, parseInt(limit), offset).map(row => ({
+            ...row,
+            device_info: safeParseJson(row.device_info),
+            browser_info: safeParseJson(row.browser_info)
+        }));
         const total = db.prepare(`SELECT COUNT(*) as c FROM cbt_results cr ${where}`).get(...params)?.c || 0;
         return res.json({ success: true, data: { results: rows, pagination: { total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / parseInt(limit)) } } });
     } catch (err) {
@@ -775,5 +877,10 @@ router.get('/results', authenticate, authorize(...STAFF), (req, res) => {
         return res.status(500).json({ success: false, message: 'Gagal mengambil hasil ujian.' });
     }
 });
+
+function safeParseJson(value) {
+    if (!value) return null;
+    try { return JSON.parse(value); } catch { return null; }
+}
 
 module.exports = router;

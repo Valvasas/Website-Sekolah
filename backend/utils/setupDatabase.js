@@ -106,6 +106,12 @@ function setup() {
             token TEXT NOT NULL UNIQUE, used INTEGER NOT NULL DEFAULT 0,
             status TEXT NOT NULL DEFAULT 'issued',
             start_time TEXT, end_time TEXT,
+            last_seen_at TEXT, location_lat TEXT, location_lng TEXT,
+            device_info TEXT, browser_info TEXT, network_mbps REAL,
+            camera_status TEXT, screen_status TEXT,
+            progress_answered INTEGER DEFAULT 0, progress_total INTEGER DEFAULT 0,
+            current_question INTEGER DEFAULT 0, violation_count INTEGER DEFAULT 0,
+            last_camera_frame TEXT, last_screen_frame TEXT,
             durasi_menit INTEGER NOT NULL DEFAULT 90,
             expires_at TEXT NOT NULL,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
@@ -239,6 +245,20 @@ function setup() {
     const sessionCols = db.pragma('table_info(cbt_sessions)').map(c => c.name);
     if (!sessionCols.includes('exam_id')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN exam_id TEXT');
     if (!sessionCols.includes('status')) db.exec("ALTER TABLE cbt_sessions ADD COLUMN status TEXT NOT NULL DEFAULT 'issued'");
+    if (!sessionCols.includes('last_seen_at')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN last_seen_at TEXT');
+    if (!sessionCols.includes('location_lat')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN location_lat TEXT');
+    if (!sessionCols.includes('location_lng')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN location_lng TEXT');
+    if (!sessionCols.includes('device_info')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN device_info TEXT');
+    if (!sessionCols.includes('browser_info')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN browser_info TEXT');
+    if (!sessionCols.includes('network_mbps')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN network_mbps REAL');
+    if (!sessionCols.includes('camera_status')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN camera_status TEXT');
+    if (!sessionCols.includes('screen_status')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN screen_status TEXT');
+    if (!sessionCols.includes('progress_answered')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN progress_answered INTEGER DEFAULT 0');
+    if (!sessionCols.includes('progress_total')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN progress_total INTEGER DEFAULT 0');
+    if (!sessionCols.includes('current_question')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN current_question INTEGER DEFAULT 0');
+    if (!sessionCols.includes('violation_count')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN violation_count INTEGER DEFAULT 0');
+    if (!sessionCols.includes('last_camera_frame')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN last_camera_frame TEXT');
+    if (!sessionCols.includes('last_screen_frame')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN last_screen_frame TEXT');
 
     const resultCols = db.pragma('table_info(cbt_results)').map(c => c.name);
     if (!resultCols.includes('exam_id')) db.exec('ALTER TABLE cbt_results ADD COLUMN exam_id TEXT');
@@ -248,12 +268,14 @@ function setup() {
         CREATE INDEX IF NOT EXISTS idx_cbt_sessions_token   ON cbt_sessions(token);
         CREATE INDEX IF NOT EXISTS idx_cbt_sessions_nisn    ON cbt_sessions(nisn);
         CREATE INDEX IF NOT EXISTS idx_cbt_sessions_exam    ON cbt_sessions(exam_id, nisn);
+        CREATE INDEX IF NOT EXISTS idx_cbt_sessions_seen    ON cbt_sessions(exam_id, last_seen_at);
         CREATE INDEX IF NOT EXISTS idx_cbt_exams_status     ON cbt_exams(status, kelas, mapel);
         CREATE INDEX IF NOT EXISTS idx_cbt_exam_questions   ON cbt_exam_questions(exam_id, urutan);
         CREATE INDEX IF NOT EXISTS idx_cbt_answers_session  ON cbt_answers(session_id, question_id);
         CREATE INDEX IF NOT EXISTS idx_cbt_results_exam     ON cbt_results(exam_id, nisn);
         CREATE INDEX IF NOT EXISTS idx_users_nisn           ON users(nisn) WHERE nisn IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_users_email          ON users(email) WHERE email IS NOT NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_siswa_profil_nisn_unique ON siswa_profil(nisn);
         CREATE INDEX IF NOT EXISTS idx_audit_logs_user      ON audit_logs(user_id);
         CREATE INDEX IF NOT EXISTS idx_audit_logs_created   ON audit_logs(created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_kehadiran_nisn       ON kehadiran(nisn, tanggal);

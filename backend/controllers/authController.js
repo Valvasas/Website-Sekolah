@@ -20,6 +20,29 @@ function identifierField(role) {
     return role === 'siswa' ? 'nisn' : 'email';
 }
 
+function getStudentProfile(db, nisn) {
+    if (!nisn) return null;
+    return db.prepare('SELECT kelas, jurusan FROM siswa_profil WHERE nisn = ?').get(nisn) || null;
+}
+
+function publicUserPayload(db, user) {
+    const studentProfile = getStudentProfile(db, user.nisn);
+    return {
+        id: user.id,
+        nama: user.nama_lengkap,
+        email: user.email,
+        role: user.role,
+        nisn: user.nisn,
+        nip: user.nip,
+        no_hp: user.no_hp || null,
+        kelas: studentProfile?.kelas || null,
+        jurusan: studentProfile?.jurusan || null,
+        bidang: user.bidang || null,
+        foto: user.foto_profil || null,
+        isVerified: !!user.is_verified
+    };
+}
+
 /* ── REGISTER ────────────────────────────────────────── */
 async function register(req, res) {
     const db = getDB();
@@ -65,44 +88,47 @@ async function register(req, res) {
         const isVerified = 0;
         const bidangFinal = bidang || jabatan_detail || mata_pelajaran || null;
 
-        db.prepare(`
-            INSERT INTO users
-            (id,nama_lengkap,email,password_hash,role,nisn,nip,no_hp,bidang,jabatan_detail,is_active,is_verified,created_at,updated_at)
-            VALUES (:id,:nama,:email,:hash,:role,:nisn,:nip,:hp,:bidang,:jabatan,:active,:verified,:now,:now)
-        `).run({
-            id: userId,
-            nama: nama_lengkap.trim(),
-            email: email?.toLowerCase() || null,
-            hash: password_hash,
-            role,
-            nisn: nisn || null,
-            nip: nip || null,
-            hp: no_hp || null,
-            bidang: bidangFinal,
-            jabatan: jabatan_detail || null,
-            active: isActive,
-            verified: isVerified,
-            now
-        });
-
-        if (role === 'siswa' && nisn && classInfo) {
+        const createAccount = db.transaction(() => {
             db.prepare(`
-                INSERT INTO siswa_profil (id,user_id,nisn,kelas,jurusan,updated_at)
-                VALUES (:id,:uid,:nisn,:kelas,:jurusan,:now)
-                ON CONFLICT(nisn) DO UPDATE SET
-                    user_id = excluded.user_id,
-                    kelas = excluded.kelas,
-                    jurusan = excluded.jurusan,
-                    updated_at = excluded.updated_at
+                INSERT INTO users
+                (id,nama_lengkap,email,password_hash,role,nisn,nip,no_hp,bidang,jabatan_detail,is_active,is_verified,created_at,updated_at)
+                VALUES (:id,:nama,:email,:hash,:role,:nisn,:nip,:hp,:bidang,:jabatan,:active,:verified,:now,:now)
             `).run({
-                id: uuidv4(),
-                uid: userId,
-                nisn,
-                kelas: classInfo.kelas,
-                jurusan: classInfo.jurusan,
+                id: userId,
+                nama: nama_lengkap.trim(),
+                email: email?.toLowerCase() || null,
+                hash: password_hash,
+                role,
+                nisn: nisn || null,
+                nip: nip || null,
+                hp: no_hp || null,
+                bidang: bidangFinal,
+                jabatan: jabatan_detail || null,
+                active: isActive,
+                verified: isVerified,
                 now
             });
-        }
+
+            if (role === 'siswa' && nisn && classInfo) {
+                db.prepare(`
+                    INSERT INTO siswa_profil (id,user_id,nisn,kelas,jurusan,updated_at)
+                    VALUES (:id,:uid,:nisn,:kelas,:jurusan,:now)
+                    ON CONFLICT(nisn) DO UPDATE SET
+                        user_id = excluded.user_id,
+                        kelas = excluded.kelas,
+                        jurusan = excluded.jurusan,
+                        updated_at = excluded.updated_at
+                `).run({
+                    id: uuidv4(),
+                    uid: userId,
+                    nisn,
+                    kelas: classInfo.kelas,
+                    jurusan: classInfo.jurusan,
+                    now
+                });
+            }
+        });
+        createAccount();
 
         let verSent = false;
         if (email) {
@@ -227,11 +253,7 @@ async function login(req, res) {
             data: {
                 accessToken, refreshToken,
                 expiresIn: process.env.JWT_EXPIRES_IN || '8h',
-                user: {
-                    id:user.id, nama:user.nama_lengkap, email:user.email,
-                    role:user.role, nisn:user.nisn, nip:user.nip,
-                    bidang:user.bidang || null, foto:user.foto_profil, isVerified:!!user.is_verified
-                },
+                user: publicUserPayload(db, user),
                 redirectTo: redirectMap[user.role] || '/'
             }
         });
@@ -405,7 +427,7 @@ function getProfile(req, res) {
     `).get({ id:req.user.sub });
 
     if (!user) return res.status(404).json({ success:false, message:'User tidak ditemukan.' });
-    return res.status(200).json({ success:true, data:user });
+    return res.status(200).json({ success:true, data:{ ...user, ...getStudentProfile(db, user.nisn) } });
 }
 
 async function activateStaffAccount(req, res) {

@@ -6,8 +6,18 @@ const router   = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { authenticate, authorize } = require('../middleware/auth');
 const getDB    = require('../config/database');
+const { findSchoolClass } = require('../utils/schoolClasses');
 
 const STAFF = ['guru','tata_usaha','kepala_sekolah','super_admin'];
+const isStaffRole = (role) => STAFF.includes(role);
+const cleanText = (value, max = 160) => {
+    if (value === undefined) return null;
+    if (value === null) return null;
+    return String(value).replace(/[<>]/g, '').trim().slice(0, max) || null;
+};
+const cleanIncoming = (body, field, fallback = null, max = 160) => (
+    body[field] === undefined ? fallback : cleanText(body[field], max)
+);
 
 /* ── Helper ambil nisn dari token atau param ── */
 function getNisn(req) {
@@ -28,7 +38,7 @@ router.get('/profil', authenticate, (req, res) => {
 
         /* Gabung dari tabel users + siswa_profil */
         const user = db.prepare(
-            `SELECT u.id, u.nama_lengkap, u.nisn, u.email, u.no_hp, u.role
+            `SELECT u.id, u.nama_lengkap, u.nisn, u.email, u.no_hp, u.role, u.foto_profil
              FROM users u WHERE u.nisn = ?`
         ).get(nisn);
 
@@ -42,19 +52,87 @@ router.get('/profil', authenticate, (req, res) => {
     }
 });
 
-/* PUT /api/siswa/profil — update profil sendiri */
+/* PUT /api/siswa/profil — siswa boleh edit kontak, biodata akademik hanya staff */
 router.put('/profil', authenticate, (req, res) => {
     try {
         const db   = getDB();
         const nisn = getNisn(req);
         const now  = new Date().toISOString();
+        const isStaff = isStaffRole(req.user.role);
+        if (!nisn) return res.status(400).json({ success:false, message:'NISN tidak ditemukan.' });
+
+        const targetUser = db.prepare('SELECT id, role FROM users WHERE nisn = ?').get(nisn);
+        if (!targetUser) return res.status(404).json({ success:false, message:'Siswa tidak ditemukan.' });
+
         const {
             kelas, jurusan, tempat_lahir, tanggal_lahir, jenis_kelamin, agama,
             alamat, kelurahan, kecamatan, nama_ayah, pekerjaan_ayah,
             nama_ibu, pekerjaan_ibu, no_hp_ortu, email_ortu,
+            email, no_hp,
         } = req.body;
 
-        const exists = db.prepare('SELECT id FROM siswa_profil WHERE nisn = ?').get(nisn);
+        const restrictedTouched = [
+            'kelas','jurusan','tempat_lahir','tanggal_lahir','jenis_kelamin','agama',
+            'alamat','kelurahan','kecamatan','nama_ayah','pekerjaan_ayah',
+            'nama_ibu','pekerjaan_ibu','no_hp_ortu','email_ortu'
+        ].some(field => req.body[field] !== undefined);
+
+        if (restrictedTouched && !isStaff) {
+            return res.status(403).json({
+                success:false,
+                message:'Biodata siswa hanya bisa diubah oleh guru atau staff.'
+            });
+        }
+
+        const userFields = [];
+        const userVals = { id: targetUser.id, now };
+        if (email !== undefined) {
+            const emailClean = cleanText(email, 120);
+            if (emailClean) {
+                const used = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(emailClean.toLowerCase(), targetUser.id);
+                if (used) return res.status(409).json({ success:false, message:'Email sudah digunakan.' });
+            }
+            userFields.push('email=:email');
+            userVals.email = emailClean ? emailClean.toLowerCase() : null;
+        }
+        if (no_hp !== undefined) {
+            userFields.push('no_hp=:hp');
+            userVals.hp = cleanText(no_hp, 24);
+        }
+        if (userFields.length) {
+            userFields.push('updated_at=:now');
+            db.prepare(`UPDATE users SET ${userFields.join(',')} WHERE id=:id`).run(userVals);
+        }
+
+        if (!restrictedTouched) {
+            return res.json({ success:true, message:'Profil berhasil diperbarui.' });
+        }
+
+        const classInfo = kelas ? findSchoolClass(kelas) : null;
+        if (kelas && !classInfo) {
+            return res.status(400).json({ success:false, message:'Kelas tidak valid.' });
+        }
+
+        const finalKelas = classInfo?.kelas || cleanText(kelas, 50);
+        const finalJurusan = classInfo?.jurusan || cleanText(jurusan, 100);
+        const exists = db.prepare('SELECT * FROM siswa_profil WHERE nisn = ?').get(nisn);
+        const finalProfile = {
+            kelas: kelas === undefined ? exists?.kelas || null : finalKelas,
+            jurusan: jurusan === undefined && kelas === undefined ? exists?.jurusan || null : finalJurusan,
+            tempat_lahir: cleanIncoming(req.body, 'tempat_lahir', exists?.tempat_lahir || null, 80),
+            tanggal_lahir: cleanIncoming(req.body, 'tanggal_lahir', exists?.tanggal_lahir || null, 20),
+            jenis_kelamin: cleanIncoming(req.body, 'jenis_kelamin', exists?.jenis_kelamin || null, 20),
+            agama: cleanIncoming(req.body, 'agama', exists?.agama || null, 40),
+            alamat: cleanIncoming(req.body, 'alamat', exists?.alamat || null, 300),
+            kelurahan: cleanIncoming(req.body, 'kelurahan', exists?.kelurahan || null, 80),
+            kecamatan: cleanIncoming(req.body, 'kecamatan', exists?.kecamatan || null, 80),
+            nama_ayah: cleanIncoming(req.body, 'nama_ayah', exists?.nama_ayah || null, 120),
+            pekerjaan_ayah: cleanIncoming(req.body, 'pekerjaan_ayah', exists?.pekerjaan_ayah || null, 100),
+            nama_ibu: cleanIncoming(req.body, 'nama_ibu', exists?.nama_ibu || null, 120),
+            pekerjaan_ibu: cleanIncoming(req.body, 'pekerjaan_ibu', exists?.pekerjaan_ibu || null, 100),
+            no_hp_ortu: cleanIncoming(req.body, 'no_hp_ortu', exists?.no_hp_ortu || null, 24),
+            email_ortu: cleanIncoming(req.body, 'email_ortu', exists?.email_ortu || null, 120),
+        };
 
         if (exists) {
             db.prepare(`UPDATE siswa_profil SET
@@ -62,9 +140,9 @@ router.put('/profil', authenticate, (req, res) => {
                 alamat=?,kelurahan=?,kecamatan=?,nama_ayah=?,pekerjaan_ayah=?,
                 nama_ibu=?,pekerjaan_ibu=?,no_hp_ortu=?,email_ortu=?,updated_at=?
                 WHERE nisn=?`).run(
-                kelas,jurusan,tempat_lahir,tanggal_lahir,jenis_kelamin,agama,
-                alamat,kelurahan,kecamatan,nama_ayah,pekerjaan_ayah,
-                nama_ibu,pekerjaan_ibu,no_hp_ortu,email_ortu,now,nisn
+                finalProfile.kelas,finalProfile.jurusan,finalProfile.tempat_lahir,finalProfile.tanggal_lahir,finalProfile.jenis_kelamin,finalProfile.agama,
+                finalProfile.alamat,finalProfile.kelurahan,finalProfile.kecamatan,finalProfile.nama_ayah,finalProfile.pekerjaan_ayah,
+                finalProfile.nama_ibu,finalProfile.pekerjaan_ibu,finalProfile.no_hp_ortu,finalProfile.email_ortu,now,nisn
             );
         } else {
             db.prepare(`INSERT INTO siswa_profil
@@ -72,10 +150,10 @@ router.put('/profil', authenticate, (req, res) => {
                  alamat,kelurahan,kecamatan,nama_ayah,pekerjaan_ayah,nama_ibu,pekerjaan_ibu,
                  no_hp_ortu,email_ortu,updated_at)
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
-                uuidv4(), req.user.sub, nisn,
-                kelas,jurusan,tempat_lahir,tanggal_lahir,jenis_kelamin,agama,
-                alamat,kelurahan,kecamatan,nama_ayah,pekerjaan_ayah,
-                nama_ibu,pekerjaan_ibu,no_hp_ortu,email_ortu,now
+                uuidv4(), targetUser.id, nisn,
+                finalProfile.kelas,finalProfile.jurusan,finalProfile.tempat_lahir,finalProfile.tanggal_lahir,finalProfile.jenis_kelamin,finalProfile.agama,
+                finalProfile.alamat,finalProfile.kelurahan,finalProfile.kecamatan,finalProfile.nama_ayah,finalProfile.pekerjaan_ayah,
+                finalProfile.nama_ibu,finalProfile.pekerjaan_ibu,finalProfile.no_hp_ortu,finalProfile.email_ortu,now
             );
         }
 

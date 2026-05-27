@@ -111,6 +111,23 @@ function setupWebSocket() {
     const wss     = new WebSocket.Server({ server });
     const clients = new Map();
     let   adminWs = null;
+    const MAX_WS_PAYLOAD_BYTES = 64 * 1024;
+    const WS_MESSAGE_WINDOW_MS = 10_000;
+    const WS_MESSAGE_LIMIT = 40;
+
+    function isWsRateLimited(ws) {
+        const now = Date.now();
+        if (!ws.rateWindowStart || now - ws.rateWindowStart > WS_MESSAGE_WINDOW_MS) {
+            ws.rateWindowStart = now;
+            ws.rateCount = 0;
+        }
+        ws.rateCount += 1;
+        return ws.rateCount > WS_MESSAGE_LIMIT;
+    }
+
+    function isPlainObject(value) {
+        return value && typeof value === 'object' && !Array.isArray(value);
+    }
 
     wss.on('connection', (ws) => {
         ws.isAlive = true;
@@ -120,8 +137,21 @@ function setupWebSocket() {
         ws.on('pong', () => { ws.isAlive = true; });
 
         ws.on('message', (raw) => {
+            const size = Buffer.isBuffer(raw) ? raw.length : Buffer.byteLength(String(raw));
+            if (size > MAX_WS_PAYLOAD_BYTES) {
+                send(ws, { type: 'error', message: 'Payload terlalu besar.' });
+                ws.close(1009, 'Payload too large');
+                return;
+            }
+            if (isWsRateLimited(ws)) {
+                send(ws, { type: 'error', message: 'Terlalu banyak pesan.' });
+                ws.close(1008, 'Rate limited');
+                return;
+            }
+
             let msg;
             try { msg = JSON.parse(raw); } catch { return; }
+            if (!isPlainObject(msg) || typeof msg.type !== 'string' || msg.type.length > 40) return;
 
             // Auth gate
             if (!ws.isAuth && !['admin_auth','student_join'].includes(msg.type)) {
@@ -164,7 +194,22 @@ function setupWebSocket() {
                             return;
                         }
 
-                        db.prepare(`UPDATE cbt_sessions SET start_time = datetime('now') WHERE token = ?`).run(cbtToken);
+                        db.prepare(`
+                            UPDATE cbt_sessions
+                            SET start_time = COALESCE(start_time, datetime('now')),
+                                last_seen_at = datetime('now'),
+                                location_lat = COALESCE(?, location_lat),
+                                location_lng = COALESCE(?, location_lng),
+                                device_info = COALESCE(?, device_info),
+                                browser_info = COALESCE(?, browser_info)
+                            WHERE token = ?
+                        `).run(
+                            cleanCoord(msg.lat),
+                            cleanCoord(msg.lng),
+                            msg.device ? JSON.stringify({ device: cleanText(msg.device, 80) }) : null,
+                            msg.browser ? JSON.stringify({ browser: cleanText(msg.browser, 120) }) : null,
+                            cbtToken
+                        );
                         ws.nisn = nisn; ws.mapel = session.mapel;
                         ws.role = 'student'; ws.isAuth = true;
                         clients.set(nisn, ws);
@@ -176,9 +221,11 @@ function setupWebSocket() {
                     break;
                 }
 
-                case 'device_info': case 'battery_update': case 'network_speed':
+                case 'device_info': case 'browser_info': case 'battery_update': case 'network_speed':
                 case 'location': case 'location_update': case 'camera_frame':
+                case 'screen_frame': case 'screen_status':
                 case 'answer_update': case 'violation':
+                    saveProctorEvent(msg, ws);
                     fwdAdmin(msg);
                     break;
 
@@ -236,6 +283,106 @@ function setupWebSocket() {
         if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
     }
     function fwdAdmin(msg) { send(adminWs, msg); }
+
+    function cleanText(value, max = 200) {
+        if (value === undefined || value === null) return null;
+        return String(value).replace(/[<>]/g, '').slice(0, max);
+    }
+
+    function cleanCoord(value) {
+        if (value === undefined || value === null || value === '') return null;
+        const num = Number(value);
+        return Number.isFinite(num) ? num.toFixed(6) : null;
+    }
+
+    function limitedDataUrl(value) {
+        if (typeof value !== 'string') return null;
+        if (!value.startsWith('data:image/jpeg;base64,')) return null;
+        return value.length <= 60_000 ? value : null;
+    }
+
+    function saveProctorEvent(msg, ws) {
+        if (!ws?.nisn) return;
+        try {
+            const db = require('./config/database')();
+            const base = { nisn: ws.nisn, mapel: ws.mapel, now: new Date().toISOString() };
+            switch (msg.type) {
+                case 'device_info':
+                    db.prepare(`
+                        UPDATE cbt_sessions
+                        SET device_info = @info, browser_info = @browser, camera_status = @camera,
+                            screen_status = @screen, last_seen_at = @now
+                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                    `).run({
+                        ...base,
+                        info: JSON.stringify(msg.info || {}),
+                        browser: JSON.stringify({ browser: msg.info?.browser || null, lang: msg.info?.lang || null }),
+                        camera: msg.info?.camera ? 'supported' : 'unsupported',
+                        screen: msg.info?.screenCapture ? 'supported' : 'unknown'
+                    });
+                    break;
+                case 'browser_info':
+                    db.prepare(`
+                        UPDATE cbt_sessions SET browser_info = @info, last_seen_at = @now
+                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                    `).run({ ...base, info: JSON.stringify(msg.info || {}) });
+                    break;
+                case 'network_speed':
+                    db.prepare(`
+                        UPDATE cbt_sessions SET network_mbps = @mbps, last_seen_at = @now
+                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                    `).run({ ...base, mbps: Number(msg.mbps) || null });
+                    break;
+                case 'location':
+                case 'location_update':
+                    db.prepare(`
+                        UPDATE cbt_sessions SET location_lat = @lat, location_lng = @lng, last_seen_at = @now
+                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                    `).run({ ...base, lat: cleanCoord(msg.lat), lng: cleanCoord(msg.lng) });
+                    break;
+                case 'camera_frame':
+                    db.prepare(`
+                        UPDATE cbt_sessions SET camera_status = 'active', last_camera_frame = @frame, last_seen_at = @now
+                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                    `).run({ ...base, frame: limitedDataUrl(msg.frame) });
+                    break;
+                case 'screen_frame':
+                    db.prepare(`
+                        UPDATE cbt_sessions SET screen_status = 'active', last_screen_frame = @frame, last_seen_at = @now
+                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                    `).run({ ...base, frame: limitedDataUrl(msg.frame) });
+                    break;
+                case 'screen_status':
+                    db.prepare(`
+                        UPDATE cbt_sessions SET screen_status = @status, last_seen_at = @now
+                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                    `).run({ ...base, status: cleanText(msg.status, 40) || 'unknown' });
+                    break;
+                case 'answer_update':
+                    db.prepare(`
+                        UPDATE cbt_sessions
+                        SET progress_answered = @answered, progress_total = @total,
+                            current_question = @current, last_seen_at = @now
+                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                    `).run({
+                        ...base,
+                        answered: Math.max(0, parseInt(msg.answered) || 0),
+                        total: Math.max(0, parseInt(msg.total) || 0),
+                        current: Math.max(0, parseInt(msg.current) || 0)
+                    });
+                    break;
+                case 'violation':
+                    db.prepare(`
+                        UPDATE cbt_sessions
+                        SET violation_count = violation_count + 1, last_seen_at = @now
+                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                    `).run(base);
+                    break;
+            }
+        } catch(e) {
+            console.error('[WS proctor save]', e.message);
+        }
+    }
 
     function saveCBT(data, fallbackNisn) {
         if (data.serverVerified) return;

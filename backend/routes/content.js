@@ -9,31 +9,56 @@ const { v4: uuidv4 } = require('uuid');
 const getDB   = require('../config/database');
 const { authenticate, isAdmin, isStaff, isTU } = require('../middleware/auth');
 const { log } = require('../middleware/auditLog');
+const { sklSearchLimiter } = require('../middleware/rateLimiter');
 
 const nowISO = () => new Date().toISOString();
+const cleanText = (value, max = 500) => String(value || '').replace(/[<>]/g, '').trim().slice(0, max);
+const cleanNisn = (value) => String(value || '').replace(/\D/g, '').slice(0, 10);
+const cleanYear = (value) => String(value || '').replace(/\D/g, '').slice(0, 4);
+
+function notifyAllStudents(db, { judul, pesan, tipe = 'info', link = '/LMS.html' }) {
+    const siswa = db.prepare("SELECT id FROM users WHERE role = 'siswa' AND is_active = 1").all();
+    if (!siswa.length) return 0;
+    const insert = db.prepare(`
+        INSERT INTO notifikasi (id,user_id,judul,pesan,tipe,link,created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    const now = nowISO();
+    const tx = db.transaction(() => {
+        for (const s of siswa) {
+            insert.run(uuidv4(), s.id, cleanText(judul, 120), cleanText(pesan, 500), tipe, link, now);
+        }
+    });
+    tx();
+    return siswa.length;
+}
 
 /* ════════════════════════════════════════
    SKL ROUTES
    ════════════════════════════════════════ */
 
 // POST /api/content/skl/cari — publik, cari data SKL
-router.post('/skl/cari', (req, res) => {
+router.post('/skl/cari', sklSearchLimiter, (req, res) => {
     const db = getDB();
-    const { nisn, nama, ttl, tahun } = req.body;
+    const { nama, ttl } = req.body;
+    const nisn = cleanNisn(req.body.nisn);
+    const tahun = cleanYear(req.body.tahun || req.body.tahun_lulus);
+    const namaNormal = cleanText(nama, 120).toUpperCase();
+    const ttlNormal = cleanText(ttl, 20);
 
-    if (!nisn || !nama || !ttl || !tahun) {
+    if (!nisn || nisn.length !== 10 || !namaNormal || !ttlNormal || !tahun) {
         return res.status(400).json({ success:false, message:'Semua field wajib diisi.' });
     }
 
     const found = db.prepare(`
         SELECT * FROM skl_data
         WHERE nisn=:nisn AND nama=:nama AND ttl=:ttl AND tahun_lulus=:tahun
-    `).get({ nisn: nisn.trim(), nama: nama.toUpperCase().trim(), ttl, tahun });
+    `).get({ nisn, nama: namaNormal, ttl: ttlNormal, tahun });
 
     if (found) {
         return res.status(200).json({ success:true, data:found });
     }
-    return res.status(200).json({ success:false, message:'Data tidak ditemukan. Pastikan data sesuai dokumen.' });
+    return res.status(200).json({ success:false, message:'Data tidak dapat diverifikasi.' });
 });
 
 // GET /api/content/skl — admin: lihat semua data SKL
@@ -123,7 +148,9 @@ router.get('/announcements/all', authenticate, isStaff, (req, res) => {
 // POST /api/content/announcements — admin: tambah pengumuman
 router.post('/announcements', authenticate, isStaff, (req, res) => {
     const db  = getDB();
-    const { judul, isi, tipe = 'info', urutan = 0 } = req.body;
+    const { tipe = 'info', urutan = 0 } = req.body;
+    const judul = cleanText(req.body.judul, 120);
+    const isi = cleanText(req.body.isi, 500);
 
     if (!judul || !isi) return res.status(400).json({ success:false, message:'Judul dan isi wajib diisi.' });
 
@@ -136,6 +163,8 @@ router.post('/announcements', authenticate, isStaff, (req, res) => {
         INSERT INTO announcements (id,judul,isi,tipe,is_active,urutan,created_by,created_at,updated_at)
         VALUES (:id,:judul,:isi,:tipe,1,:urutan,:by,:now,:now)
     `).run({ id, judul, isi, tipe, urutan:parseInt(urutan), by:req.user.sub, now });
+
+    notifyAllStudents(db, { judul, pesan: isi, tipe, link: '/LMS.html' });
 
     log(req.user.sub, 'ANNOUNCEMENT_CREATED', 'announcements', id, { judul }, req.ip);
     return res.status(201).json({ success:true, message:'Pengumuman berhasil ditambahkan.', data:{ id } });
@@ -153,8 +182,8 @@ router.put('/announcements/:id', authenticate, isStaff, (req, res) => {
     const fields = [];
     const vals   = { id };
 
-    if (judul !== undefined)     { fields.push('judul=:judul');       vals.judul    = judul; }
-    if (isi !== undefined)       { fields.push('isi=:isi');           vals.isi      = isi; }
+    if (judul !== undefined)     { fields.push('judul=:judul');       vals.judul    = cleanText(judul, 120); }
+    if (isi !== undefined)       { fields.push('isi=:isi');           vals.isi      = cleanText(isi, 500); }
     if (tipe !== undefined)      { fields.push('tipe=:tipe');         vals.tipe     = tipe; }
     if (is_active !== undefined) { fields.push('is_active=:active');  vals.active   = parseInt(is_active); }
     if (urutan !== undefined)    { fields.push('urutan=:urutan');     vals.urutan   = parseInt(urutan); }
