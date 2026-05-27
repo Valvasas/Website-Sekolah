@@ -123,6 +123,9 @@
                 <button class="snav-item" data-page="nilai" onclick="navigate('nilai',this)">
                     <i class="fas fa-chart-bar"></i><span>Nilai Saya</span>
                 </button>
+                <button class="snav-item" data-page="profil" onclick="navigate('profil',this)">
+                    <i class="fas fa-id-card"></i><span>Profil & Biodata</span>
+                </button>
                 <hr class="snav-hr">
                 <button class="snav-item" onclick="lmsLogout()">
                     <i class="fas fa-sign-out-alt"></i><span>Keluar</span>
@@ -186,8 +189,8 @@
                         <div><strong id="pd-name">Nama Siswa</strong><span id="pd-role">Siswa Aktif</span></div>
                     </div>
                     <hr>
-                    <button class="pd-item"><i class="fas fa-user-edit"></i> Edit Profil</button>
-                    <button class="pd-item"><i class="fas fa-key"></i> Ganti Password</button>
+                    <button class="pd-item" onclick="navigate('profil', document.querySelector('[data-page=profil]'));toggleProfile();"><i class="fas fa-user-edit"></i> Edit Profil</button>
+                    <button class="pd-item" onclick="openModal('modal-password');toggleProfile();"><i class="fas fa-key"></i> Ganti Password</button>
                     <hr>
                     <button class="pd-item red" onclick="lmsLogout()"><i class="fas fa-sign-out-alt"></i> Keluar</button>
                 </div>
@@ -223,8 +226,39 @@
                     </div>
                 </div>
 
+                <div class="student-services">
+                    <a class="service-tile" href="cbt.html">
+                        <span class="service-icon"><i class="fas fa-laptop-code"></i></span>
+                        <span><strong>CBT Online</strong><small id="svc-cbt-status">Cek sesi ujian aktif</small></span>
+                    </a>
+                    <a class="service-tile" href="SKL.html">
+                        <span class="service-icon green"><i class="fas fa-file-circle-check"></i></span>
+                        <span><strong>SKL Digital</strong><small>Cek surat kelulusan</small></span>
+                    </a>
+                    <a class="service-tile" href="ppdb.html">
+                        <span class="service-icon orange"><i class="fas fa-user-plus"></i></span>
+                        <span><strong>PPDB</strong><small>Informasi penerimaan siswa</small></span>
+                    </a>
+                </div>
+
                 <!-- Grid Beranda -->
                 <div class="beranda-grid">
+                    <div class="card-section">
+                        <div class="cs-header">
+                            <h3><i class="fas fa-bullhorn"></i> Pengumuman</h3>
+                            <button onclick="toggleNotif()">Lihat semua</button>
+                        </div>
+                        <div class="announcement-list" id="student-announcements"></div>
+                    </div>
+
+                    <div class="card-section">
+                        <div class="cs-header">
+                            <h3><i class="fas fa-laptop-code"></i> CBT Saya</h3>
+                            <button onclick="window.location.href='cbt.html'">Buka CBT</button>
+                        </div>
+                        <div class="cbt-session-list" id="student-cbt-sessions"></div>
+                    </div>
+
                     <!-- Kelas Terbaru -->
                     <div class="card-section">
                         <div class="cs-header">
@@ -300,6 +334,125 @@
                 <div class="nilai-grid" id="nilai-grid"></div>
             </div>
 
+            <!-- Page: PROFIL -->
+            <div class="page-content" id="page-profil">
+                <h2 class="page-title">Profil & Biodata</h2>
+
+                <div class="profile-layout">
+                    <section class="profile-card">
+                        <div class="profile-head">
+                            <div class="profile-avatar" id="profile-avatar">S</div>
+                            <div>
+                                <h3 id="profile-name">Nama Siswa</h3>
+                                <p id="profile-meta">-</p>
+                            </div>
+                        </div>
+                        <dl class="profile-facts">
+                            <div><dt>NISN</dt><dd id="profile-nisn">-</dd></div>
+                            <div><dt>Kelas</dt><dd id="profile-kelas">-</dd></div>
+                            <div><dt>Jurusan</dt><dd id="profile-jurusan">-</dd></div>
+                            <div><dt>No. HP</dt><dd id="profile-phone">-</dd></div>
+                        </dl>
+                    </section>
+
+                    <section class="profile-panel">
+                        <div class="profile-panel-head">
+                            <div>
+                                <h3>Edit Profil</h3>
+                                <p>Kontak bisa diperbarui siswa. Biodata akademik dikunci untuk staff.</p>
+                            </div>
+                            <button class="small-action" onclick="fetchProfil()"><i class="fas fa-rotate"></i> Refresh</button>
+                        </div>
+
+                        <div class="staff-target hidden" id="staff-target">
+                            <label for="profile-target-nisn">Cari NISN siswa</label>
+                            <div>
+                                <input id="profile-target-nisn" type="text" maxlength="10" inputmode="numeric" placeholder="Contoh: 0012345678">
+                                <button onclick="fetchProfil(document.getElementById('profile-target-nisn').value.trim())">Muat</button>
+                            </div>
+                        </div>
+
+                        <form class="profile-form" id="profile-form">
+                            <div class="form-grid">
+                                <label>Email
+                                    <input id="pf-email" type="email" autocomplete="email">
+                                </label>
+                                <label>No. HP
+                                    <input id="pf-phone" type="tel" autocomplete="tel">
+                                </label>
+                            </div>
+
+                            <div class="biodata-lock" id="biodata-lock">
+                                <i class="fas fa-lock"></i>
+                                Biodata di bawah ini hanya bisa diubah oleh guru atau staff.
+                            </div>
+
+                            <div class="form-grid">
+                                <label>Kelas
+                                    <select id="pf-kelas" disabled>
+                                        <option value="">Pilih kelas</option>
+                                    </select>
+                                </label>
+                                <label>Jurusan
+                                    <input id="pf-jurusan" type="text" disabled>
+                                </label>
+                                <label>Tempat Lahir
+                                    <input id="pf-tempat" type="text" disabled>
+                                </label>
+                                <label>Tanggal Lahir
+                                    <input id="pf-tanggal" type="date" disabled>
+                                </label>
+                                <label>Jenis Kelamin
+                                    <select id="pf-gender" disabled>
+                                        <option value="">Pilih</option>
+                                        <option value="Laki-laki">Laki-laki</option>
+                                        <option value="Perempuan">Perempuan</option>
+                                    </select>
+                                </label>
+                                <label>Agama
+                                    <input id="pf-agama" type="text" disabled>
+                                </label>
+                            </div>
+
+                            <label>Alamat
+                                <textarea id="pf-alamat" rows="3" disabled></textarea>
+                            </label>
+
+                            <div class="form-grid">
+                                <label>Kelurahan
+                                    <input id="pf-kelurahan" type="text" disabled>
+                                </label>
+                                <label>Kecamatan
+                                    <input id="pf-kecamatan" type="text" disabled>
+                                </label>
+                                <label>Nama Ayah
+                                    <input id="pf-ayah" type="text" disabled>
+                                </label>
+                                <label>Pekerjaan Ayah
+                                    <input id="pf-pekerjaan-ayah" type="text" disabled>
+                                </label>
+                                <label>Nama Ibu
+                                    <input id="pf-ibu" type="text" disabled>
+                                </label>
+                                <label>Pekerjaan Ibu
+                                    <input id="pf-pekerjaan-ibu" type="text" disabled>
+                                </label>
+                                <label>No. HP Orang Tua
+                                    <input id="pf-hp-ortu" type="tel" disabled>
+                                </label>
+                                <label>Email Orang Tua
+                                    <input id="pf-email-ortu" type="email" disabled>
+                                </label>
+                            </div>
+
+                            <button type="submit" class="lms-submit-btn" id="profile-save-btn">
+                                <i class="fas fa-save"></i> Simpan Profil
+                            </button>
+                        </form>
+                    </section>
+                </div>
+            </div>
+
         </div>
         <!-- /lms-main -->
 
@@ -341,6 +494,32 @@
                     <button class="lms-submit-btn" id="submit-tugas-btn" onclick="submitTugas()">
                         <i class="fas fa-paper-plane"></i> Kumpulkan Tugas
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: Ganti Password -->
+        <div class="lms-modal-overlay" id="modal-password">
+            <div class="lms-modal-box">
+                <div class="lmb-header">
+                    <h3>Ganti Password</h3>
+                    <button onclick="closeModal('modal-password')"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="lmb-body">
+                    <div class="profile-form">
+                        <label>Password Lama
+                            <input id="pw-current" type="password" autocomplete="current-password">
+                        </label>
+                        <label>Password Baru
+                            <input id="pw-new" type="password" autocomplete="new-password">
+                        </label>
+                        <label>Konfirmasi Password Baru
+                            <input id="pw-confirm" type="password" autocomplete="new-password">
+                        </label>
+                        <button class="lms-submit-btn" id="password-save-btn" onclick="changePassword()">
+                            <i class="fas fa-key"></i> Simpan Password
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -45,6 +45,11 @@ const state = {
     lastResult:   null,
 };
 
+const emergencyChat = {
+    unread: 0,
+    open: false
+};
+
 /* ============================================================
    UTILITAS
    ============================================================ */
@@ -197,6 +202,7 @@ function beginExamWithQuestions(data, questions) {
     renderQuestion();
     startTimer();
     showScreen('screen-exam');
+    document.getElementById('emergency-chat')?.classList.remove('hidden');
 }
 
 /* ============================================================
@@ -471,6 +477,7 @@ async function finishExam() {
         renderResult(result);
         state.started = false;
         examLock.deactivate();
+        stopProctoring();
         sendToAdmin({
             type: 'student_finish',
             nisn: state.nisn,
@@ -488,6 +495,16 @@ async function finishExam() {
     } finally {
         state.submitting = false;
     }
+}
+
+function stopProctoring() {
+    clearInterval(cameraState.captureInterval);
+    clearInterval(screenState.captureInterval);
+    if (gpsState.watchId && navigator.geolocation?.clearWatch) navigator.geolocation.clearWatch(gpsState.watchId);
+    cameraState.stream?.getTracks().forEach(t => t.stop());
+    screenState.stream?.getTracks().forEach(t => t.stop());
+    document.getElementById('proctor-widget')?.classList.add('hidden');
+    document.getElementById('emergency-chat')?.classList.add('hidden');
 }
 
 /* ============================================================
@@ -607,6 +624,76 @@ document.addEventListener('visibilitychange', () => {
    Ganti URL sesuai server Node.js admin kamu
    ────────────────────────────────────────────────────────────── */
 let adminSocket = null;
+const telemetryQueue = [];
+const MAX_TELEMETRY_QUEUE = 40;
+const FRAME_TYPES = new Set(['camera_frame', 'screen_frame']);
+const FRAME_SEND_INTERVAL_MS = { camera_frame: 30000, screen_frame: 45000 };
+const lastFrameSentAt = {};
+let lastLocationSentAt = 0;
+
+function toggleEmergencyChat(force) {
+    const chat = document.getElementById('emergency-chat');
+    if (!chat) return;
+    const willOpen = typeof force === 'boolean' ? force : !chat.classList.contains('open');
+    chat.classList.toggle('open', willOpen);
+    emergencyChat.open = willOpen;
+    if (willOpen) {
+        emergencyChat.unread = 0;
+        updateEmergencyBadge();
+        setTimeout(() => document.getElementById('emergency-input')?.focus(), 80);
+    }
+}
+
+function updateEmergencyBadge() {
+    const badge = document.getElementById('emergency-badge');
+    if (!badge) return;
+    badge.textContent = emergencyChat.unread;
+    badge.classList.toggle('hidden', emergencyChat.unread <= 0);
+}
+
+function addEmergencyMessage(message, type = 'system') {
+    const feed = document.getElementById('emergency-feed');
+    if (!feed) return;
+    const item = document.createElement('div');
+    item.className = `emergency-msg ${type}`;
+    item.innerHTML = escHtml(message || '');
+    feed.appendChild(item);
+    feed.scrollTop = feed.scrollHeight;
+    if (!emergencyChat.open && ['admin', 'announcement'].includes(type)) {
+        emergencyChat.unread += 1;
+        updateEmergencyBadge();
+    }
+}
+
+function markLastEmergencyMessageSent() {
+    const feed = document.getElementById('emergency-feed');
+    const last = feed?.querySelector('.emergency-msg.me:last-child');
+    if (last && !last.dataset.sent) {
+        last.dataset.sent = '1';
+        last.title = 'Terkirim ke panitia CBT';
+    }
+}
+
+function sendEmergencyMessage(event) {
+    event.preventDefault();
+    if (!state.started) return;
+    const input = document.getElementById('emergency-input');
+    const message = input?.value.trim();
+    if (!message) return;
+    if (message.length > 500) {
+        addEmergencyMessage('Pesan terlalu panjang. Maksimal 500 karakter.', 'system');
+        return;
+    }
+    addEmergencyMessage(message, 'me');
+    sendToAdmin({
+        type: 'student_help',
+        exam_id: state.examId,
+        session_id: state.sessionId,
+        senderName: state.siswa,
+        message
+    });
+    input.value = '';
+}
 
 function connectAdminSocket(studentData) {
     try {
@@ -622,12 +709,15 @@ function connectAdminSocket(studentData) {
                 type:  'student_join',
                 nisn:  studentData.nisn || state.nisn,
                 token: state.token,
+                exam_id: state.examId,
+                session_id: state.sessionId,
                 mapel: studentData.mapel,
                 lat:   studentData.lat,
                 lng:   studentData.lng,
                 device:  studentData.device,
                 browser: studentData.browser
             });
+            setTimeout(flushTelemetryQueue, 120);
         };
 
         adminSocket.onmessage = (event) => {
@@ -646,7 +736,18 @@ function connectAdminSocket(studentData) {
                         finishExam();
                         break;
                     case 'broadcast':
+                    case 'announcement':
                         examLock._warn(`📢 ${msg.message}`);
+                        addEmergencyMessage(msg.message, 'announcement');
+                        break;
+                    case 'admin_reply':
+                        addEmergencyMessage(msg.message, 'admin');
+                        break;
+                    case 'student_help_ack':
+                        markLastEmergencyMessageSent();
+                        break;
+                    case 'chat_error':
+                        addEmergencyMessage(msg.message || 'Pesan tidak terkirim.', 'system');
                         break;
                     case 'error':
                         console.warn('[CBT WS error]', msg.message);
@@ -672,8 +773,31 @@ function connectAdminSocket(studentData) {
 }
 
 function sendToAdmin(payload) {
+    const normalized = { ...payload, nisn: payload.nisn || state.nisn, mapel: payload.mapel || state.mapel };
+    if (FRAME_TYPES.has(normalized.type)) {
+        const now = Date.now();
+        const minGap = FRAME_SEND_INTERVAL_MS[normalized.type] || 30000;
+        if (now - (lastFrameSentAt[normalized.type] || 0) < minGap) return;
+        lastFrameSentAt[normalized.type] = now;
+    }
+    if (normalized.type === 'location_update') {
+        const now = Date.now();
+        if (now - lastLocationSentAt < 30000) return;
+        lastLocationSentAt = now;
+    }
     if (adminSocket && adminSocket.readyState === WebSocket.OPEN) {
-        adminSocket.send(JSON.stringify(payload));
+        adminSocket.send(JSON.stringify(normalized));
+        return;
+    }
+    if (FRAME_TYPES.has(normalized.type)) return;
+    telemetryQueue.push(normalized);
+    if (telemetryQueue.length > MAX_TELEMETRY_QUEUE) telemetryQueue.shift();
+}
+
+function flushTelemetryQueue() {
+    if (!adminSocket || adminSocket.readyState !== WebSocket.OPEN) return;
+    while (telemetryQueue.length) {
+        adminSocket.send(JSON.stringify(telemetryQueue.shift()));
     }
 }
 
@@ -686,8 +810,6 @@ const precheckState = {
 
 const PRECHECK_RULES = {
     minSpeedMbps: 1,
-    minScreenW: 800,
-    minScreenH: 480,
     minCores: 2,
     networkTestBytes: 2 * 1024 * 1024,
     networkWarmupMs: 700,
@@ -1043,6 +1165,17 @@ function requestLocation() {
    4. KAMERA DEPAN (Proctoring)
    ────────────────────────────────────────────────────────────── */
 const cameraState = { stream: null, canvas: null, captureInterval: null };
+const screenState = { stream: null, video: null, canvas: null, captureInterval: null };
+
+function sendOptimizedFrame(type, canvas, maxLength = 45000) {
+    let quality = type === 'screen_frame' ? 0.35 : 0.45;
+    let imageData = canvas.toDataURL('image/jpeg', quality);
+    while (imageData.length > maxLength && quality > 0.18) {
+        quality -= 0.07;
+        imageData = canvas.toDataURL('image/jpeg', quality);
+    }
+    if (imageData.length <= maxLength) sendToAdmin({ type, frame: imageData });
+}
 
 async function requestCamera() {
     const video    = document.getElementById('proctor-video');
@@ -1059,6 +1192,12 @@ async function requestCamera() {
         cameraState.stream = stream;
         video.srcObject    = stream;
         video.play();
+        const mini = document.getElementById('proctor-video-mini');
+        if (mini) {
+            mini.srcObject = stream;
+            mini.play().catch(() => {});
+            document.getElementById('proctor-widget')?.classList.remove('hidden');
+        }
 
         if (statusEl) statusEl.innerHTML =
             `<i class="fas fa-check-circle" style="color:#10b981"></i> Kamera aktif`;
@@ -1068,14 +1207,13 @@ async function requestCamera() {
         cameraState.canvas.width  = 160;
         cameraState.canvas.height = 120;
 
-        // Kirim snapshot ke admin setiap 10 detik
+        // Kirim snapshot kecil. Ini bukan live video supaya ringan untuk siswa/admin/server.
         cameraState.captureInterval = setInterval(() => {
             if (!state.started) return;
             const ctx = cameraState.canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, 160, 120);
-            const imageData = cameraState.canvas.toDataURL('image/jpeg', 0.5);
-            sendToAdmin({ type: 'camera_frame', frame: imageData });
-        }, 10000);
+            sendOptimizedFrame('camera_frame', cameraState.canvas);
+        }, 30000);
 
         return Promise.resolve();
     } catch(err) {
@@ -1104,7 +1242,8 @@ async function collectDeviceInfo() {
         browser    : `${browser.name} ${browser.version}`,
         fullscreen : !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen),
         camera     : !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
-        geolocation: !!navigator.geolocation
+        geolocation: !!navigator.geolocation,
+        screenCapture: !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)
     };
 
     // Battery API
@@ -1147,15 +1286,13 @@ function validateDeviceInfo(info) {
 
     if (!info.online) issues.push('Perangkat sedang offline.');
     if (info.device === 'Unknown Device') issues.push('Model perangkat tidak dikenali.');
-    if (info.screenW < PRECHECK_RULES.minScreenW || info.screenH < PRECHECK_RULES.minScreenH) {
-        issues.push(`Resolusi di bawah rekomendasi ${PRECHECK_RULES.minScreenW}x${PRECHECK_RULES.minScreenH}.`);
-    }
     if (Number.isFinite(cores) && cores < PRECHECK_RULES.minCores) {
         issues.push(`CPU di bawah rekomendasi ${PRECHECK_RULES.minCores} core.`);
     }
     if (!info.fullscreen) issues.push('Browser tidak mendukung fullscreen lock.');
     if (!info.camera) issues.push('Browser tidak mendukung akses kamera.');
     if (!info.geolocation) issues.push('Browser tidak mendukung akses lokasi.');
+    if (!info.screenCapture) issues.push('Browser tidak mendukung rekam layar ringan.');
 
     return issues.join(' ');
 }
@@ -1337,6 +1474,48 @@ async function proceedToExam() {
     }
 }
 
+async function requestScreenCapture() {
+    const statusEl = document.getElementById('screen-status');
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+        if (statusEl) statusEl.textContent = 'Browser tidak mendukung rekam layar.';
+        sendToAdmin({ type: 'screen_status', status: 'unsupported' });
+        return { warning: 'Browser belum mendukung rekam layar.' };
+    }
+    try {
+        if (statusEl) statusEl.textContent = 'Meminta izin rekam layar...';
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+            video: { frameRate: { ideal: 1, max: 3 }, width: { ideal: 960 }, height: { ideal: 540 } },
+            audio: false
+        });
+        screenState.stream = stream;
+        screenState.video = document.createElement('video');
+        screenState.video.muted = true;
+        screenState.video.playsInline = true;
+        screenState.video.srcObject = stream;
+        await screenState.video.play().catch(() => {});
+        screenState.canvas = document.createElement('canvas');
+        screenState.canvas.width = 240;
+        screenState.canvas.height = 135;
+        if (statusEl) statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:#10b981"></i> Rekam layar aktif';
+        sendToAdmin({ type: 'screen_status', status: 'active' });
+        stream.getVideoTracks()[0]?.addEventListener('ended', () => {
+            sendToAdmin({ type: 'screen_status', status: 'stopped' });
+            examLock._recordViolation('screen_stopped', 'Rekam layar dihentikan.');
+        });
+        screenState.captureInterval = setInterval(() => {
+            if (!state.started || !screenState.video) return;
+            const ctx = screenState.canvas.getContext('2d');
+            ctx.drawImage(screenState.video, 0, 0, 240, 135);
+            sendOptimizedFrame('screen_frame', screenState.canvas);
+        }, 45000);
+        return { status: 'active' };
+    } catch (err) {
+        if (statusEl) statusEl.textContent = 'Rekam layar ditolak.';
+        sendToAdmin({ type: 'screen_status', status: 'denied' });
+        return { warning: 'Rekam layar ditolak. Pengawas akan melihat status ini.' };
+    }
+}
+
 function skipWarmup() {
     warmupState.done = true;
     proceedToExam();
@@ -1353,6 +1532,15 @@ async function runPreExamCheck(mapel, nisn) {
     precheckState.lastNisn = nisn;
     precheckState.results = {};
 
+    connectAdminSocket({
+        nisn,
+        mapel,
+        lat  : gpsState.lat,
+        lng  : gpsState.lng,
+        device: detectDevice(),
+        browser: `${detectBrowser().name} ${detectBrowser().version}`
+    });
+
     const nextBtn = document.getElementById('precheck-next-btn');
     if (nextBtn) {
         nextBtn.disabled = true;
@@ -1363,6 +1551,7 @@ async function runPreExamCheck(mapel, nisn) {
         { id: 'step-network', label: 'Tes kecepatan jaringan', fn: runNetworkTest, required: false },
         { id: 'step-location', label: 'Aktifkan lokasi', fn: requestLocation, required: true },
         { id: 'step-camera', label: 'Aktifkan kamera', fn: requestCamera, required: true },
+        { id: 'step-screen', label: 'Aktifkan rekam layar', fn: requestScreenCapture, required: false },
         { id: 'step-browser', label: 'Deteksi browser', fn: collectBrowserInfo, required: false },
         { id: 'step-device', label: 'Baca info device', fn: collectDeviceInfo, required: false },
     ];
@@ -1414,16 +1603,6 @@ async function runPreExamCheck(mapel, nisn) {
             }
         }
     }
-
-    // Hubungkan ke WebSocket admin
-    connectAdminSocket({
-        nisn,
-        mapel,
-        lat  : gpsState.lat,
-        lng  : gpsState.lng,
-        device: detectDevice(),
-        browser: `${detectBrowser().name} ${detectBrowser().version}`
-    });
 
     precheckState.passed = true;
     if (nextBtn) {

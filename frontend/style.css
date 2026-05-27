@@ -1612,6 +1612,24 @@ body.login-body {
     100% { transform: translateX(-50%); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .ticker-inner {
+        animation: none !important;
+        flex-wrap: wrap;
+        white-space: normal;
+        row-gap: 8px;
+    }
+}
+
 /* ----- PORTAL LAYANAN DIGITAL ----- */
 #portal-layanan {
     background: linear-gradient(180deg, #fff 0%, var(--light) 100%);

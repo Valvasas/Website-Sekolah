@@ -26,6 +26,25 @@
 (function fetchTicker() {
     const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
     if (!document.querySelector('.ticker-inner')) return;
+
+    function createTickerItem(text) {
+        const item = document.createElement('span');
+        item.className = 'ticker-item';
+
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-circle';
+
+        item.append(icon, document.createTextNode(` ${String(text || '').trim()}`));
+        return item;
+    }
+
+    function createTickerSep() {
+        const sep = document.createElement('span');
+        sep.className = 'ticker-sep';
+        sep.textContent = '|';
+        return sep;
+    }
+
     fetch(API_BASE + '/api/content/announcements')
         .then(r => r.ok ? r.json() : null)
         .then(json => {
@@ -33,14 +52,20 @@
             const inner = document.querySelector('.ticker-inner');
             if (!inner) return;
             const label = inner.querySelector('.ticker-label');
-            let html = label ? label.outerHTML : '';
-            json.data.forEach(a => {
-                html += `<span class="ticker-item"><i class="fas fa-circle"></i> ${a.isi}</span>`;
-                html += '<span class="ticker-sep">|</span>';
-                html += `<span class="ticker-item"><i class="fas fa-circle"></i> ${a.isi}</span>`;
-                html += '<span class="ticker-sep">|</span>';
+            const fragment = document.createDocumentFragment();
+
+            if (label) fragment.appendChild(label.cloneNode(true));
+
+            json.data.forEach((a) => {
+                const text = a && typeof a.isi === 'string' ? a.isi : '';
+                if (!text.trim()) return;
+                fragment.appendChild(createTickerItem(text));
+                fragment.appendChild(createTickerSep());
+                fragment.appendChild(createTickerItem(text));
+                fragment.appendChild(createTickerSep());
             });
-            inner.innerHTML = html;
+
+            inner.replaceChildren(fragment);
         })
         .catch(() => { /* pakai konten statis jika backend offline */ });
 })();

@@ -39,7 +39,12 @@ const lmsState = {
     tugasData:      [],
     nilaiData:      [],
     jadwalData:     {},
+    profileData:    null,
+    schoolClasses:  [],
+    targetNisn:     null,
     unreadNotif:    0,
+    notifikasiData: [],
+    cbtSessions:    [],
 };
 
 /* ── Utils ──────────────────────────────────────────────────── */
@@ -173,6 +178,9 @@ async function initDashboard() {
         fetchNilai(),
         fetchJadwal(),
         fetchNotifikasi(),
+        fetchStudentCbtSessions(),
+        fetchProfil(),
+        loadSchoolClasses(),
     ]);
 
     await fetchKelas();
@@ -184,6 +192,10 @@ async function fetchDashboardStats() {
         const data = await apiFetch('/siswa/dashboard');
         if (!data.success) return;
         const d = data.data;
+        if (d.kelas || d.jurusan) {
+            lmsState.user = { ...lmsState.user, kelas: d.kelas, jurusan: d.jurusan };
+            localStorage.setItem('userData', JSON.stringify(lmsState.user));
+        }
 
         // Update stat cards
         const statMap = {
@@ -195,6 +207,179 @@ async function fetchDashboardStats() {
             if (el) el.textContent = val;
         });
     } catch(e) { console.warn('[Dashboard stats]', e.message); }
+}
+
+async function loadSchoolClasses() {
+    try {
+        const data = await apiFetch('/auth/classes');
+        if (!data.success) return;
+        lmsState.schoolClasses = data.data || [];
+        const select = document.getElementById('pf-kelas');
+        if (!select) return;
+        select.innerHTML = '<option value="">Pilih kelas</option>' + lmsState.schoolClasses.map(k =>
+            `<option value="${escHtml(k.kelas)}">${escHtml(k.kelas)} - ${escHtml(k.jurusan)}</option>`
+        ).join('');
+        if (lmsState.profileData?.profil?.kelas) select.value = lmsState.profileData.profil.kelas;
+    } catch(e) { console.warn('[Classes]', e.message); }
+}
+
+function canEditBiodata() {
+    return ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'].includes(lmsState.user?.role);
+}
+
+async function fetchProfil(nisn = '') {
+    try {
+        const target = nisn || lmsState.targetNisn || '';
+        if (!target && canEditBiodata() && !lmsState.user?.nisn) {
+            lmsState.profileData = null;
+            renderProfil();
+            return;
+        }
+        const query = target && canEditBiodata() ? `?nisn=${encodeURIComponent(target)}` : '';
+        const data = await apiFetch('/siswa/profil' + query);
+        if (!data.success) {
+            showToast(data.message || 'Profil tidak ditemukan.', 'red');
+            return;
+        }
+        lmsState.profileData = data.data;
+        lmsState.targetNisn = data.data.nisn || null;
+        renderProfil();
+    } catch(e) {
+        console.warn('[Profil]', e.message);
+        showToast('Gagal memuat profil.', 'red');
+    }
+}
+
+function setVal(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.value = value || '';
+}
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value || '-';
+}
+
+function renderProfil() {
+    const data = lmsState.profileData;
+    const editable = canEditBiodata();
+    document.getElementById('staff-target')?.classList.toggle('hidden', !editable);
+    if (!data) {
+        setText('profile-name', editable ? 'Pilih siswa' : '-');
+        setText('profile-meta', editable ? 'Masukkan NISN untuk memuat biodata' : '-');
+        setText('profile-nisn', '-');
+        setText('profile-kelas', '-');
+        setText('profile-jurusan', '-');
+        setText('profile-phone', '-');
+        document.getElementById('profile-form')?.reset();
+        return;
+    }
+    const p = data.profil || {};
+
+    setText('profile-name', data.nama_lengkap || data.nama || '-');
+    setText('profile-meta', `${data.role || 'siswa'}${p.kelas ? ' · ' + p.kelas : ''}`);
+    setText('profile-nisn', data.nisn);
+    setText('profile-kelas', p.kelas);
+    setText('profile-jurusan', p.jurusan);
+    setText('profile-phone', data.no_hp);
+
+    const avatarText = (data.nama_lengkap || data.nama || 'S').charAt(0).toUpperCase();
+    ['profile-avatar','tb-avatar-circle','pd-avatar','fc-avatar'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = avatarText;
+        if (data.foto_profil) el.style.backgroundImage = `url(${data.foto_profil})`;
+    });
+    document.getElementById('pd-name').textContent = data.nama_lengkap || data.nama || '-';
+
+    setVal('pf-email', data.email);
+    setVal('pf-phone', data.no_hp);
+    setVal('pf-kelas', p.kelas);
+    setVal('pf-jurusan', p.jurusan);
+    setVal('pf-tempat', p.tempat_lahir);
+    setVal('pf-tanggal', p.tanggal_lahir);
+    setVal('pf-gender', p.jenis_kelamin);
+    setVal('pf-agama', p.agama);
+    setVal('pf-alamat', p.alamat);
+    setVal('pf-kelurahan', p.kelurahan);
+    setVal('pf-kecamatan', p.kecamatan);
+    setVal('pf-ayah', p.nama_ayah);
+    setVal('pf-pekerjaan-ayah', p.pekerjaan_ayah);
+    setVal('pf-ibu', p.nama_ibu);
+    setVal('pf-pekerjaan-ibu', p.pekerjaan_ibu);
+    setVal('pf-hp-ortu', p.no_hp_ortu);
+    setVal('pf-email-ortu', p.email_ortu);
+
+    const lock = document.getElementById('biodata-lock');
+    if (lock) {
+        lock.classList.toggle('editable', editable);
+        lock.innerHTML = editable
+            ? '<i class="fas fa-unlock"></i> Mode staff aktif: biodata siswa bisa diperbarui.'
+            : '<i class="fas fa-lock"></i> Biodata di bawah ini hanya bisa diubah oleh guru atau staff.';
+    }
+
+    ['pf-kelas','pf-tempat','pf-tanggal','pf-gender','pf-agama','pf-alamat','pf-kelurahan','pf-kecamatan','pf-ayah','pf-pekerjaan-ayah','pf-ibu','pf-pekerjaan-ibu','pf-hp-ortu','pf-email-ortu']
+        .forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = !editable;
+        });
+    const jurusanInput = document.getElementById('pf-jurusan');
+    if (jurusanInput) jurusanInput.disabled = true;
+}
+
+async function saveProfil(event) {
+    event.preventDefault();
+    const btn = document.getElementById('profile-save-btn');
+    const editable = canEditBiodata();
+    if (editable && !lmsState.targetNisn) {
+        showToast('Masukkan NISN siswa dulu.', 'red');
+        return;
+    }
+    const kelas = document.getElementById('pf-kelas')?.value || '';
+    const foundClass = lmsState.schoolClasses.find(k => k.kelas === kelas);
+    const payload = {
+        email: document.getElementById('pf-email')?.value.trim() || null,
+        no_hp: document.getElementById('pf-phone')?.value.trim() || null,
+    };
+
+    if (editable) {
+        Object.assign(payload, {
+            kelas,
+            jurusan: foundClass?.jurusan || document.getElementById('pf-jurusan')?.value.trim() || null,
+            tempat_lahir: document.getElementById('pf-tempat')?.value.trim() || null,
+            tanggal_lahir: document.getElementById('pf-tanggal')?.value || null,
+            jenis_kelamin: document.getElementById('pf-gender')?.value || null,
+            agama: document.getElementById('pf-agama')?.value.trim() || null,
+            alamat: document.getElementById('pf-alamat')?.value.trim() || null,
+            kelurahan: document.getElementById('pf-kelurahan')?.value.trim() || null,
+            kecamatan: document.getElementById('pf-kecamatan')?.value.trim() || null,
+            nama_ayah: document.getElementById('pf-ayah')?.value.trim() || null,
+            pekerjaan_ayah: document.getElementById('pf-pekerjaan-ayah')?.value.trim() || null,
+            nama_ibu: document.getElementById('pf-ibu')?.value.trim() || null,
+            pekerjaan_ibu: document.getElementById('pf-pekerjaan-ibu')?.value.trim() || null,
+            no_hp_ortu: document.getElementById('pf-hp-ortu')?.value.trim() || null,
+            email_ortu: document.getElementById('pf-email-ortu')?.value.trim() || null,
+        });
+    }
+
+    setLoading(btn, true);
+    try {
+        const target = editable && lmsState.targetNisn ? `?nisn=${encodeURIComponent(lmsState.targetNisn)}` : '';
+        const res = await apiFetch('/siswa/profil' + target, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+        });
+        if (!res.success) {
+            showToast(res.message || 'Gagal menyimpan profil.', 'red');
+            return;
+        }
+        showToast('Profil berhasil disimpan.', 'green');
+        await fetchProfil(lmsState.targetNisn || '');
+    } catch(e) {
+        showToast('Gagal menyimpan profil.', 'red');
+    } finally {
+        setLoading(btn, false, '<i class="fas fa-save"></i> Simpan Profil');
+    }
 }
 
 /* ── Fetch & Render: Tugas ──────────────────────────────────── */
@@ -603,12 +788,77 @@ async function fetchNotifikasi() {
         const data = await apiFetch('/lms/notifikasi');
         if (!data.success) return;
         lmsState.unreadNotif = data.unread || 0;
-        renderNotifikasi(data.data || []);
+        lmsState.notifikasiData = data.data || [];
+        renderNotifikasi(lmsState.notifikasiData);
+        renderStudentAnnouncements(lmsState.notifikasiData);
 
         // Update badge
         const dot = document.querySelector('.tb-dot');
         if (dot) dot.style.display = data.unread > 0 ? '' : 'none';
     } catch(e) { console.warn('[Fetch notif]', e.message); }
+}
+
+async function fetchStudentCbtSessions() {
+    const list = document.getElementById('student-cbt-sessions');
+    if (!list || lmsState.user?.role !== 'siswa') return;
+    try {
+        const data = await apiFetch('/cbt/student/sessions');
+        if (!data.success) return;
+        lmsState.cbtSessions = data.data || [];
+        renderStudentCbtSessions();
+    } catch(e) {
+        console.warn('[CBT siswa]', e.message);
+        list.innerHTML = '<p style="text-align:center;color:#64748b;padding:20px 0;font-size:.85rem;">Sesi CBT belum bisa dimuat.</p>';
+    }
+}
+
+function renderStudentAnnouncements(notifs = []) {
+    const el = document.getElementById('student-announcements');
+    if (!el) return;
+    const rows = notifs.slice(0, 5);
+    if (!rows.length) {
+        el.innerHTML = '<p style="text-align:center;color:#64748b;padding:20px 0;font-size:.85rem;">Belum ada pengumuman baru.</p>';
+        return;
+    }
+    el.innerHTML = rows.map(n => `
+        <div class="student-announcement ${n.is_read ? '' : 'unread'}">
+            <span class="sa-icon ${escHtml(n.tipe || 'info')}"><i class="fas fa-${getNotifIcon(n.tipe)}"></i></span>
+            <div>
+                <strong>${escHtml(n.judul)}</strong>
+                <p>${escHtml(n.pesan)}</p>
+                <small>${formatRelativeTime(n.created_at)}</small>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderStudentCbtSessions() {
+    const el = document.getElementById('student-cbt-sessions');
+    const status = document.getElementById('svc-cbt-status');
+    if (!el) return;
+    const sessions = lmsState.cbtSessions || [];
+    const openCount = sessions.filter(s => s.status === 'open' && !s.used).length;
+    if (status) status.textContent = openCount ? `${openCount} sesi siap dikerjakan` : 'Cek sesi ujian aktif';
+    if (!sessions.length) {
+        el.innerHTML = '<p style="text-align:center;color:#64748b;padding:20px 0;font-size:.85rem;">Belum ada sesi CBT untuk akun kamu.</p>';
+        return;
+    }
+    el.innerHTML = sessions.slice(0, 4).map(s => {
+        const open = s.status === 'open' && !s.used;
+        const done = !!s.used || s.token_status === 'finished';
+        return `
+        <div class="student-cbt-item">
+            <div class="mt-dot" style="background:${done ? '#10b981' : open ? '#3b82f6' : '#f59e0b'};"></div>
+            <div class="mt-info">
+                <h4>${escHtml(s.title)}</h4>
+                <p>${formatMapelLabel(s.mapel)} · ${escHtml(s.kelas || '-')} · ${s.durasi_menit || '-'} menit</p>
+                <p class="cbt-token-line">Token: <code>${escHtml(s.token || '-')}</code></p>
+            </div>
+            <a class="mt-chip" href="cbt.html" style="background:${open ? '#dbeafe' : '#f1f5f9'};color:${open ? '#1d4ed8' : '#64748b'};">
+                ${done ? 'Selesai' : open ? 'Masuk' : 'Draft'}
+            </a>
+        </div>`;
+    }).join('');
 }
 
 function renderNotifikasi(notifs) {
@@ -631,6 +881,16 @@ function renderNotifikasi(notifs) {
     `).join('');
 }
 
+function getNotifIcon(tipe) {
+    return {
+        tugas: 'tasks',
+        nilai: 'star',
+        cbt: 'laptop-code',
+        warning: 'triangle-exclamation',
+        success: 'circle-check',
+    }[tipe] || 'bullhorn';
+}
+
 /* ── Sidebar navigasi ───────────────────────────────────────── */
 function navigate(pageId, btn) {
     document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
@@ -641,9 +901,11 @@ function navigate(pageId, btn) {
 
     document.getElementById('tb-page-name').textContent = {
         beranda:'Beranda', kelas:'Kelas Saya', tugas:'Tugas',
-        materi:'Materi', forum:'Forum Diskusi', nilai:'Nilai Saya'
+        materi:'Materi', forum:'Forum Diskusi', nilai:'Nilai Saya',
+        profil:'Profil & Biodata'
     }[pageId] || 'Dashboard';
 
+    if (pageId === 'profil') fetchProfil(lmsState.targetNisn || '').catch(() => {});
     closeSidebar();
     window.scrollTo(0, 0);
 }
@@ -695,13 +957,50 @@ function showToast(msg, type = 'green') {
         transition:transform .4s cubic-bezier(.25,1,.5,1),opacity .4s;
         opacity:0;pointer-events:none;
     `;
-    toast.innerHTML = `<i class="fas fa-check-circle"></i>${msg}`;
+    const icon = document.createElement('i');
+    icon.className = type === 'red' ? 'fas fa-circle-exclamation' : 'fas fa-check-circle';
+    toast.append(icon, document.createTextNode(String(msg || '')));
     document.body.appendChild(toast);
     requestAnimationFrame(() => { toast.style.transform = 'translateX(-50%) translateY(0)'; toast.style.opacity = '1'; });
     setTimeout(() => {
         toast.style.transform = 'translateX(-50%) translateY(60px)'; toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 400);
     }, 3000);
+}
+
+async function changePassword() {
+    const currentPassword = document.getElementById('pw-current')?.value || '';
+    const newPassword = document.getElementById('pw-new')?.value || '';
+    const confirmPassword = document.getElementById('pw-confirm')?.value || '';
+    const btn = document.getElementById('password-save-btn');
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        showToast('Semua kolom password wajib diisi.', 'red');
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        showToast('Konfirmasi password tidak cocok.', 'red');
+        return;
+    }
+
+    setLoading(btn, true);
+    try {
+        const res = await apiFetch('/auth/change-password', {
+            method: 'POST',
+            body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+        });
+        if (!res.success) {
+            showToast(res.message || 'Gagal mengganti password.', 'red');
+            return;
+        }
+        ['pw-current','pw-new','pw-confirm'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        closeModal('modal-password');
+        showToast('Password berhasil diganti.', 'green');
+    } catch(e) {
+        showToast('Gagal mengganti password.', 'red');
+    } finally {
+        setLoading(btn, false, '<i class="fas fa-key"></i> Simpan Password');
+    }
 }
 
 /* ── Logout ─────────────────────────────────────────────────── */
@@ -717,9 +1016,7 @@ function lmsLogout() {
     }
     ['accessToken','refreshToken','userRole','userData','smkn_token','smkn_refresh'].forEach(k => localStorage.removeItem(k));
     lmsState.user = null;
-    showLmsScreen('lms-login');
-    document.getElementById('lf-user').value = '';
-    document.getElementById('lf-pass').value = '';
+    window.location.replace('/login.html?msg=' + encodeURIComponent('Kamu sudah keluar dari LMS.'));
 }
 
 /* ── Helper functions ───────────────────────────────────────── */
@@ -757,6 +1054,18 @@ function getMapelIcon(mapel = '') {
     if (m.includes('inggris'))    return 'fas fa-language';
     if (m.includes('pkk') || m.includes('kewirausahaan')) return 'fas fa-lightbulb';
     return 'fas fa-book-open';
+}
+
+function formatMapelLabel(mapel = '') {
+    const m = {
+        matematika: 'Matematika',
+        bindo: 'Bahasa Indonesia',
+        basing: 'Bahasa Inggris',
+        pkk: 'PKK',
+        sejarah: 'Sejarah Indonesia',
+        produktif: 'Kompetensi Keahlian',
+    };
+    return m[mapel] || mapel || '-';
 }
 
 function getFileBg(tipe) {
@@ -811,4 +1120,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    document.getElementById('profile-form')?.addEventListener('submit', saveProfil);
+    document.getElementById('pf-kelas')?.addEventListener('change', (e) => {
+        const found = lmsState.schoolClasses.find(k => k.kelas === e.target.value);
+        const jurusan = document.getElementById('pf-jurusan');
+        if (jurusan) jurusan.value = found?.jurusan || '';
+    });
 });
