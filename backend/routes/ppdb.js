@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const { authenticate, authorize } = require('../middleware/auth');
 const getDB   = require('../config/database');
 
-const STAFF = ['tata_usaha','kepala_sekolah','super_admin'];
+const STAFF = ['tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'];
 
 /* Generate nomor pendaftaran: PPDB-2026-XXXX */
 function genNomor() {

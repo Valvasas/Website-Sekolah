@@ -101,6 +101,19 @@ function setup() {
             answered_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
             UNIQUE(session_id, question_id)
         );
+        CREATE TABLE IF NOT EXISTS cbt_messages (
+            id TEXT PRIMARY KEY,
+            exam_id TEXT,
+            session_id TEXT,
+            nisn TEXT,
+            sender_role TEXT NOT NULL,
+            sender_name TEXT,
+            message_type TEXT NOT NULL DEFAULT 'student_help',
+            message TEXT NOT NULL,
+            created_by TEXT,
+            read_at TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
         CREATE TABLE IF NOT EXISTS cbt_sessions (
             id TEXT PRIMARY KEY, exam_id TEXT, nisn TEXT NOT NULL, mapel TEXT NOT NULL,
             token TEXT NOT NULL UNIQUE, used INTEGER NOT NULL DEFAULT 0,
@@ -273,6 +286,8 @@ function setup() {
         CREATE INDEX IF NOT EXISTS idx_cbt_exam_questions   ON cbt_exam_questions(exam_id, urutan);
         CREATE INDEX IF NOT EXISTS idx_cbt_answers_session  ON cbt_answers(session_id, question_id);
         CREATE INDEX IF NOT EXISTS idx_cbt_results_exam     ON cbt_results(exam_id, nisn);
+        CREATE INDEX IF NOT EXISTS idx_cbt_messages_exam    ON cbt_messages(exam_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_cbt_messages_student ON cbt_messages(nisn, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_users_nisn           ON users(nisn) WHERE nisn IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_users_email          ON users(email) WHERE email IS NOT NULL;
         CREATE UNIQUE INDEX IF NOT EXISTS idx_siswa_profil_nisn_unique ON siswa_profil(nisn);

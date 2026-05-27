@@ -8,7 +8,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const getDB    = require('../config/database');
 const { findSchoolClass } = require('../utils/schoolClasses');
 
-const STAFF = ['guru','tata_usaha','kepala_sekolah','super_admin'];
+const STAFF = ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'];
 const isStaffRole = (role) => STAFF.includes(role);
 const cleanText = (value, max = 160) => {
     if (value === undefined) return null;
@@ -25,9 +25,150 @@ function getNisn(req) {
     return req.params.nisn || req.query.nisn || req.user.nisn;
 }
 
+function clampInt(value, fallback, min, max) {
+    const n = parseInt(value, 10);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(Math.max(n, min), max);
+}
+
 /* ══════════════════════════════════════════
    PROFIL SISWA
    ══════════════════════════════════════════ */
+
+/* GET /api/siswa/staff/list — daftar siswa untuk guru/staff */
+router.get('/staff/list', authenticate, authorize(...STAFF), (req, res) => {
+    const db = getDB();
+    const { search = '', kelas = '', page = 1, limit = 20 } = req.query;
+    const pageInt = clampInt(page, 1, 1, 9999);
+    const limitInt = clampInt(limit, 20, 1, 100);
+    const offset = (pageInt - 1) * limitInt;
+    const conds = ["u.role = 'siswa'"];
+    const params = [];
+
+    if (kelas) {
+        conds.push('sp.kelas = ?');
+        params.push(cleanText(kelas, 50));
+    }
+    if (search) {
+        const s = `%${String(search).replace(/[%_\\]/g, '\\$&').trim()}%`;
+        conds.push('(u.nama_lengkap LIKE ? OR u.nisn LIKE ? OR u.email LIKE ? OR sp.kelas LIKE ?)');
+        params.push(s, s, s, s);
+    }
+
+    const where = `WHERE ${conds.join(' AND ')}`;
+    try {
+        const rows = db.prepare(`
+            SELECT u.id, u.nama_lengkap, u.nisn, u.email, u.no_hp, u.foto_profil,
+                   u.is_active, u.last_login, u.created_at,
+                   sp.kelas, sp.jurusan, sp.jenis_kelamin, sp.tanggal_lahir,
+                   COALESCE(ns.total_nilai, 0) as total_nilai,
+                   COALESCE(cr.total_ujian, 0) as total_ujian,
+                   cr.last_nilai
+            FROM users u
+            LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
+            LEFT JOIN (
+                SELECT nisn, COUNT(*) as total_nilai
+                FROM nilai_siswa
+                GROUP BY nisn
+            ) ns ON ns.nisn = u.nisn
+            LEFT JOIN (
+                SELECT nisn, COUNT(*) as total_ujian, MAX(nilai) as last_nilai
+                FROM cbt_results
+                GROUP BY nisn
+            ) cr ON cr.nisn = u.nisn
+            ${where}
+            ORDER BY COALESCE(sp.kelas, ''), u.nama_lengkap ASC
+            LIMIT ? OFFSET ?
+        `).all(...params, limitInt, offset);
+        const total = db.prepare(`
+            SELECT COUNT(*) as c
+            FROM users u
+            LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
+            ${where}
+        `).get(...params)?.c || 0;
+
+        res.json({
+            success: true,
+            data: {
+                students: rows,
+                pagination: { total, page: pageInt, limit: limitInt, totalPages: Math.ceil(total / limitInt) }
+            }
+        });
+    } catch(e) {
+        console.error('[Siswa staff list]', e.message);
+        res.status(500).json({ success:false, message:'Gagal mengambil daftar siswa.' });
+    }
+});
+
+/* GET /api/siswa/staff/:nisn/detail — profil + histori akademik siswa */
+router.get('/staff/:nisn/detail', authenticate, authorize(...STAFF), (req, res) => {
+    const db = getDB();
+    const nisn = cleanText(req.params.nisn, 20);
+    if (!nisn) return res.status(400).json({ success:false, message:'NISN wajib diisi.' });
+
+    try {
+        const student = db.prepare(`
+            SELECT u.id, u.nama_lengkap, u.nisn, u.email, u.no_hp, u.role,
+                   u.foto_profil, u.is_active, u.last_login, u.created_at,
+                   sp.*
+            FROM users u
+            LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
+            WHERE u.nisn = ? AND u.role = 'siswa'
+        `).get(nisn);
+
+        if (!student) return res.status(404).json({ success:false, message:'Siswa tidak ditemukan.' });
+
+        const nilai = db.prepare(`
+            SELECT *, ROUND((uh * 0.2 + uts * 0.25 + uas * 0.3 + tugas * 0.25), 2) as nilai_final
+            FROM nilai_siswa
+            WHERE nisn = ?
+            ORDER BY semester DESC, mapel ASC
+        `).all(nisn);
+
+        const kehadiran = db.prepare(`
+            SELECT * FROM kehadiran
+            WHERE nisn = ?
+            ORDER BY tanggal DESC
+            LIMIT 80
+        `).all(nisn);
+        const kehadiranSummary = { hadir:0, sakit:0, izin:0, alpha:0 };
+        kehadiran.forEach(r => {
+            if (kehadiranSummary[r.status] !== undefined) kehadiranSummary[r.status] += 1;
+        });
+
+        const tugas = db.prepare(`
+            SELECT st.id, st.tugas_id, st.jawaban, st.file_url, st.nilai, st.feedback,
+                   st.status, st.submitted_at,
+                   tk.judul, tk.mapel, tk.kelas, tk.deadline
+            FROM submission_tugas st
+            LEFT JOIN tugas_kelas tk ON tk.id = st.tugas_id
+            WHERE st.nisn = ?
+            ORDER BY st.submitted_at DESC
+            LIMIT 80
+        `).all(nisn);
+
+        const cbt = db.prepare(`
+            SELECT cr.id, cr.exam_id, cr.session_id, cr.mapel, cr.benar, cr.salah,
+                   cr.kosong, cr.nilai, cr.selesai_at,
+                   e.title as exam_title, e.kelas,
+                   cs.violation_count, cs.camera_status, cs.screen_status
+            FROM cbt_results cr
+            LEFT JOIN cbt_exams e ON e.id = cr.exam_id
+            LEFT JOIN cbt_sessions cs ON cs.id = cr.session_id
+            WHERE cr.nisn = ?
+            ORDER BY cr.selesai_at DESC
+            LIMIT 80
+        `).all(nisn);
+
+        res.json({
+            success: true,
+            data: { student, nilai, kehadiran, kehadiranSummary, tugas, cbt }
+        });
+    } catch(e) {
+        console.error('[Siswa staff detail]', e.message);
+        res.status(500).json({ success:false, message:'Gagal mengambil detail siswa.' });
+    }
+});
 
 /* GET /api/siswa/profil — ambil profil sendiri atau by nisn (staff) */
 router.get('/profil', authenticate, (req, res) => {

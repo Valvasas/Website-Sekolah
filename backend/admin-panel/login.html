@@ -344,7 +344,7 @@
         </a>
 
         <h2 class="form-title">Portal Admin & Staf</h2>
-        <p class="form-sub">Masuk sebagai guru, tata usaha, kepala sekolah, atau admin</p>
+        <p class="form-sub">Masuk sebagai guru, tata usaha, wakasek, kepala sekolah, atau admin</p>
 
         <!-- Role Selector -->
         <div class="role-tabs" id="roleTabs">
@@ -356,6 +356,9 @@
             </button>
             <button class="role-tab" data-role="kepala_sekolah" onclick="switchRole('kepala_sekolah', this)">
                 <i class="fas fa-user-tie"></i> Kepsek
+            </button>
+            <button class="role-tab" data-role="wakil_kepala_sekolah" onclick="switchRole('wakil_kepala_sekolah', this)">
+                <i class="fas fa-user-shield"></i> Wakasek
             </button>
             <button class="role-tab" data-role="super_admin" onclick="switchRole('super_admin', this)">
                 <i class="fas fa-user-shield"></i> Admin
@@ -577,7 +580,7 @@ if (oauthToken) {
 /* ══════════════════════════════════════
    ROLE SWITCHER
 ══════════════════════════════════════ */
-const STAFF_ROLES = new Set(['guru', 'tata_usaha', 'kepala_sekolah', 'super_admin']);
+const STAFF_ROLES = new Set(['guru', 'tata_usaha', 'kepala_sekolah', 'wakil_kepala_sekolah', 'super_admin']);
 let currentRole = 'guru';
 
 function switchRole(role, btn) {
@@ -594,6 +597,7 @@ function switchRole(role, btn) {
         guru:            { label:'Email Guru', placeholder:'email@smkn1terisi.sch.id', google: false, register: false },
         tata_usaha:      { label:'Email Staff TU', placeholder:'email@smkn1terisi.sch.id', google: false, register: false },
         kepala_sekolah:  { label:'Email Kepala Sekolah', placeholder:'email@smkn1terisi.sch.id', google: false, register: false },
+        wakil_kepala_sekolah: { label:'Email Wakasek', placeholder:'email@smkn1terisi.sch.id', google: false, register: false },
         super_admin:     { label:'Email Admin', placeholder:'admin@smkn1terisi.sch.id', google: false, register: false },
     };
 
@@ -858,6 +862,7 @@ function redirectByRole(role) {
     const map = {
         super_admin:     '/admin-panel/dashboard.html',
         kepala_sekolah:  '/admin-panel/dashboard.html',
+        wakil_kepala_sekolah: '/admin-panel/dashboard.html',
         guru:            '/admin-panel/dashboard.html',
         tata_usaha:      '/admin-panel/dashboard.html',
         siswa:           '/LMS.html',

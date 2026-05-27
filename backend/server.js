@@ -110,7 +110,7 @@ app.use('/api/', apiLimiter);
 function setupWebSocket() {
     const wss     = new WebSocket.Server({ server });
     const clients = new Map();
-    let   adminWs = null;
+    const adminClients = new Set();
     const MAX_WS_PAYLOAD_BYTES = 64 * 1024;
     const WS_MESSAGE_WINDOW_MS = 10_000;
     const WS_MESSAGE_LIMIT = 40;
@@ -162,18 +162,25 @@ function setupWebSocket() {
             switch (msg.type) {
                 case 'admin_auth': {
                     const { valid, decoded } = verifyToken(msg.token || '');
-                    if (!valid || !['super_admin','kepala_sekolah','guru'].includes(decoded?.role)) {
+                    if (!valid || !['super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'].includes(decoded?.role)) {
                         send(ws, { type: 'error', message: 'Token admin tidak valid.' });
                         ws.close(1008, 'Unauthorized');
                         return;
                     }
-                    if (adminWs && adminWs !== ws && adminWs.readyState === WebSocket.OPEN) {
-                        adminWs.close(1000, 'Replaced');
-                    }
-                    adminWs = ws; ws.role = 'admin'; ws.isAuth = true;
+                    ws.role = 'admin';
+                    ws.isAuth = true;
+                    ws.adminUser = decoded;
+                    ws.examFilter = null;
+                    adminClients.add(ws);
                     send(ws, { type: 'admin_auth_ok', message: `Terhubung sebagai ${decoded.nama}.` });
                     break;
                 }
+
+                case 'admin_subscribe':
+                    if (ws.role !== 'admin') return;
+                    ws.examFilter = cleanText(msg.examId, 80);
+                    send(ws, { type: 'admin_subscribe_ok', examId: ws.examFilter });
+                    break;
 
                 case 'student_join': {
                     const { nisn, token: cbtToken, mapel } = msg;
@@ -210,10 +217,10 @@ function setupWebSocket() {
                             msg.browser ? JSON.stringify({ browser: cleanText(msg.browser, 120) }) : null,
                             cbtToken
                         );
-                        ws.nisn = nisn; ws.mapel = session.mapel;
+                        ws.nisn = nisn; ws.mapel = session.mapel; ws.sessionId = session.id; ws.examId = session.exam_id || null;
                         ws.role = 'student'; ws.isAuth = true;
                         clients.set(nisn, ws);
-                        fwdAdmin({ ...msg, mapel: session.mapel });
+                        fwdAdminToExam({ ...msg, mapel: session.mapel, exam_id: session.exam_id || null, session_id: session.id }, session.exam_id || null);
                     } catch(e) {
                         console.error('[WS student_join]', e.message);
                         send(ws, { type: 'error', message: 'Gagal validasi session.' });
@@ -226,22 +233,31 @@ function setupWebSocket() {
                 case 'screen_frame': case 'screen_status':
                 case 'answer_update': case 'violation':
                     saveProctorEvent(msg, ws);
-                    fwdAdmin(msg);
+                    fwdAdminTelemetry(msg, ws);
+                    break;
+
+                case 'student_help':
+                    if (ws.role !== 'student') return;
+                    handleStudentHelp(msg, ws);
                     break;
 
                 case 'student_finish':
-                    fwdAdmin(msg);
+                    fwdAdminToExam({ ...msg, exam_id: ws.examId || msg.exam_id || null }, ws.examId || msg.exam_id || null);
                     saveCBT(msg, ws.nisn);
                     try {
                         require('./config/database')()
-                            .prepare(`UPDATE cbt_sessions SET used = 1, end_time = datetime('now') WHERE nisn = ? AND mapel = ?`)
-                            .run(ws.nisn, ws.mapel);
+                            .prepare(`UPDATE cbt_sessions SET used = 1, end_time = datetime('now') WHERE id = ?`)
+                            .run(ws.sessionId);
                     } catch {}
                     break;
 
                 case 'admin_warn':
                     if (ws.role !== 'admin') return;
                     send(clients.get(msg.targetNisn), { type: 'warning', message: msg.message });
+                    break;
+                case 'admin_reply':
+                    if (ws.role !== 'admin') return;
+                    handleAdminReply(msg, ws);
                     break;
                 case 'admin_kick':
                     if (ws.role !== 'admin') return;
@@ -251,12 +267,11 @@ function setupWebSocket() {
                     break;
                 case 'admin_broadcast':
                     if (ws.role !== 'admin') return;
-                    clients.forEach(c => send(c, { type: 'broadcast', message: msg.message }));
-                    send(adminWs, { type: 'broadcast_ack' });
+                    handleAdminBroadcast(msg, ws);
                     break;
                 case 'admin_end_all':
                     if (ws.role !== 'admin') return;
-                    clients.forEach(c => send(c, { type: 'force_finish' }));
+                    sendToExamStudents(ws.examFilter || cleanText(msg.examId, 80) || null, { type: 'force_finish' });
                     break;
             }
         });
@@ -264,9 +279,9 @@ function setupWebSocket() {
         ws.on('close', () => {
             if (ws.nisn) {
                 clients.delete(ws.nisn);
-                fwdAdmin({ type: 'student_disconnect', nisn: ws.nisn });
+                fwdAdminToExam({ type: 'student_disconnect', nisn: ws.nisn, exam_id: ws.examId || null }, ws.examId || null);
             }
-            if (ws.role === 'admin') adminWs = null;
+            if (ws.role === 'admin') adminClients.delete(ws);
         });
 
         ws.on('error', e => console.error('[WS]', e.message));
@@ -282,7 +297,31 @@ function setupWebSocket() {
     function send(ws, payload) {
         if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
     }
-    function fwdAdmin(msg) { send(adminWs, msg); }
+    function fwdAdmin(msg) {
+        adminClients.forEach(admin => send(admin, msg));
+    }
+
+    function fwdAdminToExam(msg, examId) {
+        adminClients.forEach(admin => {
+            if (admin.examFilter && examId && admin.examFilter !== examId) return;
+            send(admin, msg);
+        });
+    }
+
+    function fwdAdminTelemetry(msg, ws) {
+        if (!adminClients.size) return;
+        if (!['camera_frame', 'screen_frame'].includes(msg.type)) {
+            fwdAdminToExam({ ...msg, exam_id: ws.examId || msg.exam_id || null }, ws.examId || msg.exam_id || null);
+            return;
+        }
+        const now = Date.now();
+        const key = `${msg.type}:${ws?.nisn || 'unknown'}`;
+        const minGap = msg.type === 'screen_frame' ? 30_000 : 20_000;
+        ws.lastForwardedFrameAt = ws.lastForwardedFrameAt || {};
+        if (now - (ws.lastForwardedFrameAt[key] || 0) < minGap) return;
+        ws.lastForwardedFrameAt[key] = now;
+        fwdAdminToExam({ ...msg, exam_id: ws.examId || msg.exam_id || null }, ws.examId || msg.exam_id || null);
+    }
 
     function cleanText(value, max = 200) {
         if (value === undefined || value === null) return null;
@@ -301,18 +340,128 @@ function setupWebSocket() {
         return value.length <= 60_000 ? value : null;
     }
 
+    function saveCbtMessage({ examId = null, sessionId = null, nisn = null, senderRole, senderName = null, messageType, message, createdBy = null }) {
+        const text = cleanText(message, 1000);
+        if (!text) return null;
+        const id = uuidv4();
+        require('./config/database')().prepare(`
+            INSERT INTO cbt_messages
+            (id, exam_id, session_id, nisn, sender_role, sender_name, message_type, message, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        `).run(
+            id, examId || null, sessionId || null, nisn || null,
+            cleanText(senderRole, 40) || 'system',
+            cleanText(senderName, 120),
+            cleanText(messageType, 40) || 'student_help',
+            text,
+            createdBy || null
+        );
+        return { id, message: text };
+    }
+
+    function sendToExamStudents(examId, payload) {
+        clients.forEach(client => {
+            if (examId && client.examId !== examId) return;
+            send(client, payload);
+        });
+    }
+
+    function handleStudentHelp(msg, ws) {
+        const saved = saveCbtMessage({
+            examId: ws.examId,
+            sessionId: ws.sessionId,
+            nisn: ws.nisn,
+            senderRole: 'siswa',
+            senderName: msg.senderName || ws.nisn,
+            messageType: 'student_help',
+            message: msg.message
+        });
+        if (!saved) {
+            send(ws, { type: 'chat_error', message: 'Pesan kosong tidak dikirim.' });
+            return;
+        }
+        const payload = {
+            type: 'student_help',
+            id: saved.id,
+            exam_id: ws.examId || null,
+            session_id: ws.sessionId || null,
+            nisn: ws.nisn,
+            sender_name: cleanText(msg.senderName, 120) || ws.nisn,
+            message: saved.message,
+            created_at: new Date().toISOString()
+        };
+        fwdAdminToExam(payload, ws.examId || null);
+        send(ws, { type: 'student_help_ack', id: saved.id, message: saved.message });
+    }
+
+    function handleAdminReply(msg, ws) {
+        const target = clients.get(msg.targetNisn);
+        const examId = cleanText(msg.examId, 80) || target?.examId || null;
+        const saved = saveCbtMessage({
+            examId,
+            sessionId: target?.sessionId || null,
+            nisn: cleanText(msg.targetNisn, 30),
+            senderRole: ws.adminUser?.role || 'admin',
+            senderName: ws.adminUser?.nama || 'Panitia CBT',
+            messageType: 'admin_reply',
+            message: msg.message,
+            createdBy: ws.adminUser?.sub || null
+        });
+        if (!saved) {
+            send(ws, { type: 'chat_error', message: 'Balasan kosong tidak dikirim.' });
+            return;
+        }
+        const payload = {
+            type: 'admin_reply',
+            id: saved.id,
+            exam_id: examId,
+            nisn: cleanText(msg.targetNisn, 30),
+            sender_name: ws.adminUser?.nama || 'Panitia CBT',
+            message: saved.message,
+            created_at: new Date().toISOString()
+        };
+        send(target, payload);
+        fwdAdminToExam({ ...payload, type: 'admin_reply_sent' }, examId);
+    }
+
+    function handleAdminBroadcast(msg, ws) {
+        const examId = cleanText(msg.examId, 80) || ws.examFilter || null;
+        const saved = saveCbtMessage({
+            examId,
+            senderRole: ws.adminUser?.role || 'admin',
+            senderName: ws.adminUser?.nama || 'Panitia CBT',
+            messageType: 'announcement',
+            message: msg.message,
+            createdBy: ws.adminUser?.sub || null
+        });
+        if (!saved) {
+            send(ws, { type: 'chat_error', message: 'Announcement kosong tidak dikirim.' });
+            return;
+        }
+        const payload = {
+            type: 'announcement',
+            id: saved.id,
+            exam_id: examId,
+            sender_name: ws.adminUser?.nama || 'Panitia CBT',
+            message: saved.message,
+            created_at: new Date().toISOString()
+        };
+        sendToExamStudents(examId, payload);
+        fwdAdminToExam({ ...payload, type: 'broadcast_ack' }, examId);
+    }
+
     function saveProctorEvent(msg, ws) {
         if (!ws?.nisn) return;
         try {
             const db = require('./config/database')();
-            const base = { nisn: ws.nisn, mapel: ws.mapel, now: new Date().toISOString() };
+            const base = { nisn: ws.nisn, mapel: ws.mapel, sessionId: ws.sessionId, now: new Date().toISOString() };
             switch (msg.type) {
                 case 'device_info':
                     db.prepare(`
                         UPDATE cbt_sessions
                         SET device_info = @info, browser_info = @browser, camera_status = @camera,
                             screen_status = @screen, last_seen_at = @now
-                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                        WHERE id = @sessionId
                     `).run({
                         ...base,
                         info: JSON.stringify(msg.info || {}),
@@ -324,38 +473,38 @@ function setupWebSocket() {
                 case 'browser_info':
                     db.prepare(`
                         UPDATE cbt_sessions SET browser_info = @info, last_seen_at = @now
-                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                        WHERE id = @sessionId
                     `).run({ ...base, info: JSON.stringify(msg.info || {}) });
                     break;
                 case 'network_speed':
                     db.prepare(`
                         UPDATE cbt_sessions SET network_mbps = @mbps, last_seen_at = @now
-                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                        WHERE id = @sessionId
                     `).run({ ...base, mbps: Number(msg.mbps) || null });
                     break;
                 case 'location':
                 case 'location_update':
                     db.prepare(`
                         UPDATE cbt_sessions SET location_lat = @lat, location_lng = @lng, last_seen_at = @now
-                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                        WHERE id = @sessionId
                     `).run({ ...base, lat: cleanCoord(msg.lat), lng: cleanCoord(msg.lng) });
                     break;
                 case 'camera_frame':
                     db.prepare(`
                         UPDATE cbt_sessions SET camera_status = 'active', last_camera_frame = @frame, last_seen_at = @now
-                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                        WHERE id = @sessionId
                     `).run({ ...base, frame: limitedDataUrl(msg.frame) });
                     break;
                 case 'screen_frame':
                     db.prepare(`
                         UPDATE cbt_sessions SET screen_status = 'active', last_screen_frame = @frame, last_seen_at = @now
-                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                        WHERE id = @sessionId
                     `).run({ ...base, frame: limitedDataUrl(msg.frame) });
                     break;
                 case 'screen_status':
                     db.prepare(`
                         UPDATE cbt_sessions SET screen_status = @status, last_seen_at = @now
-                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                        WHERE id = @sessionId
                     `).run({ ...base, status: cleanText(msg.status, 40) || 'unknown' });
                     break;
                 case 'answer_update':
@@ -363,7 +512,7 @@ function setupWebSocket() {
                         UPDATE cbt_sessions
                         SET progress_answered = @answered, progress_total = @total,
                             current_question = @current, last_seen_at = @now
-                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                        WHERE id = @sessionId
                     `).run({
                         ...base,
                         answered: Math.max(0, parseInt(msg.answered) || 0),
@@ -375,7 +524,7 @@ function setupWebSocket() {
                     db.prepare(`
                         UPDATE cbt_sessions
                         SET violation_count = violation_count + 1, last_seen_at = @now
-                        WHERE nisn = @nisn AND mapel = @mapel AND used = 0
+                        WHERE id = @sessionId
                     `).run(base);
                     break;
             }

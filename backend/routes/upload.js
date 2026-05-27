@@ -200,7 +200,7 @@ router.post('/materi',
     authenticate,
     (req, res, next) => {
         // Cek role
-        const allowed = ['guru','tata_usaha','kepala_sekolah','super_admin'];
+        const allowed = ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'];
         if (!allowed.includes(req.user.role)) {
             return res.status(403).json({ success: false, message: 'Hanya guru/staff yang bisa upload materi.' });
         }

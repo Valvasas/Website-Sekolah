@@ -242,6 +242,7 @@ async function login(req, res) {
 
         const redirectMap = {
             super_admin:'/admin-panel/dashboard.html', kepala_sekolah:'/admin-panel/dashboard.html',
+            wakil_kepala_sekolah:'/admin-panel/dashboard.html',
             guru:'/admin-panel/dashboard.html',        tata_usaha:'/admin-panel/dashboard.html',
             siswa:'/LMS.html',                         wali_murid:'/LMS.html',
             calon_siswa:'/ppdb.html',

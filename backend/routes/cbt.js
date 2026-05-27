@@ -10,9 +10,11 @@ const { authenticate, authorize } = require('../middleware/auth');
 const getDB    = require('../config/database');
 const { getSchoolClasses } = require('../utils/schoolClasses');
 
-const STAFF = ['guru', 'tata_usaha', 'kepala_sekolah', 'super_admin'];
+const STAFF = ['guru', 'tata_usaha', 'kepala_sekolah', 'wakil_kepala_sekolah', 'super_admin'];
+const CBT_FULL_ACCESS = ['super_admin', 'kepala_sekolah', 'wakil_kepala_sekolah'];
 const VALID_MAPEL = ['matematika', 'bindo', 'basing', 'pkk', 'sejarah', 'produktif'];
 const VALID_STATUS = ['draft', 'open', 'closed', 'archived'];
+const VALID_ANSWERS = ['A', 'B', 'C', 'D', 'E'];
 
 function nowISO() {
     return new Date().toISOString();
@@ -70,6 +72,102 @@ function getActiveStudentsByClass(db, kelas) {
         WHERE sp.kelas = ? AND u.role = 'siswa' AND u.is_active = 1 AND u.nisn IS NOT NULL
         ORDER BY u.nama_lengkap ASC
     `).all(kelas);
+}
+
+function canManageAllCbt(user) {
+    return CBT_FULL_ACCESS.includes(user?.role);
+}
+
+function canAccessExam(user, exam) {
+    if (!exam) return false;
+    if (canManageAllCbt(user)) return true;
+    return exam.created_by === user?.sub;
+}
+
+function assertExamAccess(user, exam, res) {
+    if (!exam) {
+        res.status(404).json({ success: false, message: 'Sesi CBT tidak ditemukan.' });
+        return false;
+    }
+    if (!canAccessExam(user, exam)) {
+        res.status(403).json({ success: false, message: 'Sesi CBT ini milik akun lain.' });
+        return false;
+    }
+    return true;
+}
+
+function normalizeQuestionPayload(raw, index = 0) {
+    const opsi = Array.isArray(raw?.opsi) ? raw.opsi : [];
+    const q = {
+        mapel: raw?.mapel,
+        jenis_ujian: cleanText(raw?.jenis_ujian || 'CBT', 40) || 'CBT',
+        soal: cleanText(raw?.soal, 2000),
+        opsi_a: cleanText(raw?.opsi_a ?? opsi[0], 800),
+        opsi_b: cleanText(raw?.opsi_b ?? opsi[1], 800),
+        opsi_c: cleanText(raw?.opsi_c ?? opsi[2], 800),
+        opsi_d: cleanText(raw?.opsi_d ?? opsi[3], 800),
+        opsi_e: cleanText(raw?.opsi_e ?? opsi[4], 800),
+        jawaban: String(raw?.jawaban || '').trim().toUpperCase(),
+        tingkat: cleanText(raw?.tingkat || 'sedang', 40) || 'sedang',
+        urutan: Math.max(1, parseInt(raw?.urutan) || index + 1)
+    };
+    if (!q.soal || !q.opsi_a || !q.opsi_b || !q.opsi_c || !q.opsi_d) {
+        return { ok: false, message: `Soal nomor ${index + 1}: pertanyaan dan opsi A-D wajib diisi.` };
+    }
+    if (!VALID_ANSWERS.includes(q.jawaban)) {
+        return { ok: false, message: `Soal nomor ${index + 1}: jawaban benar harus A-E.` };
+    }
+    if (q.jawaban === 'E' && !q.opsi_e) {
+        return { ok: false, message: `Soal nomor ${index + 1}: opsi E wajib diisi karena kunci jawabannya E.` };
+    }
+    return { ok: true, data: q };
+}
+
+function createAndAssignQuestions(db, exam, questions, userId) {
+    if (!Array.isArray(questions) || !questions.length) return 0;
+    const now = nowISO();
+    const insertQuestion = db.prepare(`
+        INSERT INTO bank_soal
+        (id,mapel,jenis_ujian,soal,opsi_a,opsi_b,opsi_c,opsi_d,opsi_e,jawaban,tingkat,created_by,is_active,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
+    `);
+    const insertExamQuestion = db.prepare(`
+        INSERT INTO cbt_exam_questions (id, exam_id, question_id, urutan, created_at)
+        VALUES (?, ?, ?, ?, ?)
+    `);
+    let total = 0;
+    questions.forEach((item, index) => {
+        const questionId = uuidv4();
+        insertQuestion.run(
+            questionId, exam.mapel, item.jenis_ujian || 'CBT', item.soal,
+            item.opsi_a, item.opsi_b, item.opsi_c, item.opsi_d, item.opsi_e || null,
+            item.jawaban, item.tingkat || 'sedang', userId, now, now
+        );
+        insertExamQuestion.run(uuidv4(), exam.id, questionId, item.urutan || index + 1, now);
+        total++;
+    });
+    return total;
+}
+
+function saveCbtMessage(db, {
+    exam_id = null, session_id = null, nisn = null, sender_role,
+    sender_name = null, message_type = 'student_help', message, created_by = null
+}) {
+    const id = uuidv4();
+    db.prepare(`
+        INSERT INTO cbt_messages
+        (id, exam_id, session_id, nisn, sender_role, sender_name, message_type, message, created_by, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+        id, exam_id || null, session_id || null, nisn || null,
+        cleanText(sender_role, 40) || 'system',
+        cleanText(sender_name, 120),
+        cleanText(message_type, 40) || 'student_help',
+        cleanText(message, 1000),
+        created_by || null,
+        nowISO()
+    );
+    return id;
 }
 
 function getExam(db, examId) {
@@ -307,6 +405,7 @@ router.get('/exams', authenticate, authorize(...STAFF), (req, res) => {
     if (status) { conds.push('e.status = ?'); params.push(status); }
     if (kelas)  { conds.push('e.kelas = ?');  params.push(kelas); }
     if (mapel)  { conds.push('e.mapel = ?');  params.push(mapel); }
+    if (!canManageAllCbt(req.user)) { conds.push('e.created_by = ?'); params.push(req.user.sub); }
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
 
     try {
@@ -344,7 +443,8 @@ router.post('/exams', authenticate, authorize(...STAFF), (req, res) => {
         question_count = 40,
         start_at = null,
         end_at = null,
-        status = 'draft'
+        status = 'draft',
+        questions = []
     } = req.body;
 
     if (!title || !mapel || !kelas) {
@@ -352,22 +452,48 @@ router.post('/exams', authenticate, authorize(...STAFF), (req, res) => {
     }
     if (!validateMapel(mapel)) return res.status(400).json({ success: false, message: 'Mapel tidak valid.' });
     if (!VALID_STATUS.includes(status)) return res.status(400).json({ success: false, message: 'Status tidak valid.' });
+    const normalizedQuestions = [];
+    if (Array.isArray(questions) && questions.length) {
+        if (questions.length > 100) return res.status(400).json({ success: false, message: 'Maksimal 100 soal per sesi.' });
+        for (let i = 0; i < questions.length; i++) {
+            const normalized = normalizeQuestionPayload({ ...questions[i], mapel }, i);
+            if (!normalized.ok) return res.status(400).json({ success: false, message: normalized.message });
+            normalizedQuestions.push(normalized.data);
+        }
+    }
 
     try {
         const id = uuidv4();
         const now = nowISO();
-        db.prepare(`
-            INSERT INTO cbt_exams
-            (id,title,mapel,kelas,durasi_menit,question_count,start_at,end_at,status,created_by,created_at,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-        `).run(
-            id, title.trim(), mapel, kelas.trim(),
-            Math.max(1, parseInt(durasi_menit) || 90),
-            Math.max(1, Math.min(parseInt(question_count) || 40, 100)),
-            start_at || null, end_at || null, status,
-            req.user.sub, now, now
-        );
-        return res.status(201).json({ success: true, message: 'Sesi CBT berhasil dibuat.', data: { id } });
+        const totalQuestions = normalizedQuestions.length || Math.max(1, Math.min(parseInt(question_count) || 40, 100));
+        const exam = {
+            id,
+            title: title.trim(),
+            mapel,
+            kelas: kelas.trim(),
+            durasi_menit: Math.max(1, parseInt(durasi_menit) || 90),
+            question_count: totalQuestions,
+            start_at: start_at || null,
+            end_at: end_at || null,
+            status,
+            created_by: req.user.sub
+        };
+
+        const tx = db.transaction(() => {
+            db.prepare(`
+                INSERT INTO cbt_exams
+                (id,title,mapel,kelas,durasi_menit,question_count,start_at,end_at,status,created_by,created_at,updated_at)
+                VALUES (@id,@title,@mapel,@kelas,@durasi_menit,@question_count,@start_at,@end_at,@status,@created_by,@now,@now)
+            `).run({ ...exam, now });
+            createAndAssignQuestions(db, exam, normalizedQuestions, req.user.sub);
+        });
+        tx();
+
+        return res.status(201).json({
+            success: true,
+            message: normalizedQuestions.length ? 'Draft sesi CBT dan soal berhasil disimpan.' : 'Draft sesi CBT berhasil dibuat.',
+            data: { id, question_total: normalizedQuestions.length }
+        });
     } catch (err) {
         console.error('[CBT exams POST]', err.message);
         return res.status(500).json({ success: false, message: 'Gagal membuat sesi CBT.' });
@@ -377,7 +503,7 @@ router.post('/exams', authenticate, authorize(...STAFF), (req, res) => {
 router.put('/exams/:id', authenticate, authorize(...STAFF), (req, res) => {
     const db = getDB();
     const exam = getExam(db, req.params.id);
-    if (!exam) return res.status(404).json({ success: false, message: 'Sesi CBT tidak ditemukan.' });
+    if (!assertExamAccess(req.user, exam, res)) return;
     if (exam.status === 'archived') return res.status(400).json({ success: false, message: 'Sesi arsip tidak bisa diedit.' });
 
     const allowed = ['title', 'mapel', 'kelas', 'durasi_menit', 'question_count', 'start_at', 'end_at', 'status'];
@@ -414,6 +540,8 @@ router.patch('/exams/:id/status', authenticate, authorize(...STAFF), (req, res) 
     const { status } = req.body;
     if (!VALID_STATUS.includes(status)) return res.status(400).json({ success: false, message: 'Status tidak valid.' });
     try {
+        const examBefore = getExam(db, req.params.id);
+        if (!assertExamAccess(req.user, examBefore, res)) return;
         const info = db.prepare('UPDATE cbt_exams SET status = ?, updated_at = ? WHERE id = ?').run(status, nowISO(), req.params.id);
         if (!info.changes) return res.status(404).json({ success: false, message: 'Sesi CBT tidak ditemukan.' });
         if (status === 'open') {
@@ -446,9 +574,53 @@ router.delete('/exams/:id', authenticate, authorize('super_admin'), (req, res) =
 router.post('/exams/:id/questions/assign', authenticate, authorize(...STAFF), (req, res) => {
     const db = getDB();
     const exam = getExam(db, req.params.id);
-    if (!exam) return res.status(404).json({ success: false, message: 'Sesi CBT tidak ditemukan.' });
+    if (!assertExamAccess(req.user, exam, res)) return;
 
     try {
+        const incomingQuestions = Array.isArray(req.body.questions) ? req.body.questions : [];
+        if (incomingQuestions.length) {
+            if (incomingQuestions.length > 100) return res.status(400).json({ success: false, message: 'Maksimal 100 soal per sesi.' });
+            const normalizedQuestions = [];
+            for (let i = 0; i < incomingQuestions.length; i++) {
+                const normalized = normalizeQuestionPayload({ ...incomingQuestions[i], mapel: exam.mapel }, i);
+                if (!normalized.ok) return res.status(400).json({ success: false, message: normalized.message });
+                normalizedQuestions.push(normalized.data);
+            }
+
+            const tx = db.transaction(() => {
+                db.prepare('DELETE FROM cbt_exam_questions WHERE exam_id = ?').run(exam.id);
+                const total = createAndAssignQuestions(db, exam, normalizedQuestions, req.user.sub);
+                db.prepare('UPDATE cbt_exams SET question_count = ?, updated_at = ? WHERE id = ?').run(total, nowISO(), exam.id);
+            });
+            tx();
+            return res.json({ success: true, message: `${normalizedQuestions.length} soal eksplisit disimpan ke sesi CBT.`, data: { total: normalizedQuestions.length } });
+        }
+
+        const questionIds = Array.isArray(req.body.question_ids) ? req.body.question_ids.map(id => String(id).trim()).filter(Boolean) : [];
+        if (questionIds.length) {
+            if (questionIds.length > 100) return res.status(400).json({ success: false, message: 'Maksimal 100 soal per sesi.' });
+            const placeholders = questionIds.map(() => '?').join(',');
+            const rows = db.prepare(`
+                SELECT id FROM bank_soal
+                WHERE mapel = ? AND is_active = 1 AND id IN (${placeholders})
+            `).all(exam.mapel, ...questionIds);
+            if (rows.length !== questionIds.length) {
+                return res.status(400).json({ success: false, message: 'Ada soal yang tidak valid atau berbeda mapel.' });
+            }
+            const validIds = new Set(rows.map(r => r.id));
+            const tx = db.transaction(() => {
+                db.prepare('DELETE FROM cbt_exam_questions WHERE exam_id = ?').run(exam.id);
+                const insert = db.prepare(`
+                    INSERT INTO cbt_exam_questions (id, exam_id, question_id, urutan, created_at)
+                    VALUES (?, ?, ?, ?, ?)
+                `);
+                questionIds.filter(id => validIds.has(id)).forEach((id, index) => insert.run(uuidv4(), exam.id, id, index + 1, nowISO()));
+                db.prepare('UPDATE cbt_exams SET question_count = ?, updated_at = ? WHERE id = ?').run(questionIds.length, nowISO(), exam.id);
+            });
+            tx();
+            return res.json({ success: true, message: `${questionIds.length} soal pilihan dipasang ke sesi CBT.`, data: { total: questionIds.length } });
+        }
+
         const count = Math.max(1, Math.min(parseInt(req.body.question_count || exam.question_count) || 40, 100));
         const rows = db.prepare(`
             SELECT id FROM bank_soal
@@ -479,7 +651,7 @@ router.post('/exams/:id/questions/assign', authenticate, authorize(...STAFF), (r
 router.post('/exams/:id/tokens', authenticate, authorize(...STAFF), (req, res) => {
     const db = getDB();
     const exam = getExam(db, req.params.id);
-    if (!exam) return res.status(404).json({ success: false, message: 'Sesi CBT tidak ditemukan.' });
+    if (!assertExamAccess(req.user, exam, res)) return;
     if (exam.status === 'archived') return res.status(400).json({ success: false, message: 'Sesi CBT sudah diarsipkan.' });
 
     try {
@@ -510,7 +682,15 @@ router.post('/exams/:id/tokens', authenticate, authorize(...STAFF), (req, res) =
         });
         tx();
 
-        return res.status(201).json({ success: true, message: `${results.length} token kelas berhasil dibuat.`, data: results });
+        const clipboardText = results
+            .map(r => `${r.nama_lengkap} (${r.nisn}): ${r.token}`)
+            .join('\n');
+        return res.status(201).json({
+            success: true,
+            message: `${results.length} token kelas berhasil dibuat.`,
+            data: results,
+            clipboard_text: clipboardText
+        });
     } catch (err) {
         console.error('[CBT class tokens]', err.message);
         return res.status(500).json({ success: false, message: 'Gagal membuat token kelas.' });
@@ -520,6 +700,8 @@ router.post('/exams/:id/tokens', authenticate, authorize(...STAFF), (req, res) =
 router.get('/exams/:id/tokens', authenticate, authorize(...STAFF), (req, res) => {
     const db = getDB();
     try {
+        const exam = getExam(db, req.params.id);
+        if (!assertExamAccess(req.user, exam, res)) return;
         const rows = db.prepare(`
             SELECT cs.id, cs.nisn, cs.mapel, cs.token, cs.used, cs.status,
                    cs.start_time, cs.end_time, cs.expires_at, cs.created_at,
@@ -544,17 +726,18 @@ router.get('/exams/:id/monitor', authenticate, authorize(...STAFF), (req, res) =
     const db = getDB();
     try {
         const exam = getExam(db, req.params.id);
-        if (!exam) return res.status(404).json({ success: false, message: 'Sesi CBT tidak ditemukan.' });
+        if (!assertExamAccess(req.user, exam, res)) return;
         const rows = db.prepare(`
             SELECT cs.id, cs.nisn, cs.mapel, cs.status, cs.used, cs.start_time, cs.end_time,
                    cs.last_seen_at, cs.location_lat, cs.location_lng, cs.device_info, cs.browser_info,
                    cs.network_mbps, cs.camera_status, cs.screen_status,
                    cs.progress_answered, cs.progress_total, cs.current_question,
                    cs.violation_count, cs.last_camera_frame, cs.last_screen_frame,
-                   u.nama_lengkap,
+                   u.nama_lengkap, sp.kelas as siswa_kelas,
                    cr.nilai, cr.benar, cr.salah, cr.kosong, cr.selesai_at
             FROM cbt_sessions cs
             LEFT JOIN users u ON u.nisn = cs.nisn
+            LEFT JOIN siswa_profil sp ON sp.nisn = cs.nisn
             LEFT JOIN cbt_results cr ON cr.session_id = cs.id
             WHERE cs.exam_id = ?
             ORDER BY u.nama_lengkap ASC
@@ -567,6 +750,50 @@ router.get('/exams/:id/monitor', authenticate, authorize(...STAFF), (req, res) =
     } catch (err) {
         console.error('[CBT monitor]', err.message);
         return res.status(500).json({ success: false, message: 'Gagal mengambil monitoring CBT.' });
+    }
+});
+
+router.get('/exams/:id/messages', authenticate, authorize(...STAFF), (req, res) => {
+    const db = getDB();
+    try {
+        const exam = getExam(db, req.params.id);
+        if (!assertExamAccess(req.user, exam, res)) return;
+        const rows = db.prepare(`
+            SELECT cm.*, u.nama_lengkap as siswa_nama, sp.kelas as siswa_kelas
+            FROM cbt_messages cm
+            LEFT JOIN users u ON u.nisn = cm.nisn
+            LEFT JOIN siswa_profil sp ON sp.nisn = cm.nisn
+            WHERE cm.exam_id = ?
+            ORDER BY cm.created_at DESC
+            LIMIT 120
+        `).all(exam.id);
+        return res.json({ success: true, data: rows.reverse() });
+    } catch (err) {
+        console.error('[CBT messages GET]', err.message);
+        return res.status(500).json({ success: false, message: 'Gagal mengambil chat CBT.' });
+    }
+});
+
+router.post('/exams/:id/announcement', authenticate, authorize(...STAFF), (req, res) => {
+    const db = getDB();
+    const message = cleanText(req.body.message, 1000);
+    if (!message) return res.status(400).json({ success: false, message: 'Isi announcement wajib diisi.' });
+
+    try {
+        const exam = getExam(db, req.params.id);
+        if (!assertExamAccess(req.user, exam, res)) return;
+        const id = saveCbtMessage(db, {
+            exam_id: exam.id,
+            sender_role: req.user.role,
+            sender_name: req.user.nama || req.user.email || 'Panitia CBT',
+            message_type: 'announcement',
+            message,
+            created_by: req.user.sub
+        });
+        return res.status(201).json({ success: true, message: 'Announcement CBT tersimpan.', data: { id } });
+    } catch (err) {
+        console.error('[CBT announcement POST]', err.message);
+        return res.status(500).json({ success: false, message: 'Gagal menyimpan announcement CBT.' });
     }
 });
 
@@ -607,7 +834,10 @@ router.post('/token/generate', authenticate, authorize(...STAFF), (req, res) => 
         });
         tx();
 
-        return res.status(201).json({ success: true, message: `${results.length} token berhasil dibuat.`, data: results });
+        const clipboardText = results
+            .map(r => `${r.nama_lengkap} (${r.nisn}): ${r.token}`)
+            .join('\n');
+        return res.status(201).json({ success: true, message: `${results.length} token berhasil dibuat.`, data: results, clipboard_text: clipboardText });
     } catch (err) {
         console.error('[CBT generate token]', err.message);
         return res.status(500).json({ success: false, message: 'Gagal generate token ujian.' });
@@ -848,6 +1078,12 @@ router.get('/results', authenticate, authorize(...STAFF), (req, res) => {
     const { nisn, mapel, exam_id, page = 1, limit = 50 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     try {
+        if (exam_id) {
+            const exam = getExam(db, exam_id);
+            if (!assertExamAccess(req.user, exam, res)) return;
+        } else if (!canManageAllCbt(req.user)) {
+            return res.status(400).json({ success: false, message: 'Pilih sesi CBT terlebih dahulu.' });
+        }
         const conds = [];
         const params = [];
         if (nisn)    { conds.push('cr.nisn = ?'); params.push(nisn); }

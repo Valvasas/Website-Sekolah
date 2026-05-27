@@ -9,7 +9,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const getDB    = require('../config/database');
 
 const nowISO = () => new Date().toISOString();
-const STAFF  = ['guru','tata_usaha','kepala_sekolah','super_admin'];
+const STAFF  = ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'];
 
 /* ══════════════════════════════════════════════
    TUGAS

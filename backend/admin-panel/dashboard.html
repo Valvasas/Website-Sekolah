@@ -158,6 +158,7 @@
         .role-badge{padding:3px 9px;border-radius:50px;font-size:0.68rem;font-weight:700;}
         .role-super_admin   {background:#fce7f3;color:#9d174d;}
         .role-kepala_sekolah{background:#ede9fe;color:#4c1d95;}
+        .role-wakil_kepala_sekolah{background:#e0f2fe;color:#075985;}
         .role-guru          {background:#dbeafe;color:#1e40af;}
         .role-tata_usaha    {background:#d1fae5;color:#065f46;}
         .role-siswa         {background:#f0f9ff;color:#0c4a6e;}
@@ -301,16 +302,64 @@
         .cbt-step{border:1.5px solid var(--border);border-radius:12px;padding:14px;background:#f8fafc;}
         .cbt-step strong{display:flex;align-items:center;gap:8px;font-size:0.82rem;margin-bottom:6px;color:var(--navy);}
         .cbt-step p{font-size:0.72rem;line-height:1.45;color:var(--muted);}
-        .cbt-form-grid{display:grid;grid-template-columns:2fr 1fr 1fr 120px 120px auto;gap:10px;align-items:center;}
-        .cbt-live-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
-        .live-student{border:1.5px solid var(--border);border-radius:12px;padding:12px;background:#fff;display:grid;gap:10px;}
+        .cbt-quick-note{margin-top:10px;padding:10px 12px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:0.76rem;line-height:1.45;}
+        .cbt-form-grid{display:grid;grid-template-columns:2fr 1fr 1fr 120px 120px auto;gap:10px;align-items:end;}
+        .cbt-field{display:flex;flex-direction:column;gap:5px;min-width:0;}
+        .cbt-field label{font-size:0.68rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;}
+        .cbt-field .search-input,.cbt-field .filter-select{width:100%;min-width:0;}
+        .cbt-builder{display:grid;gap:14px;}
+        .cbt-builder-head{display:grid;grid-template-columns:2fr 1fr 1fr 120px;gap:10px;}
+        .cbt-question-list{display:grid;gap:10px;}
+        .cbt-question-card{border:1.5px solid var(--border);border-radius:12px;background:#fff;padding:12px;display:grid;gap:10px;}
+        .cbt-question-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+        .cbt-question-title{font-weight:800;color:var(--navy);font-size:.82rem;}
+        .cbt-option-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+        .cbt-builder-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+        .cbt-live-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+        .cbt-live-grid{display:grid;gap:14px;}
+        .live-class-group{display:grid;gap:10px;}
+        .live-class-title{font-size:.78rem;font-weight:900;color:var(--navy);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:8px;}
+        .live-class-students{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;}
+        .live-student{border:1.5px solid var(--border);border-radius:10px;padding:10px;background:#fff;display:grid;gap:8px;min-width:0;}
         .live-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
         .live-name{font-size:0.83rem;font-weight:800;color:var(--navy);}
         .live-meta{font-size:0.7rem;color:var(--muted);margin-top:2px;}
+        .live-compact{display:grid;grid-template-columns:76px 1fr;gap:8px;align-items:center;}
+        .live-thumb{width:76px;aspect-ratio:4/3;object-fit:cover;border-radius:8px;background:#e2e8f0;border:1px solid var(--border);}
+        .live-mini-facts{display:grid;gap:4px;font-size:.68rem;color:var(--muted);min-width:0;}
+        .live-progress{height:7px;background:#e2e8f0;border-radius:99px;overflow:hidden;}
+        .live-progress span{display:block;height:100%;background:var(--green);}
         .live-media{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
         .live-media img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:#e2e8f0;border:1px solid var(--border);}
         .live-facts{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.68rem;color:var(--muted);}
         .live-facts span{background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:6px;}
+        .live-facts span.wide{grid-column:1/-1;}
+        .live-facts a{color:var(--blue);text-decoration:none;font-weight:800;}
+        .live-result{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;font-size:.72rem;font-weight:800;}
+        .cbt-chat-panel{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:12px;}
+        .cbt-chat-feed{border:1.5px solid var(--border);border-radius:12px;background:#fff;min-height:220px;max-height:340px;overflow:auto;padding:10px;display:grid;gap:8px;align-content:start;}
+        .cbt-chat-item{border:1px solid var(--border);border-radius:10px;padding:9px;background:#f8fafc;}
+        .cbt-chat-item.announcement{background:#fff7ed;border-color:#fed7aa;}
+        .cbt-chat-item.reply{background:#eff6ff;border-color:#bfdbfe;}
+        .cbt-chat-meta{font-size:.66rem;color:var(--muted);margin-bottom:4px;display:flex;gap:6px;flex-wrap:wrap;}
+        .cbt-chat-text{font-size:.78rem;color:var(--navy);line-height:1.45;}
+        .cbt-chat-compose{display:grid;gap:8px;align-content:start;}
+        .student-data-grid{display:grid;grid-template-columns:360px minmax(0,1fr);gap:14px;}
+        .student-list{border:1.5px solid var(--border);border-radius:12px;background:#fff;overflow:hidden;}
+        .student-list-body{max-height:560px;overflow:auto;}
+        .student-row{width:100%;border:0;border-bottom:1px solid var(--border);background:#fff;text-align:left;padding:12px;display:grid;gap:4px;cursor:pointer;}
+        .student-row:hover,.student-row.active{background:#f8fafc;}
+        .student-row strong{font-size:.82rem;color:var(--navy);}
+        .student-row span{font-size:.7rem;color:var(--muted);}
+        .student-detail{border:1.5px solid var(--border);border-radius:12px;background:#fff;padding:14px;min-height:360px;}
+        .student-detail-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px;}
+        .student-kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:12px 0;}
+        .student-kv div{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:9px;font-size:.72rem;color:var(--muted);}
+        .student-kv strong{display:block;color:var(--navy);font-size:.82rem;margin-top:2px;}
+        .student-history{display:grid;gap:12px;}
+        .history-table{width:100%;border-collapse:collapse;font-size:.74rem;}
+        .history-table th,.history-table td{padding:8px;border-bottom:1px solid var(--border);text-align:left;}
+        .history-table th{color:var(--muted);font-size:.68rem;text-transform:uppercase;}
         .selected{background:#f8fafc;}
 
         /* Pages */
@@ -321,7 +370,7 @@
         @media(max-width:900px){
             .stats-row{grid-template-columns:repeat(3,1fr);}
             .cbt-guide{grid-template-columns:1fr 1fr;}
-            .cbt-form-grid{grid-template-columns:1fr 1fr;}
+            .cbt-form-grid,.cbt-builder-head,.cbt-chat-panel,.student-data-grid{grid-template-columns:1fr;}
         }
         @media(max-width:768px){
             .sidebar{transform:translateX(-100%);}
@@ -330,6 +379,7 @@
             .sidebar-toggle{display:block;}
             .stats-row{grid-template-columns:repeat(2,1fr);}
             .form-row{grid-template-columns:1fr;}
+            .cbt-option-grid{grid-template-columns:1fr;}
         }
     </style>
 </head>
@@ -357,17 +407,20 @@
 
     <nav class="sb-nav">
         <span class="sb-section-label">Utama</span>
-        <button class="nav-item active" onclick="switchPage('dashboard', this)">
+        <button class="nav-item active" data-nav-page="dashboard" onclick="switchPage('dashboard', this)">
             <i class="fas fa-tachometer-alt"></i> Dashboard
         </button>
-        <button class="nav-item" onclick="switchPage('users', this)">
+        <button class="nav-item" data-nav-page="users" onclick="switchPage('users', this)">
             <i class="fas fa-users"></i> Manajemen User
             <span class="nav-badge blue" id="navUserCount">0</span>
         </button>
-        <button class="nav-item" onclick="switchPage('cbt', this)">
+        <button class="nav-item" data-nav-page="students" onclick="switchPage('students', this)">
+            <i class="fas fa-user-graduate"></i> Data Siswa
+        </button>
+        <button class="nav-item" data-nav-page="cbt" onclick="switchPage('cbt', this)">
             <i class="fas fa-laptop-code"></i> CBT
         </button>
-        <button class="nav-item" onclick="switchPage('auditlog', this)">
+        <button class="nav-item" data-nav-page="auditlog" onclick="switchPage('auditlog', this)">
             <i class="fas fa-history"></i> Audit Log
         </button>
 
@@ -421,7 +474,7 @@
         </div>
 
         <!-- Quick actions -->
-        <div class="card">
+        <div class="card" id="dashboardQuickActions">
             <div class="card-header">
                 <div class="card-title"><i class="fas fa-bolt"></i> Aksi Cepat</div>
             </div>
@@ -433,7 +486,7 @@
         </div>
 
         <!-- Statistik per role -->
-        <div class="card">
+        <div class="card" id="dashboardRoleCard">
             <div class="card-header">
                 <div class="card-title"><i class="fas fa-chart-bar"></i> Distribusi User per Role</div>
             </div>
@@ -445,7 +498,7 @@
         </div>
 
         <!-- Recent Logs -->
-        <div class="card">
+        <div class="card" id="dashboardRecentCard">
             <div class="card-header">
                 <div class="card-title"><i class="fas fa-stream"></i> Aktivitas Terbaru</div>
                 <button class="btn-act" onclick="switchPage('auditlog', null)">Lihat Semua</button>
@@ -469,6 +522,7 @@
                         <option value="">Semua Role</option>
                         <option value="super_admin">Super Admin</option>
                         <option value="kepala_sekolah">Kepala Sekolah</option>
+                        <option value="wakil_kepala_sekolah">Wakil Kepala Sekolah</option>
                         <option value="guru">Guru</option>
                         <option value="tata_usaha">Tata Usaha</option>
                         <option value="siswa">Siswa</option>
@@ -515,6 +569,36 @@
         </div>
     </div>
 
+    <!-- ══ PAGE: DATA SISWA ══ -->
+    <div class="content page" id="page-students">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-user-graduate"></i> Data Siswa</div>
+                <button class="btn-export" onclick="exportStudentData()"><i class="fas fa-download"></i> Export Ringkas</button>
+            </div>
+            <div class="card-body">
+                <div class="toolbar">
+                    <input type="text" class="search-input" id="studentSearch" placeholder="Cari nama, NISN, email, kelas..." oninput="debounce(loadStudentDirectory, 400)()">
+                    <select class="filter-select" id="studentClassFilter" onchange="loadStudentDirectory()">
+                        <option value="">Semua kelas</option>
+                    </select>
+                    <button class="btn-act" onclick="loadStudentDirectory()"><i class="fas fa-sync"></i> Refresh</button>
+                </div>
+                <div class="student-data-grid">
+                    <div class="student-list">
+                        <div class="student-list-body" id="studentListBody">
+                            <div class="empty-cell">Memuat data siswa...</div>
+                        </div>
+                        <div class="pagination" id="studentPagination"></div>
+                    </div>
+                    <div class="student-detail" id="studentDetailPanel">
+                        <div class="empty-cell">Pilih siswa untuk melihat profil, nilai, tugas, ujian, dan kehadiran.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ══ PAGE: CBT ══ -->
     <div class="content page" id="page-cbt">
         <div class="card">
@@ -522,35 +606,42 @@
                 <div class="card-title"><i class="fas fa-route"></i> Alur CBT</div>
             </div>
             <div class="card-body cbt-guide">
-                <div class="cbt-step"><strong><i class="fas fa-pen"></i> 1. Tulis Soal</strong><p>Pilih mapel, isi pertanyaan, opsi A-D, kunci jawaban, lalu tambah ke bank soal.</p></div>
-                <div class="cbt-step"><strong><i class="fas fa-calendar-plus"></i> 2. Buat Sesi</strong><p>Isi judul, kelas, durasi, dan jumlah soal. Sesi awalnya aman sebagai draft.</p></div>
-                <div class="cbt-step"><strong><i class="fas fa-list-ol"></i> 3. Pasang Soal</strong><p>Klik Pasang Soal pada sesi. Sistem mengambil soal aktif sesuai mapel.</p></div>
-                <div class="cbt-step"><strong><i class="fas fa-key"></i> 4. Token & Buka</strong><p>Buat token kelas, bagikan ke siswa, lalu buka sesi saat ujian dimulai.</p></div>
+                <div class="cbt-step"><strong><i class="fas fa-pen"></i> 1. Siapkan Bank Soal</strong><p>Tambah soal per mapel dulu. Minimal jumlah soal aktif harus sama atau lebih banyak dari jumlah soal sesi.</p></div>
+                <div class="cbt-step"><strong><i class="fas fa-calendar-plus"></i> 2. Buat Draft Sesi</strong><p>Isi judul yang jelas, pilih mapel, kelas, durasi, dan jumlah soal. Draft belum terlihat sebagai ujian terbuka.</p></div>
+                <div class="cbt-step"><strong><i class="fas fa-list-ol"></i> 3. Pasang Soal & Token</strong><p>Klik Pasang Soal, lalu Token. Token otomatis dibuat untuk seluruh siswa aktif di kelas tersebut.</p></div>
+                <div class="cbt-step"><strong><i class="fas fa-eye"></i> 4. Buka & Monitor</strong><p>Klik Buka saat ujian dimulai. Admin bisa pantau nilai, lokasi, kamera, layar, perangkat, browser, progres, dan pelanggaran.</p></div>
             </div>
         </div>
 
         <div class="card">
             <div class="card-header">
-                <div class="card-title"><i class="fas fa-laptop-code"></i> Buat Sesi CBT</div>
-                <button class="btn-primary" onclick="createCbtExam()"><i class="fas fa-plus"></i> Buat Draft Sesi</button>
+                <div class="card-title"><i class="fas fa-laptop-code"></i> Builder Sesi CBT</div>
+                <button class="btn-primary" onclick="createCbtExam()"><i class="fas fa-save"></i> Simpan Draft</button>
             </div>
             <div class="card-body">
-                <div class="cbt-form-grid">
-                    <input type="text" class="search-input" id="cbtTitle" placeholder="Judul sesi ujian" style="min-width:220px;">
-                    <select class="filter-select" id="cbtMapel">
-                        <option value="matematika">Matematika</option>
-                        <option value="bindo">Bahasa Indonesia</option>
-                        <option value="basing">Bahasa Inggris</option>
-                        <option value="pkk">PKK</option>
-                        <option value="sejarah">Sejarah Indonesia</option>
-                        <option value="produktif">Kompetensi Keahlian</option>
-                    </select>
-                    <select class="filter-select" id="cbtKelas"></select>
-                    <input type="number" class="search-input" id="cbtDurasi" value="90" min="1" placeholder="Menit" style="width:110px;min-width:110px;">
-                    <input type="number" class="search-input" id="cbtJumlahSoal" value="40" min="1" max="100" placeholder="Jumlah soal" style="width:100px;min-width:100px;">
-                    <button class="btn-primary" onclick="createCbtExam()"><i class="fas fa-plus"></i> Buat</button>
+                <div class="cbt-builder">
+                    <div class="cbt-builder-head">
+                        <div class="cbt-field"><label for="cbtTitle">Judul sesi</label><input type="text" class="search-input" id="cbtTitle" placeholder="Contoh: PAT Matematika XI TKJ 1"></div>
+                        <div class="cbt-field"><label for="cbtMapel">Mapel</label><select class="filter-select" id="cbtMapel" onchange="syncCbtBuilderMapel()">
+                            <option value="matematika">Matematika</option>
+                            <option value="bindo">Bahasa Indonesia</option>
+                            <option value="basing">Bahasa Inggris</option>
+                            <option value="pkk">PKK</option>
+                            <option value="sejarah">Sejarah Indonesia</option>
+                            <option value="produktif">Kompetensi Keahlian</option>
+                        </select></div>
+                        <div class="cbt-field"><label for="cbtKelas">Kelas peserta</label><select class="filter-select" id="cbtKelas"></select></div>
+                        <div class="cbt-field"><label for="cbtDurasi">Durasi</label><input type="number" class="search-input" id="cbtDurasi" value="90" min="1" max="300" placeholder="Menit"></div>
+                    </div>
+                    <input type="hidden" id="cbtJumlahSoal" value="1">
+                    <div id="cbtQuestionBuilder" class="cbt-question-list"></div>
+                    <div class="cbt-builder-actions">
+                        <button class="btn-act active" onclick="addCbtBuilderQuestion()"><i class="fas fa-plus"></i> Tambah Soal</button>
+                        <button class="btn-act" onclick="resetCbtBuilder()"><i class="fas fa-eraser"></i> Kosongkan</button>
+                        <button class="btn-primary" onclick="createCbtExam()"><i class="fas fa-save"></i> Simpan Draft</button>
+                    </div>
                 </div>
-                <p style="color:var(--muted);font-size:0.78rem;margin-top:10px;">Setelah sesi dibuat, gunakan tombol pada daftar sesi: Pilih, Pasang Soal, Buat Token, lalu Buka/Tutup.</p>
+                <div class="cbt-quick-note"><strong>Alur baru:</strong> isi sesi seperti Google Form, tambah soal langsung di bawahnya, lalu simpan draft. Kalau draft belum punya soal, masih bisa dibuat dulu dan soal bisa dipasang nanti. Token akan otomatis tersalin ke clipboard saat dibuat.</div>
             </div>
         </div>
 
@@ -644,8 +735,35 @@
                 <button class="btn-act" onclick="loadCbtMonitor(selectedCbtExam)"><i class="fas fa-sync"></i> Refresh Monitor</button>
             </div>
             <div class="card-body">
+                <div class="cbt-live-toolbar">
+                    <input type="text" class="search-input" id="cbtMonitorSearch" placeholder="Cari siswa/NISN..." oninput="renderCbtMonitor()" style="min-width:220px;">
+                    <select class="filter-select" id="cbtMonitorClass" onchange="renderCbtMonitor()">
+                        <option value="">Semua kelas</option>
+                    </select>
+                    <span style="font-size:.72rem;color:var(--muted);">Kamera ditampilkan ringkas. Klik Detail untuk layar, lokasi, perangkat, dan chat.</span>
+                </div>
                 <div class="cbt-live-grid" id="cbtLiveGrid">
                     <div class="empty-cell">Pilih sesi untuk memantau lokasi, kamera, layar, perangkat, browser, dan progres siswa.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-comments"></i> Chat Darurat & Announcement</div>
+                <button class="btn-act" onclick="loadCbtMessages(selectedCbtExam)"><i class="fas fa-sync"></i> Refresh Chat</button>
+            </div>
+            <div class="card-body">
+                <div class="cbt-chat-panel">
+                    <div class="cbt-chat-feed" id="cbtChatFeed">
+                        <div class="empty-cell">Pilih sesi CBT untuk melihat chat darurat siswa.</div>
+                    </div>
+                    <div class="cbt-chat-compose">
+                        <label style="font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;">Announcement ke semua peserta sesi</label>
+                        <textarea class="search-input" id="cbtAnnouncementText" rows="5" placeholder="Contoh: Waktu tersisa 10 menit. Tetap di halaman ujian."></textarea>
+                        <button class="btn-primary" onclick="sendCbtAnnouncement()"><i class="fas fa-bullhorn"></i> Kirim Announcement</button>
+                        <div class="cbt-quick-note" style="margin-top:0;">Announcement dikirim live via WebSocket dan disimpan di histori chat sesi.</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -658,10 +776,10 @@
             <div class="table-wrap">
                 <table class="data-table">
                     <thead>
-                        <tr><th>Nama</th><th>NISN</th><th>Nilai</th><th>Benar</th><th>Salah</th><th>Kosong</th><th>Perangkat</th><th>Lokasi</th><th>Waktu</th></tr>
+                        <tr><th>Nama</th><th>NISN</th><th>Nilai</th><th>Benar</th><th>Salah</th><th>Kosong</th><th>Perangkat</th><th>Browser</th><th>Kamera/Layar</th><th>Lokasi</th><th>Pelanggaran</th><th>Waktu</th></tr>
                     </thead>
                     <tbody id="cbtResultsTbody">
-                        <tr><td colspan="9" class="empty-cell">Pilih sesi untuk melihat hasil.</td></tr>
+                        <tr><td colspan="12" class="empty-cell">Pilih sesi untuk melihat hasil.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -719,6 +837,7 @@
                             <option value="wali_murid">Wali Murid</option>
                             <option value="guru">Guru</option>
                             <option value="tata_usaha">Tata Usaha</option>
+                            <option value="wakil_kepala_sekolah">Wakil Kepala Sekolah</option>
                             <option value="kepala_sekolah">Kepala Sekolah</option>
                             <option value="super_admin">Super Admin</option>
                         </select>
@@ -785,6 +904,19 @@
     </div>
 </div>
 
+<!-- ══ MODAL: DETAIL MONITOR CBT ══ -->
+<div class="modal-overlay" id="cbtDetailModal">
+    <div class="modal-box" style="max-width:880px;">
+        <div class="modal-header">
+            <span id="cbtDetailTitle">Detail Monitoring Siswa</span>
+            <button class="modal-close" onclick="closeModal('cbtDetailModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" id="cbtDetailBody">
+            <div class="empty-cell">Memuat detail...</div>
+        </div>
+    </div>
+</div>
+
 <!-- Toast container -->
 <div class="toast-wrap" id="toastWrap"></div>
 
@@ -803,6 +935,11 @@ let cbtTokenRows = [];
 let cbtResultRows = [];
 let cbtQuestionRows = [];
 let cbtLiveRows = [];
+let cbtMonitorExam = null;
+let cbtMessages = [];
+let studentRows = [];
+let studentPage = 1;
+let selectedStudentNisn = null;
 let cbtMonitorSocket = null;
 let cbtMonitorTimer = null;
 let schoolClasses = [];
@@ -816,7 +953,7 @@ let schoolClasses = [];
         .then(r => r.json())
         .then(d => {
             if (!d.success) return redirectToLogin();
-            const allowedRoles = ['super_admin','kepala_sekolah','guru','tata_usaha'];
+            const allowedRoles = ['super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'];
             if (!allowedRoles.includes(d.user.role)) {
                 alert('Anda tidak memiliki akses ke halaman ini.');
                 return redirectToLogin();
@@ -847,44 +984,77 @@ function initDashboard(user) {
     document.getElementById('topbarName').textContent  = user.nama?.split(' ')[0] || 'Admin';
 
     const roleLabels = {
-        super_admin:'Admin', kepala_sekolah:'Kepsek',
+        super_admin:'Admin', kepala_sekolah:'Kepsek', wakil_kepala_sekolah:'Wakasek',
         guru:'Guru', tata_usaha:'Staff TU'
     };
     const badgeClasses = {
-        super_admin:'badge-admin', kepala_sekolah:'badge-kepsek',
+        super_admin:'badge-admin', kepala_sekolah:'badge-kepsek', wakil_kepala_sekolah:'badge-kepsek',
         guru:'badge-guru', tata_usaha:'badge-tu'
     };
     document.getElementById('sbBadge').textContent  = roleLabels[user.role] || user.role;
     document.getElementById('sbBadge').className    = `sb-user-badge ${badgeClasses[user.role] || 'badge-admin'}`;
 
-    // Sembunyikan menu yang tidak perlu
-    if (user.role !== 'super_admin') {
-        // Super admin features hanya untuk super admin
-    }
+    applyRoleDashboard(user.role);
 
     loadDashboard();
     loadSchoolClasses();
     startClock();
 }
 
+function rolePages(role) {
+    const pages = {
+        super_admin: ['dashboard','users','students','cbt','auditlog'],
+        kepala_sekolah: ['dashboard','students','cbt'],
+        wakil_kepala_sekolah: ['dashboard','students','cbt'],
+        guru: ['dashboard','students','cbt'],
+        tata_usaha: ['dashboard','students','cbt']
+    };
+    return pages[role] || ['dashboard'];
+}
+
+function canAccessPage(name) {
+    return rolePages(userData.role).includes(name);
+}
+
+function applyRoleDashboard(role) {
+    const allowed = rolePages(role);
+    document.querySelectorAll('[data-nav-page]').forEach(btn => {
+        btn.style.display = allowed.includes(btn.dataset.navPage) ? '' : 'none';
+    });
+    const quickActions = document.getElementById('dashboardQuickActions');
+    if (quickActions && role !== 'super_admin') {
+        quickActions.querySelector('.card-title').innerHTML = '<i class="fas fa-bolt"></i> Aksi Cepat Akun Ini';
+        quickActions.querySelector('.card-body').innerHTML = `
+            <button class="btn-primary" onclick="switchPage('students', null)"><i class="fas fa-user-graduate"></i> Data Siswa</button>
+            <button class="btn-primary" style="background:var(--blue);" onclick="switchPage('cbt', null)"><i class="fas fa-laptop-code"></i> CBT Saya</button>
+        `;
+    }
+}
+
 /* ══════════════════════════════════════════
    PAGE SWITCHER
 ══════════════════════════════════════════ */
 function switchPage(name, btn) {
+    if (!canAccessPage(name)) {
+        showToast('Menu ini tidak tersedia untuk role akun Anda.', 'warning');
+        name = 'dashboard';
+    }
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
     document.getElementById(`page-${name}`)?.classList.add('active');
-    if (btn) btn.classList.add('active');
+    const navBtn = btn || document.querySelector(`[data-nav-page="${name}"]`);
+    if (navBtn) navBtn.classList.add('active');
 
     currentSection = name;
-    const titles = { dashboard:'Dashboard', users:'Manajemen User', cbt:'CBT', auditlog:'Audit Log' };
+    const titles = { dashboard:'Dashboard', users:'Manajemen User', students:'Data Siswa', cbt:'CBT', auditlog:'Audit Log' };
     document.getElementById('topbarTitle').textContent = titles[name] || 'Dashboard';
 
     if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
 
     // Load data untuk page
     if (name === 'users')    loadUsers();
+    if (name === 'students') loadStudentDirectory();
     if (name === 'cbt')      loadCbtDashboard();
     if (name === 'auditlog') loadAuditLogs();
     if (name === 'dashboard') loadDashboard();
@@ -898,6 +1068,9 @@ function loadCurrentPage() {
    DASHBOARD
 ══════════════════════════════════════════ */
 async function loadDashboard() {
+    if (userData.role !== 'super_admin') {
+        return loadRoleDashboard();
+    }
     try {
         const [statsRes, logsRes] = await Promise.all([
             apiFetch('/users/stats'),
@@ -924,12 +1097,13 @@ async function loadDashboard() {
             // Role distribution cards
             const roleIcons = {
                 super_admin:'fas fa-crown',kepala_sekolah:'fas fa-user-tie',
+                wakil_kepala_sekolah:'fas fa-user-shield',
                 guru:'fas fa-chalkboard-teacher',tata_usaha:'fas fa-briefcase',
                 siswa:'fas fa-user-graduate',wali_murid:'fas fa-users',calon_siswa:'fas fa-user-clock'
             };
             const roleColors = {
                 super_admin:'#9d174d',kepala_sekolah:'#4c1d95',guru:'#1e40af',
-                tata_usaha:'#065f46',siswa:'#0c4a6e',wali_murid:'#92400e',calon_siswa:'#475569'
+                wakil_kepala_sekolah:'#075985',tata_usaha:'#065f46',siswa:'#0c4a6e',wali_murid:'#92400e',calon_siswa:'#475569'
             };
             document.getElementById('roleDistribution').innerHTML = stats.byRole.map(r => `
                 <div style="background:var(--light);border-radius:12px;padding:16px;text-align:center;border:1px solid var(--border);">
@@ -950,6 +1124,40 @@ async function loadDashboard() {
     }
 }
 
+async function loadRoleDashboard() {
+    try {
+        const [studentsRes, examsRes] = await Promise.all([
+            apiFetch('/siswa/staff/list?limit=1'),
+            apiFetch('/cbt/exams?limit=50')
+        ]);
+        const totalStudents = studentsRes.data?.pagination?.total || 0;
+        const exams = examsRes.data?.exams || [];
+        const open = exams.filter(e => e.status === 'open').length;
+        const draft = exams.filter(e => e.status === 'draft').length;
+        const tokenTotal = exams.reduce((sum, e) => sum + Number(e.total_token || 0), 0);
+
+        document.getElementById('statsRow').innerHTML = `
+            <div class="stat-card purple"><i class="fas fa-user-graduate stat-icon"></i><div class="stat-val">${totalStudents}</div><div class="stat-lbl">Siswa Terdaftar</div></div>
+            <div class="stat-card blue"><i class="fas fa-laptop-code stat-icon"></i><div class="stat-val">${exams.length}</div><div class="stat-lbl">${userData.role === 'guru' || userData.role === 'tata_usaha' ? 'Sesi CBT Saya' : 'Sesi CBT'}</div></div>
+            <div class="stat-card green"><i class="fas fa-unlock stat-icon"></i><div class="stat-val">${open}</div><div class="stat-lbl">Sedang Dibuka</div></div>
+            <div class="stat-card gold"><i class="fas fa-file-alt stat-icon"></i><div class="stat-val">${draft}</div><div class="stat-lbl">Draft</div></div>
+            <div class="stat-card red"><i class="fas fa-key stat-icon"></i><div class="stat-val">${tokenTotal}</div><div class="stat-lbl">Token Aktif/Terbit</div></div>
+        `;
+        document.getElementById('navUserCount').textContent = totalStudents;
+        document.getElementById('roleDistribution').innerHTML = exams.slice(0, 8).map(e => `
+            <div style="background:var(--light);border-radius:12px;padding:16px;border:1px solid var(--border);">
+                <div style="font-size:.82rem;font-weight:800;color:var(--navy);">${escapeHtml(e.title)}</div>
+                <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">${escapeHtml(e.kelas)} · ${formatMapel(e.mapel)}</div>
+                <div style="font-size:.7rem;color:var(--green);margin-top:6px;">${escapeHtml(e.status)} · ${e.total_soal || 0} soal</div>
+            </div>
+        `).join('') || '<div class="empty-cell">Belum ada sesi CBT di akun ini.</div>';
+        document.querySelector('#dashboardRoleCard .card-title').innerHTML = '<i class="fas fa-laptop-code"></i> Ringkasan CBT Akun Ini';
+        document.getElementById('dashboardRecentCard').style.display = 'none';
+    } catch (err) {
+        console.error('Role dashboard error:', err);
+    }
+}
+
 function renderRecentLogs(logs) {
     if (!logs.length) {
         document.getElementById('recentLogs').innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">Belum ada aktivitas.</p>';
@@ -965,6 +1173,96 @@ function renderRecentLogs(logs) {
             <div class="log-time">${formatTime(l.created_at)}</div>
         </div>
     `).join('');
+}
+
+/* ══════════════════════════════════════════
+   DATA SISWA
+══════════════════════════════════════════ */
+async function loadStudentDirectory(page = studentPage) {
+    studentPage = page;
+    const body = document.getElementById('studentListBody');
+    if (!body) return;
+    const search = document.getElementById('studentSearch')?.value || '';
+    const kelas = document.getElementById('studentClassFilter')?.value || '';
+    const params = new URLSearchParams({ page, limit: 20 });
+    if (search) params.set('search', search);
+    if (kelas) params.set('kelas', kelas);
+    body.innerHTML = '<div class="empty-cell"><i class="fas fa-spinner fa-spin"></i> Memuat siswa...</div>';
+    try {
+        const data = await apiFetch(`/siswa/staff/list?${params}`);
+        studentRows = data.data?.students || [];
+        const pagination = data.data?.pagination || { totalPages: 1, page: 1 };
+        if (!studentRows.length) {
+            body.innerHTML = '<div class="empty-cell">Tidak ada siswa yang cocok.</div>';
+            document.getElementById('studentPagination').innerHTML = '';
+            return;
+        }
+        body.innerHTML = studentRows.map(s => `
+            <button class="student-row ${selectedStudentNisn === s.nisn ? 'active' : ''}" onclick="loadStudentDetail('${escapeAttr(s.nisn)}')">
+                <strong>${escapeHtml(s.nama_lengkap)}</strong>
+                <span>${escapeHtml(s.nisn || '-')} · ${escapeHtml(s.kelas || '-')} · ${escapeHtml(s.jurusan || '-')}</span>
+                <span>${s.total_ujian || 0} ujian CBT · ${s.total_nilai || 0} nilai mapel</span>
+            </button>
+        `).join('');
+        renderPagination('studentPagination', pagination, loadStudentDirectory);
+    } catch(e) {
+        body.innerHTML = '<div class="empty-cell">Gagal memuat data siswa.</div>';
+    }
+}
+
+async function loadStudentDetail(nisn) {
+    selectedStudentNisn = nisn;
+    document.querySelectorAll('.student-row').forEach(row => row.classList.remove('active'));
+    const panel = document.getElementById('studentDetailPanel');
+    panel.innerHTML = '<div class="empty-cell"><i class="fas fa-spinner fa-spin"></i> Memuat detail siswa...</div>';
+    try {
+        const data = await apiFetch(`/siswa/staff/${encodeURIComponent(nisn)}/detail`);
+        if (!data.success) {
+            panel.innerHTML = `<div class="empty-cell">${escapeHtml(data.message || 'Detail siswa tidak ditemukan.')}</div>`;
+            return;
+        }
+        const { student, nilai, kehadiranSummary, tugas, cbt } = data.data;
+        panel.innerHTML = `
+            <div class="student-detail-head">
+                <div>
+                    <h3 style="color:var(--navy);font-size:1rem;">${escapeHtml(student.nama_lengkap)}</h3>
+                    <p style="color:var(--muted);font-size:.76rem;">${escapeHtml(student.nisn)} · ${escapeHtml(student.kelas || '-')} · ${escapeHtml(student.jurusan || '-')}</p>
+                </div>
+                <span class="badge ${student.is_active ? 'badge-active' : 'badge-inactive'}">${student.is_active ? 'Aktif' : 'Nonaktif'}</span>
+            </div>
+            <div class="student-kv">
+                <div>Email<strong>${escapeHtml(student.email || '-')}</strong></div>
+                <div>No HP<strong>${escapeHtml(student.no_hp || '-')}</strong></div>
+                <div>Orang Tua<strong>${escapeHtml(student.nama_ayah || '-')} / ${escapeHtml(student.nama_ibu || '-')}</strong></div>
+                <div>Kehadiran<strong>H ${kehadiranSummary.hadir || 0} · S ${kehadiranSummary.sakit || 0} · I ${kehadiranSummary.izin || 0} · A ${kehadiranSummary.alpha || 0}</strong></div>
+            </div>
+            <div class="student-history">
+                ${renderStudentHistoryTable('Histori Nilai', ['Semester','Mapel','UH','UTS','UAS','Tugas','Final'], nilai.map(n => [n.semester,n.mapel,n.uh,n.uts,n.uas,n.tugas,n.nilai_final]))}
+                ${renderStudentHistoryTable('Histori CBT', ['Ujian','Mapel','Nilai','Benar','Salah','Kosong','Pelanggaran'], cbt.map(r => [r.exam_title || '-', formatMapel(r.mapel), r.nilai, r.benar, r.salah, r.kosong, r.violation_count || 0]))}
+                ${renderStudentHistoryTable('Histori Tugas', ['Tugas','Mapel','Status','Nilai','Submit'], tugas.map(t => [t.judul || '-', formatMapel(t.mapel), t.status || '-', t.nilai ?? '-', formatTime(t.submitted_at)]))}
+            </div>
+        `;
+        loadStudentDirectory(studentPage);
+    } catch(e) {
+        panel.innerHTML = '<div class="empty-cell">Gagal memuat detail siswa.</div>';
+    }
+}
+
+function renderStudentHistoryTable(title, headers, rows) {
+    return `
+        <section>
+            <h4 style="font-size:.82rem;color:var(--navy);margin:8px 0;">${title}</h4>
+            ${rows.length ? `<table class="history-table"><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.slice(0, 12).map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell ?? '-')}</td>`).join('')}</tr>`).join('')}</tbody></table>` : '<div class="empty-cell">Belum ada data.</div>'}
+        </section>
+    `;
+}
+
+function exportStudentData() {
+    if (!studentRows.length) return showToast('Tidak ada data siswa untuk diexport.', 'warning');
+    downloadCSV([
+        ['Nama','NISN','Email','HP','Kelas','Jurusan','Total Ujian','Total Nilai'],
+        ...studentRows.map(s => [s.nama_lengkap, s.nisn, s.email || '', s.no_hp || '', s.kelas || '', s.jurusan || '', s.total_ujian || 0, s.total_nilai || 0])
+    ], `data_siswa_${new Date().toISOString().slice(0,10)}.csv`);
 }
 
 /* ══════════════════════════════════════════
@@ -1045,6 +1343,7 @@ async function loadUsers(page = currentPage) {
 ══════════════════════════════════════════ */
 async function loadCbtDashboard() {
     await loadCbtKelas();
+    if (!document.querySelector('#cbtQuestionBuilder .cbt-question-card')) addCbtBuilderQuestion();
     await loadCbtQuestions();
     await loadCbtExams();
     connectCbtMonitorSocket();
@@ -1069,6 +1368,14 @@ function populateClassSelects() {
         ).join('');
         if (current) userSelect.value = current;
     }
+    const studentFilter = document.getElementById('studentClassFilter');
+    if (studentFilter) {
+        const current = studentFilter.value;
+        studentFilter.innerHTML = '<option value="">Semua kelas</option>' + schoolClasses.map(k =>
+            `<option value="${escapeAttr(k.kelas)}">${escapeHtml(k.kelas)}</option>`
+        ).join('');
+        if (current) studentFilter.value = current;
+    }
 }
 
 async function loadCbtKelas() {
@@ -1087,6 +1394,95 @@ async function loadCbtKelas() {
     } catch(e) {
         select.innerHTML = '<option value="">Gagal memuat kelas</option>';
     }
+}
+
+function syncCbtBuilderMapel() {
+    const mapel = document.getElementById('cbtMapel')?.value;
+    const qMapel = document.getElementById('qMapel');
+    if (qMapel && mapel) {
+        qMapel.value = mapel;
+        loadCbtQuestions();
+    }
+}
+
+function addCbtBuilderQuestion(data = {}) {
+    const list = document.getElementById('cbtQuestionBuilder');
+    if (!list) return;
+    const index = list.querySelectorAll('.cbt-question-card').length + 1;
+    const id = `cbtq_${Date.now()}_${index}`;
+    const card = document.createElement('div');
+    card.className = 'cbt-question-card';
+    card.dataset.qid = id;
+    card.innerHTML = `
+        <div class="cbt-question-top">
+            <div class="cbt-question-title">Soal <span class="cbt-question-number">${index}</span></div>
+            <button class="btn-act del" type="button" onclick="removeCbtBuilderQuestion('${id}')"><i class="fas fa-trash"></i></button>
+        </div>
+        <textarea class="search-input q-soal" rows="3" placeholder="Tulis pertanyaan...">${escapeHtml(data.soal || '')}</textarea>
+        <div class="cbt-option-grid">
+            <input class="search-input q-a" type="text" placeholder="Opsi A" value="${escapeAttr(data.opsi_a || '')}">
+            <input class="search-input q-b" type="text" placeholder="Opsi B" value="${escapeAttr(data.opsi_b || '')}">
+            <input class="search-input q-c" type="text" placeholder="Opsi C" value="${escapeAttr(data.opsi_c || '')}">
+            <input class="search-input q-d" type="text" placeholder="Opsi D" value="${escapeAttr(data.opsi_d || '')}">
+            <input class="search-input q-e" type="text" placeholder="Opsi E (opsional)" value="${escapeAttr(data.opsi_e || '')}">
+            <select class="filter-select q-jawaban" aria-label="Jawaban benar">
+                ${['A','B','C','D','E'].map(letter => `<option value="${letter}" ${String(data.jawaban || 'A').toUpperCase() === letter ? 'selected' : ''}>Kunci ${letter}</option>`).join('')}
+            </select>
+        </div>
+    `;
+    list.appendChild(card);
+    refreshCbtBuilderNumbers();
+}
+
+function removeCbtBuilderQuestion(id) {
+    [...document.querySelectorAll('#cbtQuestionBuilder .cbt-question-card')]
+        .find(card => card.dataset.qid === id)
+        ?.remove();
+    refreshCbtBuilderNumbers();
+}
+
+function refreshCbtBuilderNumbers() {
+    document.querySelectorAll('#cbtQuestionBuilder .cbt-question-card').forEach((card, index) => {
+        card.querySelector('.cbt-question-number').textContent = index + 1;
+    });
+    const total = document.querySelectorAll('#cbtQuestionBuilder .cbt-question-card').length;
+    const jumlah = document.getElementById('cbtJumlahSoal');
+    if (jumlah) jumlah.value = Math.max(total, 1);
+}
+
+function resetCbtBuilder() {
+    const list = document.getElementById('cbtQuestionBuilder');
+    if (!list) return;
+    list.innerHTML = '';
+    addCbtBuilderQuestion();
+}
+
+function collectCbtBuilderQuestions() {
+    const cards = [...document.querySelectorAll('#cbtQuestionBuilder .cbt-question-card')];
+    const questions = [];
+    for (const [index, card] of cards.entries()) {
+        const q = {
+            soal: card.querySelector('.q-soal')?.value.trim() || '',
+            opsi_a: card.querySelector('.q-a')?.value.trim() || '',
+            opsi_b: card.querySelector('.q-b')?.value.trim() || '',
+            opsi_c: card.querySelector('.q-c')?.value.trim() || '',
+            opsi_d: card.querySelector('.q-d')?.value.trim() || '',
+            opsi_e: card.querySelector('.q-e')?.value.trim() || '',
+            jawaban: card.querySelector('.q-jawaban')?.value || 'A',
+            urutan: index + 1
+        };
+        const touched = Object.values(q).some(v => String(v || '').trim()) && q.soal;
+        const anyField = [q.soal, q.opsi_a, q.opsi_b, q.opsi_c, q.opsi_d, q.opsi_e].some(Boolean);
+        if (!anyField) continue;
+        if (!q.soal || !q.opsi_a || !q.opsi_b || !q.opsi_c || !q.opsi_d) {
+            throw new Error(`Soal ${index + 1}: pertanyaan dan opsi A-D wajib lengkap.`);
+        }
+        if (q.jawaban === 'E' && !q.opsi_e) {
+            throw new Error(`Soal ${index + 1}: opsi E wajib diisi karena kunci E.`);
+        }
+        if (touched) questions.push(q);
+    }
+    return questions;
 }
 
 async function loadCbtQuestions() {
@@ -1226,19 +1622,29 @@ async function createCbtExam() {
     const mapel = document.getElementById('cbtMapel').value;
     const kelas = document.getElementById('cbtKelas').value;
     const durasi = parseInt(document.getElementById('cbtDurasi').value) || 90;
-    const jumlah = parseInt(document.getElementById('cbtJumlahSoal').value) || 40;
+    let questions = [];
+    try {
+        questions = collectCbtBuilderQuestions();
+    } catch(e) {
+        return showToast(e.message, 'error');
+    }
+    const jumlah = questions.length || parseInt(document.getElementById('cbtJumlahSoal').value) || 1;
     if (!title || !mapel || !kelas) return showToast('Judul, mapel, dan kelas wajib diisi.', 'error');
+    if (durasi < 1 || durasi > 300) return showToast('Durasi harus 1-300 menit.', 'error');
+    if (jumlah < 1 || jumlah > 100) return showToast('Jumlah soal harus 1-100.', 'error');
 
     try {
         const data = await apiFetch('/cbt/exams', 'POST', {
             title, mapel, kelas,
             durasi_menit: durasi,
             question_count: jumlah,
-            status: 'draft'
+            status: 'draft',
+            questions
         });
         if (!data.success) return showToast(data.message || 'Gagal membuat sesi.', 'error');
         showToast(data.message, 'success');
         document.getElementById('cbtTitle').value = '';
+        resetCbtBuilder();
         selectedCbtExam = data.data?.id || selectedCbtExam;
         await loadCbtExams();
         if (selectedCbtExam) await selectCbtExam(selectedCbtExam);
@@ -1261,6 +1667,9 @@ async function generateCbtTokens(examId) {
     try {
         const data = await apiFetch(`/cbt/exams/${examId}/tokens`, 'POST', {});
         showToast(data.message || (data.success ? 'Token dibuat.' : 'Gagal membuat token.'), data.success ? 'success' : 'error');
+        if (data.success) {
+            await copyTextToClipboard(data.clipboard_text || (data.data || []).map(t => `${t.nama_lengkap} (${t.nisn}): ${t.token}`).join('\n'), 'Token sudah disalin ke clipboard.');
+        }
         selectedCbtExam = examId;
         await loadCbtExams();
         await loadCbtTokens(examId);
@@ -1282,7 +1691,8 @@ async function setCbtStatus(examId, status) {
 async function selectCbtExam(examId) {
     selectedCbtExam = examId;
     await loadCbtExams();
-    await Promise.all([loadCbtTokens(examId), loadCbtResults(examId), loadCbtMonitor(examId)]);
+    subscribeCbtMonitor(examId);
+    await Promise.all([loadCbtTokens(examId), loadCbtResults(examId), loadCbtMonitor(examId), loadCbtMessages(examId)]);
     restartCbtMonitorPolling();
 }
 
@@ -1300,7 +1710,7 @@ async function loadCbtTokens(examId) {
             <tr>
                 <td>${escapeHtml(t.nama_lengkap || '-')}</td>
                 <td>${escapeHtml(t.nisn)}</td>
-                <td><code>${escapeHtml(t.token)}</code></td>
+                <td><code>${escapeHtml(t.token)}</code> <button class="btn-act" onclick="copyTextToClipboard('${escapeAttr(t.token)}','Token disalin.')"><i class="fas fa-copy"></i></button></td>
                 <td>${t.used ? 'Selesai' : escapeHtml(t.status || 'issued')}</td>
                 <td>${t.start_time ? formatTime(t.start_time) : '-'}</td>
                 <td>${t.end_time ? formatTime(t.end_time) : '-'}</td>
@@ -1313,12 +1723,12 @@ async function loadCbtTokens(examId) {
 
 async function loadCbtResults(examId) {
     const tbody = document.getElementById('cbtResultsTbody');
-    tbody.innerHTML = '<tr><td colspan="9" class="empty-cell"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="empty-cell"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
     try {
         const data = await apiFetch(`/cbt/results?exam_id=${encodeURIComponent(examId)}&limit=100`);
         cbtResultRows = data.data?.results || [];
         if (!cbtResultRows.length) {
-            tbody.innerHTML = '<tr><td colspan="9" class="empty-cell">Belum ada hasil.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" class="empty-cell">Belum ada hasil.</td></tr>';
             return;
         }
         tbody.innerHTML = cbtResultRows.map(r => `
@@ -1330,12 +1740,15 @@ async function loadCbtResults(examId) {
                 <td>${r.salah}</td>
                 <td>${r.kosong}</td>
                 <td>${formatDeviceBrief(r)}</td>
+                <td>${formatBrowserBrief(r)}</td>
+                <td>${escapeHtml(r.camera_status || '-')} / ${escapeHtml(r.screen_status || '-')}</td>
                 <td>${formatLocationBrief(r)}</td>
+                <td>${r.violation_count || 0}</td>
                 <td>${formatTime(r.selesai_at)}</td>
             </tr>
         `).join('');
     } catch(e) {
-        tbody.innerHTML = '<tr><td colspan="9" class="empty-cell">Gagal memuat hasil.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="empty-cell">Gagal memuat hasil.</td></tr>';
     }
 }
 
@@ -1352,11 +1765,23 @@ async function loadCbtMonitor(examId) {
             grid.innerHTML = `<div class="empty-cell">${escapeHtml(data.message || 'Gagal memuat monitor.')}</div>`;
             return;
         }
+        cbtMonitorExam = data.data?.exam || null;
         cbtLiveRows = data.data?.students || [];
+        syncCbtMonitorClassFilter();
         renderCbtMonitor();
+        await loadCbtResults(examId);
     } catch(e) {
         grid.innerHTML = '<div class="empty-cell">Gagal memuat monitoring CBT.</div>';
     }
+}
+
+function syncCbtMonitorClassFilter() {
+    const select = document.getElementById('cbtMonitorClass');
+    if (!select) return;
+    const current = select.value;
+    const classes = [...new Set(cbtLiveRows.map(s => s.siswa_kelas || cbtMonitorExam?.kelas || '-'))].filter(Boolean).sort();
+    select.innerHTML = '<option value="">Semua kelas</option>' + classes.map(k => `<option value="${escapeAttr(k)}">${escapeHtml(k)}</option>`).join('');
+    if (current && classes.includes(current)) select.value = current;
 }
 
 function renderCbtMonitor() {
@@ -1366,7 +1791,34 @@ function renderCbtMonitor() {
         grid.innerHTML = '<div class="empty-cell">Belum ada token/siswa pada sesi ini.</div>';
         return;
     }
-    grid.innerHTML = cbtLiveRows.map(s => {
+    const search = (document.getElementById('cbtMonitorSearch')?.value || '').toLowerCase().trim();
+    const classFilter = document.getElementById('cbtMonitorClass')?.value || '';
+    const filtered = cbtLiveRows.filter(s => {
+        const cls = s.siswa_kelas || cbtMonitorExam?.kelas || '-';
+        const haystack = `${s.nama_lengkap || ''} ${s.nisn || ''} ${cls}`.toLowerCase();
+        return (!search || haystack.includes(search)) && (!classFilter || cls === classFilter);
+    });
+    if (!filtered.length) {
+        grid.innerHTML = '<div class="empty-cell">Tidak ada siswa yang cocok dengan filter.</div>';
+        return;
+    }
+    const grouped = filtered.reduce((acc, s) => {
+        const cls = s.siswa_kelas || cbtMonitorExam?.kelas || '-';
+        if (!acc[cls]) acc[cls] = [];
+        acc[cls].push(s);
+        return acc;
+    }, {});
+    grid.innerHTML = Object.entries(grouped).map(([kelas, rows]) => `
+        <section class="live-class-group">
+            <div class="live-class-title"><i class="fas fa-layer-group"></i> ${escapeHtml(kelas)} <span class="badge badge-unverified">${rows.length} siswa</span></div>
+            <div class="live-class-students">
+                ${rows.map(s => renderCbtMonitorCard(s)).join('')}
+            </div>
+        </section>
+    `).join('');
+}
+
+function renderCbtMonitorCard(s) {
         const online = s.last_seen_at && Date.now() - new Date(s.last_seen_at).getTime() < 45_000;
         const answered = Number(s.progress_answered || 0);
         const total = Number(s.progress_total || 0);
@@ -1380,26 +1832,18 @@ function renderCbtMonitor() {
                     </div>
                     <span class="badge ${online ? 'badge-active' : 'badge-inactive'}">${online ? 'Online' : 'Offline'}</span>
                 </div>
-                <div class="live-media">
-                    ${s.last_camera_frame ? `<img src="${escapeAttr(s.last_camera_frame)}" alt="Snapshot kamera ${escapeAttr(s.nisn)}">` : '<div class="empty-cell" style="padding:22px!important;">Kamera belum ada</div>'}
-                    ${s.last_screen_frame ? `<img src="${escapeAttr(s.last_screen_frame)}" alt="Snapshot layar ${escapeAttr(s.nisn)}">` : '<div class="empty-cell" style="padding:22px!important;">Layar belum ada</div>'}
+                <div class="live-compact">
+                    ${s.last_camera_frame ? `<img class="live-thumb" src="${escapeAttr(s.last_camera_frame)}" alt="Snapshot kamera ${escapeAttr(s.nisn)}">` : '<div class="live-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.68rem;">No Cam</div>'}
+                    <div class="live-mini-facts">
+                        <span>Progres <strong>${answered}/${total || '-'}</strong></span>
+                        <span>Kamera <strong>${escapeHtml(s.camera_status || '-')}</strong></span>
+                        <span>Layar <strong>${escapeHtml(s.screen_status || '-')}</strong></span>
+                    </div>
                 </div>
-                <div style="height:7px;background:#e2e8f0;border-radius:99px;overflow:hidden;">
-                    <span style="display:block;height:100%;width:${pct}%;background:var(--green);"></span>
-                </div>
-                <div class="live-facts">
-                    <span>Progres: <strong>${answered}/${total || '-'}</strong></span>
-                    <span>Soal aktif: <strong>${s.current_question || '-'}</strong></span>
-                    <span>Jaringan: <strong>${s.network_mbps ? Number(s.network_mbps).toFixed(1) + ' Mbps' : '-'}</strong></span>
-                    <span>Pelanggaran: <strong>${s.violation_count || 0}</strong></span>
-                    <span>Kamera: <strong>${escapeHtml(s.camera_status || '-')}</strong></span>
-                    <span>Layar: <strong>${escapeHtml(s.screen_status || '-')}</strong></span>
-                    <span>Lokasi: <strong>${formatLocationBrief(s)}</strong></span>
-                    <span>Device: <strong>${formatDeviceBrief(s)}</strong></span>
-                </div>
+                <div class="live-progress"><span style="width:${pct}%;"></span></div>
+                <button class="btn-act" onclick="openCbtStudentDetail('${escapeAttr(s.nisn)}')"><i class="fas fa-up-right-from-square"></i> Detail</button>
             </article>
         `;
-    }).join('');
 }
 
 function updateCbtLiveRow(msg) {
@@ -1436,6 +1880,123 @@ function updateCbtLiveRow(msg) {
     renderCbtMonitor();
 }
 
+function openCbtStudentDetail(nisn) {
+    const row = cbtLiveRows.find(s => s.nisn === nisn);
+    if (!row) return;
+    const answered = Number(row.progress_answered || 0);
+    const total = Number(row.progress_total || 0);
+    const pct = total ? Math.round((answered / total) * 100) : 0;
+    document.getElementById('cbtDetailTitle').textContent = `${row.nama_lengkap || 'Siswa'} · ${row.nisn}`;
+    document.getElementById('cbtDetailBody').innerHTML = `
+        <div class="live-media" style="margin-bottom:12px;">
+            ${row.last_camera_frame ? `<img src="${escapeAttr(row.last_camera_frame)}" alt="Snapshot kamera ${escapeAttr(row.nisn)}">` : '<div class="empty-cell">Kamera belum ada</div>'}
+            ${row.last_screen_frame ? `<img src="${escapeAttr(row.last_screen_frame)}" alt="Snapshot layar ${escapeAttr(row.nisn)}">` : '<div class="empty-cell">Layar belum ada</div>'}
+        </div>
+        <div class="live-progress" style="margin-bottom:12px;"><span style="width:${pct}%;"></span></div>
+        <div class="live-facts">
+            ${row.selesai_at ? `<div class="live-result"><span>Nilai akhir</span><strong>${escapeHtml(row.nilai ?? '-')}</strong></div>` : ''}
+            <span>Progres: <strong>${answered}/${total || '-'}</strong></span>
+            <span>Soal aktif: <strong>${row.current_question || '-'}</strong></span>
+            <span>Jaringan: <strong>${row.network_mbps ? Number(row.network_mbps).toFixed(1) + ' Mbps' : '-'}</strong></span>
+            <span>Pelanggaran: <strong>${row.violation_count || 0}</strong></span>
+            <span>Kamera: <strong>${escapeHtml(row.camera_status || '-')}</strong></span>
+            <span>Layar: <strong>${escapeHtml(row.screen_status || '-')}</strong></span>
+            <span class="wide">Lokasi: <strong>${formatLocationBrief(row)}</strong></span>
+            <span>Device: <strong>${formatDeviceBrief(row)}</strong></span>
+            <span>Browser: <strong>${formatBrowserBrief(row)}</strong></span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+            <input class="search-input" id="cbtReplyText" placeholder="Balas kendala siswa ini..." style="flex:1;min-width:220px;">
+            <button class="btn-primary" onclick="sendCbtReply('${escapeAttr(row.nisn)}')"><i class="fas fa-paper-plane"></i> Balas</button>
+        </div>
+    `;
+    openModal('cbtDetailModal');
+}
+
+async function loadCbtMessages(examId) {
+    const feed = document.getElementById('cbtChatFeed');
+    if (!feed) return;
+    if (!examId) {
+        feed.innerHTML = '<div class="empty-cell">Pilih sesi CBT untuk melihat chat darurat siswa.</div>';
+        return;
+    }
+    try {
+        const data = await apiFetch(`/cbt/exams/${examId}/messages`);
+        cbtMessages = data.success ? (data.data || []) : [];
+        renderCbtMessages();
+    } catch(e) {
+        feed.innerHTML = '<div class="empty-cell">Gagal memuat chat CBT.</div>';
+    }
+}
+
+function pushCbtMessage(msg) {
+    cbtMessages.push({
+        id: msg.id || `${Date.now()}-${Math.random()}`,
+        nisn: msg.nisn || '',
+        siswa_nama: msg.sender_name || msg.nisn || '',
+        sender_name: msg.sender_name || '',
+        sender_role: msg.type === 'student_help' ? 'siswa' : 'panitia',
+        message_type: msg.type === 'announcement' || msg.type === 'broadcast_ack' ? 'announcement' : msg.type === 'admin_reply_sent' ? 'admin_reply' : 'student_help',
+        message: msg.message || '',
+        created_at: msg.created_at || new Date().toISOString()
+    });
+    renderCbtMessages();
+}
+
+function renderCbtMessages() {
+    const feed = document.getElementById('cbtChatFeed');
+    if (!feed) return;
+    if (!cbtMessages.length) {
+        feed.innerHTML = '<div class="empty-cell">Belum ada chat darurat pada sesi ini.</div>';
+        return;
+    }
+    feed.innerHTML = cbtMessages.slice(-120).map(m => {
+        const type = m.message_type === 'announcement' ? 'announcement' : m.message_type === 'admin_reply' ? 'reply' : '';
+        const name = m.sender_role === 'siswa'
+            ? (m.siswa_nama || m.sender_name || m.nisn || 'Siswa')
+            : (m.sender_name || 'Panitia CBT');
+        return `
+            <div class="cbt-chat-item ${type}">
+                <div class="cbt-chat-meta">
+                    <strong>${escapeHtml(name)}</strong>
+                    ${m.nisn ? `<span>${escapeHtml(m.nisn)}</span>` : ''}
+                    <span>${formatTime(m.created_at)}</span>
+                    ${m.message_type === 'announcement' ? '<span>Announcement</span>' : ''}
+                </div>
+                <div class="cbt-chat-text">${escapeHtml(m.message)}</div>
+                ${m.sender_role === 'siswa' && m.nisn ? `<button class="btn-act" style="margin-top:8px;" onclick="openCbtStudentDetail('${escapeAttr(m.nisn)}')"><i class="fas fa-reply"></i> Detail & Balas</button>` : ''}
+            </div>
+        `;
+    }).join('');
+    feed.scrollTop = feed.scrollHeight;
+}
+
+async function sendCbtAnnouncement() {
+    if (!selectedCbtExam) return showToast('Pilih sesi CBT dulu.', 'warning');
+    const input = document.getElementById('cbtAnnouncementText');
+    const message = input.value.trim();
+    if (!message) return showToast('Isi announcement tidak boleh kosong.', 'error');
+    if (cbtMonitorSocket?.readyState === WebSocket.OPEN) {
+        cbtMonitorSocket.send(JSON.stringify({ type:'admin_broadcast', examId:selectedCbtExam, message }));
+    } else {
+        await apiFetch(`/cbt/exams/${selectedCbtExam}/announcement`, 'POST', { message });
+    }
+    input.value = '';
+    showToast('Announcement dikirim.', 'success');
+}
+
+function sendCbtReply(nisn) {
+    const input = document.getElementById('cbtReplyText');
+    const message = input?.value.trim();
+    if (!message) return showToast('Balasan tidak boleh kosong.', 'error');
+    if (!cbtMonitorSocket || cbtMonitorSocket.readyState !== WebSocket.OPEN) {
+        return showToast('WebSocket belum tersambung. Coba beberapa detik lagi.', 'warning');
+    }
+    cbtMonitorSocket.send(JSON.stringify({ type:'admin_reply', examId:selectedCbtExam, targetNisn:nisn, message }));
+    input.value = '';
+    showToast('Balasan dikirim.', 'success');
+}
+
 function restartCbtMonitorPolling() {
     clearInterval(cbtMonitorTimer);
     if (!selectedCbtExam) return;
@@ -1450,10 +2011,16 @@ function connectCbtMonitorSocket() {
     cbtMonitorSocket = new WebSocket(`${protocol}://${window.location.host}`);
     cbtMonitorSocket.onopen = () => {
         cbtMonitorSocket.send(JSON.stringify({ type:'admin_auth', token }));
+        subscribeCbtMonitor(selectedCbtExam);
     };
     cbtMonitorSocket.onmessage = (event) => {
         try {
             const msg = JSON.parse(event.data);
+            if (['student_help','admin_reply_sent','broadcast_ack'].includes(msg.type)) {
+                pushCbtMessage(msg);
+                if (msg.type === 'student_help') showToast(`Chat darurat dari ${msg.nisn || 'siswa'}.`, 'warning');
+                return;
+            }
             updateCbtLiveRow(msg);
         } catch(e) {}
     };
@@ -1462,16 +2029,34 @@ function connectCbtMonitorSocket() {
     };
 }
 
+function subscribeCbtMonitor(examId) {
+    if (!examId || !cbtMonitorSocket || cbtMonitorSocket.readyState !== WebSocket.OPEN) return;
+    cbtMonitorSocket.send(JSON.stringify({ type:'admin_subscribe', examId }));
+}
+
 function formatDeviceBrief(row) {
     const info = row.device_info || {};
-    return escapeHtml(info.device || info.browser || info.name || '-');
+    const battery = info.battery?.level ? ` · Bat ${info.battery.level}%` : '';
+    const screen = info.screenW && info.screenH ? ` · ${info.screenW}x${info.screenH}` : '';
+    return escapeHtml(`${info.device || info.platform || info.name || '-'}${screen}${battery}`);
+}
+
+function formatBrowserBrief(row) {
+    const info = row.browser_info || {};
+    if (info.name) return escapeHtml(`${info.name} ${info.version || ''}`.trim());
+    return escapeHtml(info.browser || info.userAgent?.slice(0, 36) || '-');
 }
 
 function formatLocationBrief(row) {
     if (!row.location_lat || !row.location_lng) return '-';
     const lat = String(row.location_lat).slice(0, 10);
     const lng = String(row.location_lng).slice(0, 10);
-    return `${lat}, ${lng}`;
+    return `<a href="https://www.google.com/maps?q=${encodeURIComponent(lat + ',' + lng)}" target="_blank" rel="noopener">${lat}, ${lng}</a>`;
+}
+
+function formatLocationPlain(row) {
+    if (!row.location_lat || !row.location_lng) return '-';
+    return `${String(row.location_lat).slice(0, 10)}, ${String(row.location_lng).slice(0, 10)}`;
 }
 
 function exportCbtTokens() {
@@ -1485,8 +2070,8 @@ function exportCbtTokens() {
 function exportCbtResults() {
     if (!cbtResultRows.length) return showToast('Tidak ada hasil untuk diexport.', 'warning');
     downloadCSV([
-        ['Nama','NISN','Nilai','Benar','Salah','Kosong','Perangkat','Lokasi','Pelanggaran','Waktu'],
-        ...cbtResultRows.map(r => [r.nama_lengkap || '', r.nisn, r.nilai, r.benar, r.salah, r.kosong, formatDeviceBrief(r), formatLocationBrief(r), r.violation_count || 0, r.selesai_at || ''])
+        ['Nama','NISN','Nilai','Benar','Salah','Kosong','Perangkat','Browser','Kamera','Layar','Lokasi','Pelanggaran','Waktu'],
+        ...cbtResultRows.map(r => [r.nama_lengkap || '', r.nisn, r.nilai, r.benar, r.salah, r.kosong, formatDeviceBrief(r), formatBrowserBrief(r), r.camera_status || '', r.screen_status || '', formatLocationPlain(r), r.violation_count || 0, r.selesai_at || ''])
     ], `cbt_results_${new Date().toISOString().slice(0,10)}.csv`);
 }
 
@@ -1587,7 +2172,7 @@ async function openEditModal(userId) {
 
 function onRoleChange() {
     const role = document.getElementById('fRole').value;
-    const staffRoles = ['guru','tata_usaha','kepala_sekolah','super_admin'];
+    const staffRoles = ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'];
     const studentRole = ['siswa','calon_siswa'].includes(role);
     document.getElementById('nisnGroup').style.display = studentRole ? '' : 'none';
     document.getElementById('kelasGroup').style.display = studentRole ? '' : 'none';
@@ -1783,7 +2368,7 @@ function showToast(msg, type='success') {
     const wrap = document.getElementById('toastWrap');
     const t    = document.createElement('div');
     t.className = `toast ${type}`;
-    t.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':type==='error'?'times-circle':'bell'}"></i> ${msg}`;
+    t.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':type==='error'?'times-circle':'bell'}"></i> ${escapeHtml(msg)}`;
     wrap.appendChild(t);
     setTimeout(() => {
         t.style.opacity   = '0';
@@ -1791,6 +2376,31 @@ function showToast(msg, type='success') {
         t.style.transition= '0.3s';
         setTimeout(() => t.remove(), 300);
     }, 3000);
+}
+
+async function copyTextToClipboard(text, successMsg = 'Disalin ke clipboard.') {
+    const value = String(text || '');
+    if (!value) return false;
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(value);
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = value;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+        }
+        showToast(successMsg, 'success');
+        return true;
+    } catch(e) {
+        showToast('Clipboard diblokir browser. Token tetap tampil di tabel.', 'warning');
+        return false;
+    }
 }
 
 function renderPagination(containerId, pagination, loadFn) {
@@ -1830,6 +2440,7 @@ function formatMapel(mapel) {
 function formatRole(role) {
     const m = {
         super_admin:'Super Admin', kepala_sekolah:'Kepala Sekolah',
+        wakil_kepala_sekolah:'Wakil Kepala Sekolah',
         guru:'Guru', tata_usaha:'Tata Usaha', siswa:'Siswa',
         wali_murid:'Wali Murid', calon_siswa:'Calon Siswa'
     };

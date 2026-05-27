@@ -40,7 +40,7 @@ const registerRules = [
 
     body('role')
         .optional()
-        .isIn(['siswa', 'guru', 'tata_usaha', 'wali_murid', 'calon_siswa', 'kepala_sekolah', 'super_admin'])
+        .isIn(['siswa', 'guru', 'tata_usaha', 'wali_murid', 'calon_siswa', 'kepala_sekolah', 'wakil_kepala_sekolah', 'super_admin'])
         .withMessage('Role tidak valid.'),
 
     body('nisn')
@@ -89,7 +89,7 @@ const loginRules = [
 
     body('role')
         .notEmpty().withMessage('Role wajib dipilih.')
-        .isIn(['siswa', 'guru', 'tata_usaha', 'kepala_sekolah', 'super_admin', 'wali_murid', 'calon_siswa'])
+        .isIn(['siswa', 'guru', 'tata_usaha', 'kepala_sekolah', 'wakil_kepala_sekolah', 'super_admin', 'wali_murid', 'calon_siswa'])
         .withMessage('Role tidak valid.'),
 ];
 
