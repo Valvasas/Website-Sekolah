@@ -87,7 +87,7 @@ a:focus-visible {
 
 .login-wrap {
     position: relative; z-index: 2;
-    width: 100%; max-width: min(440px, calc(100vw - 32px));
+    width: 100%; max-width: 440px;
     min-width: 0;
     display: flex; flex-direction: column; gap: 16px;
 }
@@ -661,11 +661,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important;
     .result-actions { flex-direction: column; }
 
     .login-card { padding: 28px 22px; }
-    .login-wrap {
-        width: calc(100vw - 32px);
-        max-width: calc(100vw - 32px);
-    }
-    .login-card { width: 100%; }
     .login-title { font-size: 1.7rem; }
     .form-group input,
     .form-group select,
@@ -985,7 +980,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important;
         radial-gradient(circle at 30% 18%, rgba(255,255,255,0.12), transparent 30%);
 }
 .bg-orb { display: none; }
-.login-wrap { max-width: min(460px, calc(100vw - 32px)); }
+.login-wrap { max-width: 460px; }
 .login-card {
     background: rgba(255,255,255,0.94);
     backdrop-filter: blur(18px);
@@ -1279,10 +1274,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important;
     .fullscreen-return-box {
         max-height: calc(100svh - 48px);
         overflow-y: auto;
-    }
-    .login-wrap {
-        width: 100%;
-        max-width: 358px;
     }
 }
 
