@@ -649,6 +649,9 @@ async function handleLogin(e) {
                 return;
             }
             // Simpan token & data user
+            localStorage.setItem('adminAccessToken',  data.data.accessToken);
+            localStorage.setItem('adminRefreshToken', data.data.refreshToken);
+            localStorage.setItem('adminUserData',     JSON.stringify(data.data.user));
             localStorage.setItem('accessToken',  data.data.accessToken);
             localStorage.setItem('refreshToken', data.data.refreshToken);
             localStorage.setItem('userRole',     data.data.user.role);

@@ -9,7 +9,7 @@ const path     = require('path');
 const fs       = require('fs');
 const crypto   = require('crypto');
 const { v4: uuidv4 } = require('uuid');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, isStaff } = require('../middleware/auth');
 const getDB    = require('../config/database');
 
 // ── Upload directory ───────────────────────────────────────────────
@@ -19,6 +19,8 @@ const CATEGORIES = {
     profil:  path.join(UPLOAD_DIR, 'profil'),
     ppdb:    path.join(UPLOAD_DIR, 'ppdb'),
     materi:  path.join(UPLOAD_DIR, 'materi'),
+    website: path.join(UPLOAD_DIR, 'website'),
+    cbt:     path.join(UPLOAD_DIR, 'cbt'),
     general: path.join(UPLOAD_DIR, 'general'),
 };
 Object.values(CATEGORIES).forEach(dir => {
@@ -31,6 +33,8 @@ const ALLOWED_TYPES = {
     profil: ['image/jpeg','image/png','image/webp'],
     ppdb:   ['application/pdf','image/jpeg','image/png'],
     materi: ['application/pdf','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','video/mp4','image/jpeg','image/png'],
+    website:['image/jpeg','image/png','image/webp'],
+    cbt:    ['image/jpeg','image/png','image/webp','audio/mpeg','audio/wav','audio/ogg','video/mp4','video/webm'],
     general:['application/pdf','image/jpeg','image/png'],
 };
 
@@ -39,6 +43,8 @@ const MAX_SIZE = {
     profil:  2 * 1024 * 1024,  //  2MB
     ppdb:    5 * 1024 * 1024,  //  5MB
     materi: 50 * 1024 * 1024,  // 50MB
+    website: 5 * 1024 * 1024,  //  5MB
+    cbt:    80 * 1024 * 1024,  // 80MB
     general: 5 * 1024 * 1024,  //  5MB
 };
 
@@ -230,11 +236,76 @@ router.post('/materi',
     }
 );
 
+// ── ROUTE: Upload aset website (berita, galeri, PPDB info) ───────
+router.post('/website',
+    authenticate,
+    isStaff,
+    createUploader('website').single('image'),
+    (req, res) => {
+        if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada gambar yang di-upload.' });
+        try {
+            const db = getDB();
+            const record = saveFileRecord(db, {
+                uploaderId:   req.user.sub,
+                originalName: req.file.originalname,
+                fileName:     req.file.filename,
+                category:     'website',
+                mimeType:     req.file.mimetype,
+                size:         req.file.size,
+                entityType:   req.body.entity_type || 'website_contents',
+                entityId:     req.body.entity_id || null,
+            });
+            return res.status(201).json({ success: true, message: 'Gambar website berhasil di-upload.', data: record });
+        } catch (err) {
+            fs.unlink(req.file.path, () => {});
+            console.error('[Upload website]', err.message);
+            return res.status(500).json({ success: false, message: 'Gagal menyimpan gambar website.' });
+        }
+    }
+);
+
+// ── ROUTE: Upload media soal CBT (guru/staff) ─────────────────────
+router.post('/cbt',
+    authenticate,
+    isStaff,
+    createUploader('cbt').single('file'),
+    (req, res) => {
+        if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada file yang di-upload.' });
+        try {
+            const db = getDB();
+            const record = saveFileRecord(db, {
+                uploaderId:   req.user.sub,
+                originalName: req.file.originalname,
+                fileName:     req.file.filename,
+                category:     'cbt',
+                mimeType:     req.file.mimetype,
+                size:         req.file.size,
+                entityType:   req.body.entity_type || 'cbt_question',
+                entityId:     req.body.entity_id || null,
+            });
+            const mediaType = req.file.mimetype.startsWith('image/')
+                ? 'image'
+                : req.file.mimetype.startsWith('audio/')
+                    ? 'audio'
+                    : 'video';
+            return res.status(201).json({
+                success: true,
+                message: 'Media CBT berhasil di-upload.',
+                data: { ...record, mediaType }
+            });
+        } catch (err) {
+            fs.unlink(req.file.path, () => {});
+            console.error('[Upload CBT]', err.message);
+            return res.status(500).json({ success: false, message: 'Gagal menyimpan media CBT.' });
+        }
+    }
+);
+
 // ── ROUTE: GET file list per category (untuk LMS materi) ──────────
 router.get('/list/:category', authenticate, (req, res) => {
     const db       = getDB();
     const category = req.params.category;
-    const valid    = ['tugas','profil','ppdb','materi','general'];
+    const valid    = ['tugas','profil','ppdb','materi','website','cbt','general'];
     if (!valid.includes(category)) {
         return res.status(400).json({ success: false, message: 'Kategori tidak valid.' });
     }

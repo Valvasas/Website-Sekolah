@@ -886,14 +886,14 @@
         }
 
         async function checkExistingSession() {
-            const token = localStorage.getItem('smkn_token') || localStorage.getItem('accessToken');
+            const token = localStorage.getItem('studentAccessToken') || localStorage.getItem('smkn_token') || localStorage.getItem('accessToken');
             if (!token) return;
             try {
                 const res = await fetch(AUTH_API + '/check', { headers: { Authorization: 'Bearer ' + token } });
                 const json = await res.json();
                 if (!json.success) return;
                 const role = json.user?.role || localStorage.getItem('userRole');
-                if (role) window.location.href = redirectForRole(role);
+                if (['siswa','wali_murid','calon_siswa'].includes(role)) window.location.href = redirectForRole(role);
             } catch {
                 clearSession();
             }
@@ -1019,6 +1019,13 @@
         function persistSession(data) {
             const user = data.user || {};
             const role = user.role || data.role || 'siswa';
+            if (!['siswa','wali_murid','calon_siswa'].includes(role)) {
+                showAlert('error', 'Akun staf/admin harus masuk lewat panel staf, bukan login siswa.');
+                return;
+            }
+            localStorage.setItem('studentAccessToken', data.accessToken || '');
+            localStorage.setItem('studentRefreshToken', data.refreshToken || '');
+            localStorage.setItem('studentUserData', JSON.stringify(user));
             localStorage.setItem('smkn_token', data.accessToken || '');
             localStorage.setItem('smkn_refresh', data.refreshToken || '');
             localStorage.setItem('smkn_user', JSON.stringify(user));
@@ -1030,7 +1037,7 @@
         }
 
         function clearSession() {
-            ['smkn_token','smkn_refresh','smkn_user','accessToken','refreshToken','userRole','userData'].forEach(key => localStorage.removeItem(key));
+            ['smkn_token','smkn_refresh','smkn_user','accessToken','refreshToken','userRole','userData','studentAccessToken','studentRefreshToken','studentUserData'].forEach(key => localStorage.removeItem(key));
         }
 
         function redirectForRole(role) {

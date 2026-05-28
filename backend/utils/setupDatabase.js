@@ -97,7 +97,9 @@ function setup() {
             nisn TEXT NOT NULL,
             question_id TEXT NOT NULL,
             jawaban TEXT,
+            answer_type TEXT DEFAULT 'multiple_choice',
             is_correct INTEGER,
+            keyword_hits TEXT,
             answered_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
             UNIQUE(session_id, question_id)
         );
@@ -180,11 +182,18 @@ function setup() {
         CREATE TABLE IF NOT EXISTS bank_soal (
             id TEXT PRIMARY KEY, mapel TEXT NOT NULL,
             jenis_ujian TEXT NOT NULL DEFAULT 'PAS',
+            question_type TEXT NOT NULL DEFAULT 'multiple_choice',
             soal TEXT NOT NULL,
-            opsi_a TEXT NOT NULL, opsi_b TEXT NOT NULL,
-            opsi_c TEXT NOT NULL, opsi_d TEXT NOT NULL,
+            opsi_a TEXT, opsi_b TEXT,
+            opsi_c TEXT, opsi_d TEXT,
             opsi_e TEXT,
-            jawaban TEXT NOT NULL,
+            jawaban TEXT,
+            essay_keywords TEXT,
+            essay_min_words INTEGER NOT NULL DEFAULT 0,
+            media_type TEXT,
+            media_url TEXT,
+            media_alt TEXT,
+            canvas_data TEXT,
             tingkat TEXT DEFAULT 'sedang',
             created_by TEXT,
             is_active INTEGER NOT NULL DEFAULT 1,
@@ -226,6 +235,23 @@ function setup() {
             entity_id TEXT,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         );
+        CREATE TABLE IF NOT EXISTS website_contents (
+            id TEXT PRIMARY KEY,
+            type TEXT NOT NULL,
+            placement TEXT DEFAULT 'general',
+            title TEXT NOT NULL,
+            excerpt TEXT,
+            body TEXT,
+            image_url TEXT,
+            link_url TEXT,
+            category TEXT,
+            icon TEXT,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_by TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
         CREATE TABLE IF NOT EXISTS forum_posts (
             id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
@@ -240,6 +266,46 @@ function setup() {
             user_id TEXT NOT NULL,
             post_id TEXT NOT NULL,
             PRIMARY KEY(user_id, post_id)
+        );
+        CREATE TABLE IF NOT EXISTS kantin_products (
+            id TEXT PRIMARY KEY,
+            seller_id TEXT NOT NULL,
+            seller_nisn TEXT,
+            name TEXT NOT NULL,
+            description TEXT,
+            price INTEGER NOT NULL,
+            stock INTEGER NOT NULL DEFAULT 0,
+            image_url TEXT,
+            chat_contact TEXT,
+            emoney_provider TEXT,
+            emoney_account TEXT,
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
+        CREATE TABLE IF NOT EXISTS kantin_orders (
+            id TEXT PRIMARY KEY,
+            product_id TEXT NOT NULL,
+            buyer_id TEXT NOT NULL,
+            buyer_nisn TEXT,
+            seller_id TEXT NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            total_price INTEGER NOT NULL,
+            note TEXT,
+            payment_method TEXT NOT NULL DEFAULT 'e-money',
+            payment_reference TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
+        CREATE TABLE IF NOT EXISTS kantin_chats (
+            id TEXT PRIMARY KEY,
+            order_id TEXT,
+            product_id TEXT,
+            sender_id TEXT NOT NULL,
+            receiver_id TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         );
         CREATE TABLE IF NOT EXISTS notifikasi (
             id TEXT PRIMARY KEY,
@@ -276,6 +342,21 @@ function setup() {
     const resultCols = db.pragma('table_info(cbt_results)').map(c => c.name);
     if (!resultCols.includes('exam_id')) db.exec('ALTER TABLE cbt_results ADD COLUMN exam_id TEXT');
     if (!resultCols.includes('session_id')) db.exec('ALTER TABLE cbt_results ADD COLUMN session_id TEXT');
+    if (!resultCols.includes('essay_correct')) db.exec('ALTER TABLE cbt_results ADD COLUMN essay_correct INTEGER DEFAULT 0');
+    if (!resultCols.includes('essay_pending')) db.exec('ALTER TABLE cbt_results ADD COLUMN essay_pending INTEGER DEFAULT 0');
+
+    const bankCols = db.pragma('table_info(bank_soal)').map(c => c.name);
+    if (!bankCols.includes('question_type')) db.exec("ALTER TABLE bank_soal ADD COLUMN question_type TEXT NOT NULL DEFAULT 'multiple_choice'");
+    if (!bankCols.includes('essay_keywords')) db.exec('ALTER TABLE bank_soal ADD COLUMN essay_keywords TEXT');
+    if (!bankCols.includes('essay_min_words')) db.exec('ALTER TABLE bank_soal ADD COLUMN essay_min_words INTEGER NOT NULL DEFAULT 0');
+    if (!bankCols.includes('media_type')) db.exec('ALTER TABLE bank_soal ADD COLUMN media_type TEXT');
+    if (!bankCols.includes('media_url')) db.exec('ALTER TABLE bank_soal ADD COLUMN media_url TEXT');
+    if (!bankCols.includes('media_alt')) db.exec('ALTER TABLE bank_soal ADD COLUMN media_alt TEXT');
+    if (!bankCols.includes('canvas_data')) db.exec('ALTER TABLE bank_soal ADD COLUMN canvas_data TEXT');
+
+    const answerCols = db.pragma('table_info(cbt_answers)').map(c => c.name);
+    if (!answerCols.includes('answer_type')) db.exec("ALTER TABLE cbt_answers ADD COLUMN answer_type TEXT DEFAULT 'multiple_choice'");
+    if (!answerCols.includes('keyword_hits')) db.exec('ALTER TABLE cbt_answers ADD COLUMN keyword_hits TEXT');
 
     db.exec(`
         CREATE INDEX IF NOT EXISTS idx_cbt_sessions_token   ON cbt_sessions(token);
@@ -298,6 +379,11 @@ function setup() {
         CREATE INDEX IF NOT EXISTS idx_notifikasi_user      ON notifikasi(user_id, is_read);
         CREATE INDEX IF NOT EXISTS idx_forum_user           ON forum_posts(user_id);
         CREATE INDEX IF NOT EXISTS idx_submission_tugas     ON submission_tugas(tugas_id, nisn);
+        CREATE INDEX IF NOT EXISTS idx_website_contents     ON website_contents(type, placement, is_active, sort_order);
+        CREATE INDEX IF NOT EXISTS idx_kantin_products      ON kantin_products(status, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_kantin_orders_buyer  ON kantin_orders(buyer_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_kantin_orders_seller ON kantin_orders(seller_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_kantin_chats_order   ON kantin_chats(order_id, created_at);
     `);
 
     console.log('✅ Database indexes created');

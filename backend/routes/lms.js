@@ -236,7 +236,16 @@ router.get('/forum', authenticate, (req, res) => {
             LIMIT ? OFFSET ?
         `).all(req.user.sub, ...params, parseInt(limit), offset);
 
-        return res.json({ success: true, data: posts });
+        const repliesStmt = db.prepare(`
+            SELECT fp.id, fp.parent_id, fp.konten, fp.created_at,
+                   u.nama_lengkap, u.role
+            FROM forum_posts fp
+            JOIN users u ON fp.user_id = u.id
+            WHERE fp.parent_id = ?
+            ORDER BY fp.created_at ASC
+            LIMIT 5
+        `);
+        return res.json({ success: true, data: posts.map(post => ({ ...post, replies: repliesStmt.all(post.id) })) });
     } catch (err) {
         console.error('[Forum GET]', err.message);
         return res.status(500).json({ success: false, message: 'Gagal mengambil forum.' });

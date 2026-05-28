@@ -393,8 +393,73 @@ a:focus-visible {
     flex: 1;
     overflow-wrap: anywhere;
 }
+.question-media {
+    margin: 18px 0 0;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: #f8fafc;
+    overflow: hidden;
+}
+.question-media img,
+.question-media video {
+    display: block;
+    width: 100%;
+    max-height: 420px;
+    object-fit: contain;
+    background: #0f172a;
+}
+.question-media audio {
+    width: 100%;
+    padding: 14px;
+}
+.question-canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: #fff;
+}
 
 .q-options { display: flex; flex-direction: column; gap: 10px; }
+.essay-answer {
+    display: grid;
+    gap: 8px;
+    padding: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: #f8fafc;
+}
+.essay-answer label {
+    font-size: .78rem;
+    font-weight: 800;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: .3px;
+}
+.essay-answer textarea {
+    width: 100%;
+    min-height: 180px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font: inherit;
+    color: var(--ink);
+    resize: vertical;
+    outline: none;
+    background: var(--white);
+}
+.essay-answer textarea:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(212,175,55,.18);
+}
+.essay-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--muted);
+}
 .option-btn {
     display: flex; align-items: center; gap: 14px;
     padding: 14px 18px;
@@ -877,13 +942,27 @@ button:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important;
     max-width: 86%; border-radius: 12px; padding: 9px 10px;
     font-size: .78rem; line-height: 1.45; color: var(--ink);
     background: var(--white); border: 1px solid var(--border);
+    display: grid; gap: 3px;
 }
 .emergency-msg.me {
     align-self: flex-end; background: #eff6ff; border-color: #bfdbfe;
 }
-.emergency-msg.admin,
+.emergency-msg.admin {
+    align-self: flex-start; background: #fff7ed; border-color: #fdba74;
+    box-shadow: inset 3px 0 0 var(--gold);
+}
 .emergency-msg.announcement {
-    align-self: flex-start; background: #fff7ed; border-color: #fed7aa;
+    align-self: flex-start; background: #0f172a; border-color: #334155; color: var(--white);
+}
+.emergency-sender {
+    font-size: .66rem; font-weight: 900; letter-spacing: .25px;
+    text-transform: uppercase; color: var(--muted);
+}
+.emergency-msg.me .emergency-sender { color: #1d4ed8; }
+.emergency-msg.admin .emergency-sender { color: #b45309; }
+.emergency-msg.announcement .emergency-sender { color: var(--gold); }
+.emergency-text {
+    overflow-wrap: anywhere;
 }
 .emergency-msg.system { max-width: 100%; color: var(--muted); background: #eef2ff; border-color: #c7d2fe; }
 .emergency-form {

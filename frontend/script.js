@@ -70,6 +70,125 @@
         .catch(() => { /* pakai konten statis jika backend offline */ });
 })();
 
+/* ── Konten dinamis dari dashboard admin ── */
+(function hydrateWebsiteContent() {
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+
+    function escapeSiteHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, c => ({
+            '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'
+        }[c]));
+    }
+
+    function safeImageUrl(value, fallback) {
+        const url = String(value || '').trim();
+        if (!url) return fallback;
+        if (/^(https?:\/\/|\/uploads\/|uploads\/|asset\/)/i.test(url)) return url;
+        return fallback;
+    }
+
+    async function getWebsiteContent(params) {
+        const query = new URLSearchParams(params);
+        const response = await fetch(`${API_BASE}/api/content/website?${query.toString()}`);
+        if (!response.ok) return [];
+        const json = await response.json();
+        return json && json.success && Array.isArray(json.data) ? json.data : [];
+    }
+
+    function renderGallery(items) {
+        const grid = document.querySelector('.dynamic-gallery');
+        if (!grid || !items.length) return;
+        grid.innerHTML = items.map(item => {
+            const title = escapeSiteHtml(item.title || 'Dokumentasi Sekolah');
+            const excerpt = escapeSiteHtml(item.excerpt || item.body || 'Kegiatan SMK Negeri 1 Terisi');
+            const category = escapeSiteHtml(item.category || 'umum');
+            const image = escapeSiteHtml(safeImageUrl(item.image_url, 'asset/Galeri.jpg'));
+            return `
+                <div class="gallery-box" data-category="${category}">
+                    <img src="${image}" alt="${title}" loading="lazy">
+                    <div class="gallery-overlay">
+                        <div class="overlay-text">
+                            <h4>${title}</h4>
+                            <p>${excerpt}</p>
+                        </div>
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        if (typeof window.refreshGalleryFilters === 'function') window.refreshGalleryFilters();
+    }
+
+    function renderPpdbInfo(items) {
+        const container = document.querySelector('.info-cards');
+        if (!container || !items.length) return;
+        container.innerHTML = items.slice(0, 4).map(item => {
+            const icon = String(item.icon || 'fa-circle-info').replace(/[^a-z0-9\-\s]/gi, '').trim() || 'fa-circle-info';
+            return `
+                <div class="info-card">
+                    <i class="fas ${escapeSiteHtml(icon)}"></i>
+                    <h4>${escapeSiteHtml(item.title)}</h4>
+                    <p>${escapeSiteHtml(item.excerpt || item.body || '')}</p>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderHomeNews(items) {
+        if (!items.length || document.getElementById('berita-sekolah')) return;
+        const anchor = document.getElementById('kontak') || document.querySelector('footer');
+        if (!anchor) return;
+        const section = document.createElement('section');
+        section.className = 'section bg-light school-news-section';
+        section.id = 'berita-sekolah';
+        section.innerHTML = `
+            <div class="container">
+                <div class="section-header center reveal active">
+                    <h4 class="sub-title">Berita Sekolah</h4>
+                    <h2>Informasi Terbaru</h2>
+                    <div class="line"></div>
+                </div>
+                <div class="news-grid">
+                    ${items.slice(0, 3).map(item => {
+                        const image = escapeSiteHtml(safeImageUrl(item.image_url, 'asset/Galeri.jpg'));
+                        const link = String(item.link_url || '').trim();
+                        return `
+                            <article class="news-card">
+                                <img src="${image}" alt="${escapeSiteHtml(item.title)}" loading="lazy">
+                                <div class="news-card-body">
+                                    <span>${escapeSiteHtml(item.category || 'Informasi')}</span>
+                                    <h3>${escapeSiteHtml(item.title)}</h3>
+                                    <p>${escapeSiteHtml(item.excerpt || item.body || '')}</p>
+                                    ${link ? `<a href="${escapeSiteHtml(link)}" class="news-link">Selengkapnya <i class="fas fa-arrow-right"></i></a>` : ''}
+                                </div>
+                            </article>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+        anchor.parentNode.insertBefore(section, anchor);
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const jobs = [];
+            if (document.querySelector('.dynamic-gallery')) {
+                jobs.push(getWebsiteContent({ type:'galeri', placement:'galeri', limit:60 }).then(renderGallery));
+            }
+            if (document.querySelector('.info-cards')) {
+                jobs.push(getWebsiteContent({ type:'ppdb_info', placement:'hero_ppdb', limit:4 }).then(renderPpdbInfo));
+            }
+            if (document.getElementById('home')) {
+                jobs.push(getWebsiteContent({ type:'berita', placement:'home', limit:3 }).then(renderHomeNews));
+            }
+            await Promise.all(jobs);
+        } catch (error) {
+            /* Konten statis tetap dipakai kalau backend belum aktif. */
+        }
+    });
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
     
     const navbar = document.querySelector('.navbar');
@@ -300,34 +419,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const filterBtns = document.querySelectorAll('.filter-btn');
-    const galleryItems = document.querySelectorAll('.gallery-box');
-
-    if (filterBtns.length > 0 && galleryItems.length > 0) {
-        filterBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                // Hapus class active dari semua tombol
-                filterBtns.forEach(button => button.classList.remove('active'));
-                // Tambahkan class active ke tombol yang diklik
-                btn.classList.add('active');
-
-                // Ambil nilai kategori yang diklik
-                const filterValue = btn.getAttribute('data-filter');
-
-                // Loop setiap gambar di galeri
-                galleryItems.forEach(item => {
-                    const itemCategory = item.getAttribute('data-category');
-
-                    // Logika memunculkan/menyembunyikan dengan animasi class .hide
-                    if (filterValue === 'all' || filterValue === itemCategory) {
-                        item.classList.remove('hide');
-                    } else {
-                        item.classList.add('hide');
-                    }
-                });
-            });
+    function applyGalleryFilter(filterValue) {
+        document.querySelectorAll('.gallery-box').forEach(item => {
+            const itemCategory = item.getAttribute('data-category');
+            if (filterValue === 'all' || filterValue === itemCategory) item.classList.remove('hide');
+            else item.classList.add('hide');
         });
     }
+
+    window.refreshGalleryFilters = function() {
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const galleryItems = document.querySelectorAll('.gallery-box');
+        if (!filterBtns.length || !galleryItems.length) return;
+        filterBtns.forEach(btn => {
+            if (btn.dataset.bound === '1') return;
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(button => button.classList.remove('active'));
+                btn.classList.add('active');
+                applyGalleryFilter(btn.getAttribute('data-filter') || 'all');
+            });
+        });
+        const active = document.querySelector('.filter-btn.active');
+        applyGalleryFilter(active ? active.getAttribute('data-filter') || 'all' : 'all');
+    };
+    window.refreshGalleryFilters();
 
     // --- 7. JURUSAN ACCORDION (TOGGLE CLASS .ACTIVE) ---
     const jurusanCards = document.querySelectorAll('.j-card');

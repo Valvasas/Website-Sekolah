@@ -9,9 +9,14 @@ const API = window.location.hostname === 'localhost'
     : '/api';
 
 /* ── Auth helper (dari auth-guard.js) ──────────────────────── */
-function getToken() { return localStorage.getItem('accessToken') || ''; }
+function getToken() {
+    return localStorage.getItem('studentAccessToken')
+        || localStorage.getItem('smkn_token')
+        || localStorage.getItem('accessToken')
+        || '';
+}
 function getUser()  {
-    try { return JSON.parse(localStorage.getItem('userData') || 'null'); } catch { return null; }
+    try { return JSON.parse(localStorage.getItem('studentUserData') || localStorage.getItem('smkn_user') || localStorage.getItem('userData') || 'null'); } catch { return null; }
 }
 
 async function apiFetch(endpoint, opts = {}) {
@@ -45,6 +50,10 @@ const lmsState = {
     unreadNotif:    0,
     notifikasiData: [],
     cbtSessions:    [],
+    staffStudents:  [],
+    staffDetail:    null,
+    staffSelectedNisn: null,
+    staffFetchTimer: null,
 };
 
 /* ── Utils ──────────────────────────────────────────────────── */
@@ -139,9 +148,9 @@ function setRole(role, btn) {
     const label = document.getElementById('lf-label-user');
     if (label) label.innerHTML = role === 'siswa'
         ? '<i class="fas fa-id-card"></i> NISN'
-        : '<i class="fas fa-id-badge"></i> NIP / Email';
+        : '<i class="fas fa-envelope"></i> Email';
     const inp = document.getElementById('lf-user');
-    if (inp) inp.placeholder = role === 'siswa' ? 'Masukkan NISN kamu' : 'Masukkan NIP/Email';
+    if (inp) inp.placeholder = role === 'siswa' ? 'Masukkan NISN kamu' : 'Masukkan email akun sekolah';
 }
 
 /* ── Init Dashboard (fetch semua data dari API) ─────────────── */
@@ -151,15 +160,16 @@ async function initDashboard() {
     lmsState.user = u;
 
     // Update UI user info
-    const firstName = u.nama?.split(' ')[0] || 'Siswa';
+    const firstName = (u.nama || u.nama_lengkap || '').split(' ')[0] || (canEditBiodata() ? 'Staff' : 'Siswa');
     document.getElementById('tb-user-name').textContent      = firstName;
-    document.getElementById('tb-avatar-circle').textContent  = u.nama?.charAt(0) || 'S';
-    document.getElementById('pd-avatar').textContent         = u.nama?.charAt(0) || 'S';
-    document.getElementById('pd-name').textContent           = u.nama || '-';
+    document.getElementById('tb-avatar-circle').textContent  = (u.nama || u.nama_lengkap || 'S').charAt(0);
+    document.getElementById('pd-avatar').textContent         = (u.nama || u.nama_lengkap || 'S').charAt(0);
+    document.getElementById('pd-name').textContent           = u.nama || u.nama_lengkap || '-';
     document.getElementById('pd-role').textContent           = u.role === 'siswa' ? 'Siswa Aktif' : 'Guru / Staf';
     document.getElementById('wb-greeting').textContent       = `${getGreeting()}, ${firstName} 👋`;
     const fcAv = document.getElementById('fc-avatar');
-    if (fcAv) fcAv.textContent = u.nama?.charAt(0) || 'S';
+    if (fcAv) fcAv.textContent = (u.nama || u.nama_lengkap || 'S').charAt(0);
+    configureDashboardForRole();
 
     // Update foto profil jika ada
     if (u.foto) {
@@ -181,6 +191,7 @@ async function initDashboard() {
         fetchStudentCbtSessions(),
         fetchProfil(),
         loadSchoolClasses(),
+        fetchStaffStudents(),
     ]);
 
     await fetchKelas();
@@ -215,16 +226,50 @@ async function loadSchoolClasses() {
         if (!data.success) return;
         lmsState.schoolClasses = data.data || [];
         const select = document.getElementById('pf-kelas');
-        if (!select) return;
-        select.innerHTML = '<option value="">Pilih kelas</option>' + lmsState.schoolClasses.map(k =>
+        const options = lmsState.schoolClasses.map(k =>
             `<option value="${escHtml(k.kelas)}">${escHtml(k.kelas)} - ${escHtml(k.jurusan)}</option>`
         ).join('');
-        if (lmsState.profileData?.profil?.kelas) select.value = lmsState.profileData.profil.kelas;
+        if (select) {
+            select.innerHTML = '<option value="">Pilih kelas</option>' + options;
+            if (lmsState.profileData?.profil?.kelas) select.value = lmsState.profileData.profil.kelas;
+        }
+        ['staff-class-filter','staff-task-kelas','staff-materi-kelas'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const label = id === 'staff-class-filter' ? 'Semua kelas' : 'Pilih kelas';
+            const current = el.value;
+            el.innerHTML = `<option value="">${label}</option>${options}`;
+            if (current) el.value = current;
+        });
     } catch(e) { console.warn('[Classes]', e.message); }
 }
 
 function canEditBiodata() {
     return ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'].includes(lmsState.user?.role);
+}
+
+function configureDashboardForRole() {
+    const staff = canEditBiodata();
+    document.body.classList.toggle('staff-mode', staff);
+    document.querySelectorAll('.staff-only').forEach(el => el.classList.toggle('hidden', !staff));
+
+    const welcome = document.querySelector('.wb-text p');
+    if (welcome) {
+        welcome.innerHTML = staff
+            ? 'Pantau administrasi kelas, profil siswa, materi, tugas, nilai, dan absensi dari satu dashboard.'
+            : 'Yuk lanjutkan belajar hari ini. Cek tugas, CBT, materi, dan pengumuman terbaru kamu.';
+    }
+
+    const roleLabels = {
+        kelas: staff ? 'Kelas / Siswa' : 'Kelas Saya',
+        tugas: staff ? 'Tugas Kelas' : 'Tugas',
+        nilai: staff ? 'Nilai Siswa' : 'Nilai Saya',
+        profil: staff ? 'Profil Siswa' : 'Profil & Biodata',
+    };
+    Object.entries(roleLabels).forEach(([page, label]) => {
+        const span = document.querySelector(`[data-page="${page}"] span`);
+        if (span) span.textContent = label;
+    });
 }
 
 async function fetchProfil(nisn = '') {
@@ -257,7 +302,7 @@ function setVal(id, value) {
 
 function setText(id, value) {
     const el = document.getElementById(id);
-    if (el) el.textContent = value || '-';
+    if (el) el.textContent = value === undefined || value === null || value === '' ? '-' : value;
 }
 
 function renderProfil() {
@@ -380,6 +425,210 @@ async function saveProfil(event) {
     } finally {
         setLoading(btn, false, '<i class="fas fa-save"></i> Simpan Profil');
     }
+}
+
+/* ── Guru/Staff Workspace ──────────────────────────────────── */
+function debouncedFetchStaffStudents() {
+    clearTimeout(lmsState.staffFetchTimer);
+    lmsState.staffFetchTimer = setTimeout(() => fetchStaffStudents(), 350);
+}
+
+async function fetchStaffStudents() {
+    if (!canEditBiodata()) return;
+    const list = document.getElementById('staff-student-list');
+    if (list) list.innerHTML = '<p class="staff-empty"><i class="fas fa-spinner fa-spin"></i> Memuat daftar siswa...</p>';
+    const params = new URLSearchParams({ limit: 50 });
+    const search = document.getElementById('staff-search')?.value.trim();
+    const kelas = document.getElementById('staff-class-filter')?.value;
+    if (search) params.set('search', search);
+    if (kelas) params.set('kelas', kelas);
+    try {
+        const data = await apiFetch(`/siswa/staff/list?${params.toString()}`);
+        if (!data.success) {
+            if (list) list.innerHTML = `<p class="staff-empty">${escHtml(data.message || 'Gagal memuat siswa.')}</p>`;
+            return;
+        }
+        lmsState.staffStudents = data.data?.students || [];
+        renderStaffStudents(data.data?.pagination || {});
+    } catch(e) {
+        if (list) list.innerHTML = '<p class="staff-empty">Gagal memuat siswa. Cek koneksi server.</p>';
+    }
+}
+
+function staffStudentFlags(student) {
+    const incomplete = !student.kelas || !student.no_hp || !student.email;
+    const lowScore = student.last_nilai !== null && student.last_nilai !== undefined && Number(student.last_nilai) < 70;
+    const noAcademic = Number(student.total_nilai || 0) === 0 && Number(student.total_ujian || 0) === 0;
+    return { incomplete, lowScore, noAcademic, risk: incomplete || lowScore || noAcademic };
+}
+
+function renderStaffStudents(pagination = {}) {
+    const list = document.getElementById('staff-student-list');
+    if (!list) return;
+    const rows = lmsState.staffStudents || [];
+    const risky = rows.filter(s => staffStudentFlags(s).risk).length;
+    const incomplete = rows.filter(s => staffStudentFlags(s).incomplete).length;
+    const withCbt = rows.filter(s => Number(s.total_ujian || 0) > 0).length;
+    setText('staff-total-students', pagination.total || rows.length);
+    setText('staff-risk-students', risky);
+    setText('staff-incomplete-students', incomplete);
+    setText('staff-cbt-students', withCbt);
+
+    if (!rows.length) {
+        list.innerHTML = '<p class="staff-empty">Tidak ada siswa yang cocok dengan filter.</p>';
+        return;
+    }
+    list.innerHTML = rows.map(s => {
+        const flags = staffStudentFlags(s);
+        const initials = (s.nama_lengkap || 'S').split(' ').slice(0,2).map(w => w.charAt(0)).join('').toUpperCase();
+        return `
+            <button class="staff-student-row ${lmsState.staffSelectedNisn === s.nisn ? 'active' : ''}" onclick="openStaffStudent('${escHtml(s.nisn)}')">
+                <span class="staff-avatar">${initials}</span>
+                <span class="staff-row-main">
+                    <strong>${escHtml(s.nama_lengkap || '-')}</strong>
+                    <small>${escHtml(s.nisn || '-')} · ${escHtml(s.kelas || 'Kelas belum diisi')}</small>
+                </span>
+                <span class="staff-row-tags">
+                    ${flags.lowScore ? '<em class="danger">Nilai rendah</em>' : ''}
+                    ${flags.incomplete ? '<em>Profil</em>' : ''}
+                    ${Number(s.total_ujian || 0) ? `<em>${Number(s.total_ujian)} CBT</em>` : ''}
+                </span>
+            </button>
+        `;
+    }).join('');
+}
+
+async function openStaffStudent(nisn) {
+    if (!nisn) return;
+    lmsState.staffSelectedNisn = nisn;
+    ['staff-grade-nisn','staff-att-nisn','profile-target-nisn'].forEach(id => setVal(id, nisn));
+    renderStaffStudents();
+    const empty = document.getElementById('staff-detail-empty');
+    const panel = document.getElementById('staff-detail-panel');
+    if (empty) empty.classList.add('hidden');
+    if (panel) panel.classList.remove('hidden');
+    document.getElementById('staff-detail-body').innerHTML = '<p class="staff-empty"><i class="fas fa-spinner fa-spin"></i> Memuat detail siswa...</p>';
+    try {
+        const data = await apiFetch(`/siswa/staff/${encodeURIComponent(nisn)}/detail`);
+        if (!data.success) {
+            document.getElementById('staff-detail-body').innerHTML = `<p class="staff-empty">${escHtml(data.message || 'Detail siswa tidak ditemukan.')}</p>`;
+            return;
+        }
+        lmsState.staffDetail = data.data;
+        renderStaffStudentDetail(data.data);
+    } catch(e) {
+        document.getElementById('staff-detail-body').innerHTML = '<p class="staff-empty">Gagal memuat detail siswa.</p>';
+    }
+}
+
+function renderStaffStudentDetail(data) {
+    const s = data.student || {};
+    const nilai = data.nilai || [];
+    const tugas = data.tugas || [];
+    const cbt = data.cbt || [];
+    const hadir = data.kehadiranSummary || {};
+    const avg = nilai.length
+        ? Math.round(nilai.reduce((sum, n) => sum + Number(n.nilai_final || 0), 0) / nilai.length)
+        : '-';
+    setText('staff-detail-name', s.nama_lengkap || '-');
+    setText('staff-detail-meta', `${s.nisn || '-'} · ${s.kelas || 'Kelas belum diisi'} · ${s.jurusan || '-'}`);
+    document.getElementById('staff-detail-quick').innerHTML = `
+        <span><strong>${avg}</strong><small>Rata nilai</small></span>
+        <span><strong>${hadir.hadir || 0}</strong><small>Hadir</small></span>
+        <span><strong>${tugas.length}</strong><small>Submission</small></span>
+        <span><strong>${cbt.length}</strong><small>CBT</small></span>
+    `;
+    document.getElementById('staff-detail-body').innerHTML = `
+        <div class="staff-detail-section">
+            <h4>Nilai Terbaru</h4>
+            ${nilai.slice(0, 5).map(n => `<div class="staff-mini-row"><span>${escHtml(n.mapel)} · ${escHtml(n.semester)}</span><strong>${escHtml(n.nilai_final ?? '-')}</strong></div>`).join('') || '<p class="staff-empty">Belum ada nilai.</p>'}
+        </div>
+        <div class="staff-detail-section">
+            <h4>Tugas Dikumpulkan</h4>
+            ${tugas.slice(0, 5).map(t => `<div class="staff-mini-row"><span>${escHtml(t.judul || 'Tugas')} · ${formatRelativeTime(t.submitted_at)}</span><strong>${escHtml(t.nilai ?? t.status ?? '-')}</strong></div>`).join('') || '<p class="staff-empty">Belum ada submission tugas.</p>'}
+        </div>
+        <div class="staff-detail-section">
+            <h4>Histori CBT</h4>
+            ${cbt.slice(0, 5).map(c => `<div class="staff-mini-row"><span>${escHtml(c.exam_title || c.mapel || 'CBT')} · ${formatRelativeTime(c.selesai_at)}</span><strong>${escHtml(c.nilai ?? '-')}</strong></div>`).join('') || '<p class="staff-empty">Belum ada histori CBT.</p>'}
+        </div>
+    `;
+}
+
+async function createStaffTask() {
+    const payload = {
+        judul: document.getElementById('staff-task-title')?.value.trim(),
+        mapel: document.getElementById('staff-task-mapel')?.value.trim(),
+        kelas: document.getElementById('staff-task-kelas')?.value,
+        deadline: document.getElementById('staff-task-deadline')?.value || null,
+        deskripsi: document.getElementById('staff-task-desc')?.value.trim() || null,
+    };
+    if (!payload.judul || !payload.mapel || !payload.kelas) return showToast('Judul, mapel, dan kelas wajib diisi.', 'red');
+    try {
+        const res = await apiFetch('/lms/tugas', { method:'POST', body:JSON.stringify(payload) });
+        showToast(res.message || (res.success ? 'Tugas diterbitkan.' : 'Gagal membuat tugas.'), res.success ? 'green' : 'red');
+        if (res.success) {
+            ['staff-task-title','staff-task-mapel','staff-task-deadline','staff-task-desc'].forEach(id => setVal(id, ''));
+            await fetchTugas();
+        }
+    } catch(e) { showToast('Gagal membuat tugas.', 'red'); }
+}
+
+async function uploadStaffMateri() {
+    const file = document.getElementById('staff-materi-file')?.files?.[0];
+    const kelas = document.getElementById('staff-materi-kelas')?.value;
+    if (!file || !kelas) return showToast('Pilih kelas dan file materi dulu.', 'red');
+    const form = new FormData();
+    form.append('file', file);
+    form.append('kelas', kelas);
+    try {
+        const res = await fetch(`${API}/upload/materi`, {
+            method:'POST',
+            headers:{ Authorization:`Bearer ${getToken()}` },
+            body:form,
+        });
+        const json = await res.json();
+        showToast(json.message || (json.success ? 'Materi diupload.' : 'Upload gagal.'), json.success ? 'green' : 'red');
+        if (json.success) {
+            document.getElementById('staff-materi-file').value = '';
+            await fetchMateri();
+        }
+    } catch(e) { showToast('Upload materi gagal.', 'red'); }
+}
+
+async function saveStaffGrade() {
+    const payload = {
+        nisn: document.getElementById('staff-grade-nisn')?.value.trim(),
+        semester: document.getElementById('staff-grade-semester')?.value,
+        mapel: document.getElementById('staff-grade-mapel')?.value.trim(),
+        uh: Number(document.getElementById('staff-grade-uh')?.value || 0),
+        uts: Number(document.getElementById('staff-grade-uts')?.value || 0),
+        uas: Number(document.getElementById('staff-grade-uas')?.value || 0),
+        tugas: Number(document.getElementById('staff-grade-tugas')?.value || 0),
+        kkm: Number(document.getElementById('staff-grade-kkm')?.value || 70),
+    };
+    if (!payload.nisn || !payload.mapel) return showToast('NISN dan mapel wajib diisi.', 'red');
+    try {
+        const res = await apiFetch('/siswa/nilai', { method:'POST', body:JSON.stringify(payload) });
+        showToast(res.message || 'Nilai tersimpan.', res.success ? 'green' : 'red');
+        if (res.success && payload.nisn === lmsState.staffSelectedNisn) await openStaffStudent(payload.nisn);
+    } catch(e) { showToast('Gagal menyimpan nilai.', 'red'); }
+}
+
+async function saveStaffAttendance() {
+    const tanggal = document.getElementById('staff-att-date')?.value || new Date().toISOString().slice(0, 10);
+    const payload = {
+        nisn: document.getElementById('staff-att-nisn')?.value.trim(),
+        tanggal,
+        hari: new Date(tanggal).toLocaleDateString('id-ID', { weekday:'long' }),
+        status: document.getElementById('staff-att-status')?.value,
+        keterangan: document.getElementById('staff-att-note')?.value.trim(),
+    };
+    if (!payload.nisn || !payload.tanggal || !payload.status) return showToast('NISN, tanggal, dan status wajib diisi.', 'red');
+    try {
+        const res = await apiFetch('/siswa/kehadiran', { method:'POST', body:JSON.stringify(payload) });
+        showToast(res.message || 'Absensi tersimpan.', res.success ? 'green' : 'red');
+        if (res.success && payload.nisn === lmsState.staffSelectedNisn) await openStaffStudent(payload.nisn);
+    } catch(e) { showToast('Gagal menyimpan absensi.', 'red'); }
 }
 
 /* ── Fetch & Render: Tugas ──────────────────────────────────── */
@@ -660,29 +909,38 @@ function renderForum() {
         el.innerHTML = '<p style="text-align:center;color:#64748b;padding:40px 0;">Belum ada diskusi.</p>';
         return;
     }
-    el.innerHTML = lmsState.forumPosts.map(p => `
-        <div class="forum-post" id="fp-${p.id}">
+    el.innerHTML = lmsState.forumPosts.map(p => {
+        const isAdmin = ['super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'].includes(p.role);
+        const replies = Array.isArray(p.replies) ? p.replies : [];
+        return `
+        <div class="forum-post ${isAdmin ? 'admin-post' : ''}" id="fp-${p.id}">
             <div class="fp-header">
                 <div class="fp-avatar" style="background:var(--navy);color:var(--gold);">
                     ${(p.nama_lengkap || 'U').charAt(0)}
                 </div>
                 <div class="fp-meta">
-                    <h4>${escHtml(p.nama_lengkap || 'Unknown')}</h4>
-                    <p>${formatRelativeTime(p.created_at)}</p>
+                    <h4>${escHtml(p.nama_lengkap || 'Unknown')} ${isAdmin ? '<span class="admin-chip">Administrator</span>' : ''}</h4>
+                    <p>${escHtml(formatRoleLabel(p.role))} · ${formatRelativeTime(p.created_at)}</p>
                 </div>
                 ${p.mapel ? `<span class="fp-tag">${escHtml(p.mapel)}</span>` : ''}
             </div>
             <p class="fp-body">${escHtml(p.konten)}</p>
+            ${replies.length ? `<div class="forum-replies">${replies.map(r => `
+                <div class="forum-reply ${['super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'].includes(r.role) ? 'admin-reply' : ''}">
+                    <strong>${escHtml(r.nama_lengkap || 'User')}</strong>
+                    <span>${escHtml(r.konten)}</span>
+                </div>
+            `).join('')}</div>` : ''}
             <div class="fp-actions">
                 <button class="fp-btn ${p.sudah_like ? 'liked' : ''}" onclick="toggleLike('${p.id}')">
                     <i class="${p.sudah_like ? 'fas' : 'far'} fa-heart"></i> ${p.likes || 0}
                 </button>
-                <button class="fp-btn">
+                <button class="fp-btn" onclick="replyForum('${p.id}')">
                     <i class="far fa-comment"></i> ${p.total_balasan || 0} Balasan
                 </button>
             </div>
         </div>
-    `).join('');
+    `; }).join('');
 }
 
 async function toggleLike(id) {
@@ -718,6 +976,34 @@ async function postForum() {
             showToast(data.message || 'Gagal posting.', 'red');
         }
     } catch(e) { showToast('Koneksi gagal.', 'red'); }
+}
+
+async function replyForum(parentId) {
+    const text = prompt('Tulis balasan diskusi:');
+    if (!text || !text.trim()) return;
+    try {
+        const data = await apiFetch('/lms/forum', {
+            method: 'POST',
+            body: JSON.stringify({ konten: text.trim(), parent_id: parentId }),
+        });
+        showToast(data.success ? 'Balasan terkirim.' : (data.message || 'Gagal membalas.'), data.success ? 'green' : 'red');
+        if (data.success) await fetchForum();
+    } catch {
+        showToast('Koneksi gagal.', 'red');
+    }
+}
+
+function formatRoleLabel(role) {
+    const labels = {
+        super_admin: 'Super Admin',
+        kepala_sekolah: 'Kepala Sekolah',
+        wakil_kepala_sekolah: 'Wakasek',
+        guru: 'Guru',
+        tata_usaha: 'Tata Usaha',
+        siswa: 'Siswa',
+        wali_murid: 'Wali Murid',
+    };
+    return labels[role] || 'Pengguna';
 }
 
 /* ── Fetch & Render: Nilai ──────────────────────────────────── */
@@ -891,6 +1177,142 @@ function getNotifIcon(tipe) {
     }[tipe] || 'bullhorn';
 }
 
+/* ── Kantin ku ─────────────────────────────────────────────── */
+async function fetchKantinProducts() {
+    const el = document.getElementById('kantin-products');
+    if (!el) return;
+    el.innerHTML = '<div class="staff-empty">Memuat produk kantin...</div>';
+    try {
+        const data = await apiFetch('/kantin/products');
+        const products = data.success ? (data.data || []) : [];
+        if (!products.length) {
+            el.innerHTML = '<div class="staff-empty">Belum ada dagangan siswa. Jadilah penjual pertama.</div>';
+            return;
+        }
+        el.innerHTML = products.map(p => `
+            <article class="kantin-card">
+                <div class="kantin-photo" style="${p.image_url ? `background-image:url('${escAttr(p.image_url)}')` : ''}">
+                    ${p.image_url ? '' : '<i class="fas fa-bowl-food"></i>'}
+                </div>
+                <div class="kantin-info">
+                    <strong>${escHtml(p.name)}</strong>
+                    <span>${escHtml(p.description || 'Tanpa deskripsi')}</span>
+                    <small>Penjual: ${escHtml(p.seller_name || 'Siswa')} ${p.seller_class ? `· ${escHtml(p.seller_class)}` : ''}</small>
+                </div>
+                <div class="kantin-foot">
+                    <b>${formatRupiah(p.price)}</b>
+                    <span>Stok ${Number(p.stock || 0)}</span>
+                </div>
+                <div class="kantin-actions">
+                    ${p.chat_contact ? `<a class="small-action" href="https://wa.me/${encodeURIComponent(normalizePhone(p.chat_contact))}" target="_blank" rel="noopener"><i class="fas fa-comment"></i> Chat</a>` : ''}
+                    <button class="small-action primary" onclick="orderKantinProduct('${escAttr(p.id)}')"><i class="fas fa-cart-shopping"></i> Pesan</button>
+                </div>
+                <p class="kantin-pay">${escHtml(p.emoney_provider || 'e-money')}: ${escHtml(p.emoney_account || 'konfirmasi via chat')}</p>
+            </article>
+        `).join('');
+    } catch (e) {
+        el.innerHTML = '<div class="staff-empty">Gagal memuat Kantin ku.</div>';
+    }
+}
+
+async function fetchKantinOrders() {
+    const el = document.getElementById('kantin-orders');
+    if (!el) return;
+    try {
+        const data = await apiFetch('/kantin/orders');
+        const orders = data.success ? (data.data || []) : [];
+        if (!orders.length) {
+            el.innerHTML = '<div class="staff-empty">Belum ada pesanan.</div>';
+            return;
+        }
+        el.innerHTML = orders.map(o => `
+            <div class="kantin-order">
+                <strong>${escHtml(o.product_name)}</strong>
+                <span>${Number(o.quantity || 1)} item · ${formatRupiah(o.total_price)} · ${escHtml(o.status)}</span>
+                <small>Pembeli: ${escHtml(o.buyer_name || '-')} · Penjual: ${escHtml(o.seller_name || '-')}</small>
+                ${(o.chats || []).length ? `
+                    <div class="kantin-chat-preview">
+                        ${(o.chats || []).map(chat => `
+                            <p><b>${escHtml(chat.sender_name || 'Pengguna')}</b> ${escHtml(chat.message || '')}</p>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                <button class="small-action" onclick="chatKantinOrder('${escAttr(o.id)}')"><i class="fas fa-message"></i> Chat pesanan</button>
+            </div>
+        `).join('');
+    } catch {
+        el.innerHTML = '<div class="staff-empty">Gagal memuat pesanan.</div>';
+    }
+}
+
+async function createKantinProduct(event) {
+    event.preventDefault();
+    const payload = {
+        name: document.getElementById('kantin-name').value.trim(),
+        description: document.getElementById('kantin-desc').value.trim(),
+        price: Number(document.getElementById('kantin-price').value || 0),
+        stock: Number(document.getElementById('kantin-stock').value || 0),
+        chat_contact: document.getElementById('kantin-chat').value.trim(),
+        emoney_provider: document.getElementById('kantin-emoney').value,
+        emoney_account: document.getElementById('kantin-emoney-id').value.trim(),
+        image_url: document.getElementById('kantin-image').value.trim(),
+    };
+    if (!payload.name || payload.price < 500) return showToast('Nama produk dan harga minimal Rp500 wajib diisi.', 'orange');
+    try {
+        const data = await apiFetch('/kantin/products', { method: 'POST', body: JSON.stringify(payload) });
+        showToast(data.message || 'Produk diproses.', data.success ? 'green' : 'red');
+        if (data.success) {
+            document.getElementById('kantin-form').reset();
+            await fetchKantinProducts();
+        }
+    } catch {
+        showToast('Gagal menerbitkan produk.', 'red');
+    }
+}
+
+async function orderKantinProduct(id) {
+    const quantity = Number(prompt('Jumlah yang dipesan:', '1') || 0);
+    if (!quantity) return;
+    const payment_reference = prompt('Referensi pembayaran e-money / catatan pembayaran:', '') || '';
+    try {
+        const data = await apiFetch(`/kantin/products/${encodeURIComponent(id)}/order`, {
+            method: 'POST',
+            body: JSON.stringify({ quantity, payment_reference, payment_method: 'e-money' }),
+        });
+        showToast(data.message || 'Pesanan diproses.', data.success ? 'green' : 'red');
+        if (data.success) {
+            await fetchKantinProducts();
+            await fetchKantinOrders();
+        }
+    } catch {
+        showToast('Gagal membuat pesanan.', 'red');
+    }
+}
+
+async function chatKantinOrder(id) {
+    const message = prompt('Tulis pesan ke lawan transaksi:');
+    if (!message || !message.trim()) return;
+    try {
+        const data = await apiFetch(`/kantin/orders/${encodeURIComponent(id)}/chat`, {
+            method: 'POST',
+            body: JSON.stringify({ message: message.trim() }),
+        });
+        showToast(data.message || 'Pesan diproses.', data.success ? 'green' : 'red');
+    } catch {
+        showToast('Gagal mengirim chat.', 'red');
+    }
+}
+
+function formatRupiah(value) {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(value || 0));
+}
+
+function normalizePhone(value) {
+    const digits = String(value || '').replace(/\D/g, '');
+    if (digits.startsWith('0')) return '62' + digits.slice(1);
+    return digits;
+}
+
 /* ── Sidebar navigasi ───────────────────────────────────────── */
 function navigate(pageId, btn) {
     document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
@@ -902,10 +1324,15 @@ function navigate(pageId, btn) {
     document.getElementById('tb-page-name').textContent = {
         beranda:'Beranda', kelas:'Kelas Saya', tugas:'Tugas',
         materi:'Materi', forum:'Forum Diskusi', nilai:'Nilai Saya',
-        profil:'Profil & Biodata'
+        profil:'Profil & Biodata', kantin:'Kantin ku', staff:'Ruang Staff'
     }[pageId] || 'Dashboard';
 
     if (pageId === 'profil') fetchProfil(lmsState.targetNisn || '').catch(() => {});
+    if (pageId === 'kantin') {
+        fetchKantinProducts().catch(() => {});
+        fetchKantinOrders().catch(() => {});
+    }
+    if (pageId === 'staff') fetchStaffStudents().catch(() => {});
     closeSidebar();
     window.scrollTo(0, 0);
 }
@@ -1006,7 +1433,7 @@ async function changePassword() {
 /* ── Logout ─────────────────────────────────────────────────── */
 function lmsLogout() {
     // Notify server
-    const rt = localStorage.getItem('refreshToken');
+    const rt = localStorage.getItem('studentRefreshToken') || localStorage.getItem('smkn_refresh') || localStorage.getItem('refreshToken');
     if (rt) {
         fetch(`${API}/auth/logout`, {
             method: 'POST',
@@ -1014,7 +1441,11 @@ function lmsLogout() {
             body: JSON.stringify({ refreshToken: rt }),
         }).catch(() => {});
     }
-    ['accessToken','refreshToken','userRole','userData','smkn_token','smkn_refresh'].forEach(k => localStorage.removeItem(k));
+    const studentToken = localStorage.getItem('studentAccessToken') || localStorage.getItem('smkn_token');
+    if (!studentToken || localStorage.getItem('accessToken') === studentToken) {
+        ['accessToken','refreshToken','userRole','userData'].forEach(k => localStorage.removeItem(k));
+    }
+    ['studentAccessToken','studentRefreshToken','studentUserData','smkn_token','smkn_refresh','smkn_user'].forEach(k => localStorage.removeItem(k));
     lmsState.user = null;
     window.location.replace('/login.html?msg=' + encodeURIComponent('Kamu sudah keluar dari LMS.'));
 }
@@ -1024,6 +1455,9 @@ function escHtml(str) {
     return String(str || '').replace(/[&<>"']/g, c =>
         ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[c])
     );
+}
+function escAttr(str) {
+    return escHtml(str).replace(/`/g, '&#096;');
 }
 
 function formatRelativeTime(iso) {

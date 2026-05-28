@@ -39,16 +39,32 @@
   }
 
   /* ── Token helpers ── */
-  function getToken() {
-    return localStorage.getItem('accessToken')
-        || localStorage.getItem('smkn_token')
-        || '';
+  function getToken(allowedRoles = []) {
+    const wantsStaff = allowedRoles.some(role => [
+      'super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'
+    ].includes(role));
+    const wantsStudent = allowedRoles.some(role => ['siswa','wali_murid','calon_siswa'].includes(role));
+
+    if (wantsStaff) {
+      return localStorage.getItem('adminAccessToken')
+          || (allowedRoles.includes(localStorage.getItem('userRole')) ? localStorage.getItem('accessToken') : '')
+          || '';
+    }
+    if (wantsStudent) {
+      return localStorage.getItem('studentAccessToken')
+          || localStorage.getItem('smkn_token')
+          || (allowedRoles.includes(localStorage.getItem('userRole')) ? localStorage.getItem('accessToken') : '')
+          || '';
+    }
+    return localStorage.getItem('accessToken') || localStorage.getItem('smkn_token') || '';
   }
 
   function clearSession() {
     const keys = [
       'accessToken','refreshToken','userRole','userData',
-      'smkn_token','smkn_refresh','smkn_user'
+      'smkn_token','smkn_refresh','smkn_user',
+      'studentAccessToken','studentRefreshToken','studentUserData',
+      'adminAccessToken','adminRefreshToken','adminUserData'
     ];
     keys.forEach(k => localStorage.removeItem(k));
   }
@@ -70,7 +86,10 @@
 
   /* ── Try to refresh the access token ── */
   async function tryRefresh() {
-    const rt = localStorage.getItem('refreshToken') || localStorage.getItem('smkn_refresh');
+    const rt = localStorage.getItem('studentRefreshToken')
+        || localStorage.getItem('adminRefreshToken')
+        || localStorage.getItem('refreshToken')
+        || localStorage.getItem('smkn_refresh');
     if (!rt) return null;
     try {
       const res  = await fetch(API_BASE + '/api/auth/refresh', {
@@ -131,7 +150,7 @@
       : [];
 
     const overlay = showOverlay();
-    let   token   = getToken();
+    let   token   = getToken(allowedRoles);
 
     /* 1. No token → redirect to login */
     if (!token) {
@@ -188,6 +207,13 @@
       localStorage.setItem('userRole', role);
       localStorage.setItem('userData', JSON.stringify(user));
       localStorage.setItem('smkn_user', JSON.stringify(user));
+      if (['siswa','wali_murid','calon_siswa'].includes(role)) {
+        localStorage.setItem('studentAccessToken', token);
+        localStorage.setItem('studentUserData', JSON.stringify(user));
+      } else if (['super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'].includes(role)) {
+        localStorage.setItem('adminAccessToken', token);
+        localStorage.setItem('adminUserData', JSON.stringify(user));
+      }
 
       /* Expose globally for the page scripts */
       window.__edugate = { user, token, role };

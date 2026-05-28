@@ -15,6 +15,48 @@ const nowISO = () => new Date().toISOString();
 const cleanText = (value, max = 500) => String(value || '').replace(/[<>]/g, '').trim().slice(0, max);
 const cleanNisn = (value) => String(value || '').replace(/\D/g, '').slice(0, 10);
 const cleanYear = (value) => String(value || '').replace(/\D/g, '').slice(0, 4);
+const VALID_CONTENT_TYPES = ['berita', 'galeri', 'ppdb_info', 'info'];
+const VALID_GALLERY_CATEGORIES = ['akademik', 'eskul', 'prestasi', 'fasilitas', 'umum'];
+
+function cleanUrl(value, max = 500) {
+    const input = String(value || '').trim().slice(0, max);
+    if (!input) return null;
+    if (input.startsWith('/uploads/') || input.startsWith('/asset/') || input.startsWith('/') || /^https?:\/\//i.test(input)) {
+        return input.replace(/[<>"']/g, '');
+    }
+    return null;
+}
+
+function normalizeContentPayload(body = {}, partial = false) {
+    const type = cleanText(body.type, 30);
+    const title = cleanText(body.title, 160);
+    const category = cleanText(body.category, 60);
+    const payload = {};
+
+    if (!partial || body.type !== undefined) {
+        if (!VALID_CONTENT_TYPES.includes(type)) return { ok:false, message:'Tipe konten tidak valid.' };
+        payload.type = type;
+    }
+    if (!partial || body.title !== undefined) {
+        if (!title) return { ok:false, message:'Judul wajib diisi.' };
+        payload.title = title;
+    }
+    if (body.placement !== undefined || !partial) payload.placement = cleanText(body.placement || 'general', 80) || 'general';
+    if (body.excerpt !== undefined || !partial) payload.excerpt = cleanText(body.excerpt, 400);
+    if (body.body !== undefined || !partial) payload.body = cleanText(body.body, 5000);
+    if (body.image_url !== undefined || !partial) payload.image_url = cleanUrl(body.image_url);
+    if (body.link_url !== undefined || !partial) payload.link_url = cleanUrl(body.link_url);
+    if (body.icon !== undefined || !partial) payload.icon = cleanText(body.icon, 80);
+    if (body.sort_order !== undefined || !partial) payload.sort_order = parseInt(body.sort_order) || 0;
+    if (body.is_active !== undefined || !partial) payload.is_active = body.is_active === false ? 0 : parseInt(body.is_active ?? 1) ? 1 : 0;
+    if (body.category !== undefined || !partial) {
+        payload.category = category || (payload.type === 'galeri' ? 'umum' : null);
+        if ((payload.type || body.type) === 'galeri' && !VALID_GALLERY_CATEGORIES.includes(payload.category)) {
+            payload.category = 'umum';
+        }
+    }
+    return { ok:true, data:payload };
+}
 
 function notifyAllStudents(db, { judul, pesan, tipe = 'info', link = '/LMS.html' }) {
     const siswa = db.prepare("SELECT id FROM users WHERE role = 'siswa' AND is_active = 1").all();
@@ -204,6 +246,121 @@ router.delete('/announcements/:id', authenticate, isAdmin, (req, res) => {
     db.prepare('DELETE FROM announcements WHERE id=:id').run({ id:req.params.id });
     log(req.user.sub, 'ANNOUNCEMENT_DELETED', 'announcements', req.params.id, null, req.ip);
     return res.status(200).json({ success:true, message:'Pengumuman berhasil dihapus.' });
+});
+
+/* ════════════════════════════════════════
+   WEBSITE CONTENT ROUTES (berita, galeri, PPDB info, info umum)
+   ════════════════════════════════════════ */
+
+// GET /api/content/website — publik: konten aktif
+router.get('/website', (req, res) => {
+    const db = getDB();
+    const { type, placement, category, limit = 20 } = req.query;
+    const conds = ['is_active = 1'];
+    const params = {};
+
+    if (type) {
+        if (!VALID_CONTENT_TYPES.includes(type)) return res.status(400).json({ success:false, message:'Tipe konten tidak valid.' });
+        conds.push('type = @type');
+        params.type = type;
+    }
+    if (placement) {
+        conds.push('placement = @placement');
+        params.placement = cleanText(placement, 80);
+    }
+    if (category) {
+        conds.push('category = @category');
+        params.category = cleanText(category, 60);
+    }
+
+    params.limit = Math.min(Math.max(parseInt(limit) || 20, 1), 60);
+    const rows = db.prepare(`
+        SELECT id,type,placement,title,excerpt,body,image_url,link_url,category,icon,sort_order,created_at,updated_at
+        FROM website_contents
+        WHERE ${conds.join(' AND ')}
+        ORDER BY sort_order ASC, created_at DESC
+        LIMIT @limit
+    `).all(params);
+    return res.status(200).json({ success:true, data:rows });
+});
+
+// GET /api/content/website/all — admin: semua konten
+router.get('/website/all', authenticate, isStaff, (req, res) => {
+    const db = getDB();
+    const { type = '', search = '', page = 1, limit = 30 } = req.query;
+    const pageInt = Math.max(parseInt(page) || 1, 1);
+    const limitInt = Math.min(Math.max(parseInt(limit) || 30, 1), 100);
+    const offset = (pageInt - 1) * limitInt;
+    const conds = [];
+    const params = {};
+
+    if (type) {
+        if (!VALID_CONTENT_TYPES.includes(type)) return res.status(400).json({ success:false, message:'Tipe konten tidak valid.' });
+        conds.push('type = @type');
+        params.type = type;
+    }
+    if (search) {
+        conds.push('(title LIKE @search OR excerpt LIKE @search OR body LIKE @search)');
+        params.search = `%${cleanText(search, 120)}%`;
+    }
+    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+    const rows = db.prepare(`
+        SELECT *
+        FROM website_contents
+        ${where}
+        ORDER BY type ASC, sort_order ASC, created_at DESC
+        LIMIT @limit OFFSET @offset
+    `).all({ ...params, limit:limitInt, offset });
+    const total = db.prepare(`SELECT COUNT(*) as c FROM website_contents ${where}`).get(params)?.c || 0;
+    return res.status(200).json({ success:true, data:{ rows, pagination:{ total, page:pageInt, limit:limitInt, totalPages:Math.ceil(total / limitInt) } } });
+});
+
+// POST /api/content/website — admin: tambah konten
+router.post('/website', authenticate, isStaff, (req, res) => {
+    const db = getDB();
+    const normalized = normalizeContentPayload(req.body);
+    if (!normalized.ok) return res.status(400).json({ success:false, message:normalized.message });
+    const id = uuidv4();
+    const now = nowISO();
+    db.prepare(`
+        INSERT INTO website_contents
+        (id,type,placement,title,excerpt,body,image_url,link_url,category,icon,is_active,sort_order,created_by,created_at,updated_at)
+        VALUES (@id,@type,@placement,@title,@excerpt,@body,@image_url,@link_url,@category,@icon,@is_active,@sort_order,@created_by,@now,@now)
+    `).run({ id, ...normalized.data, created_by:req.user.sub, now });
+    log(req.user.sub, 'WEBSITE_CONTENT_CREATED', 'website_contents', id, { type:normalized.data.type, title:normalized.data.title }, req.ip);
+    return res.status(201).json({ success:true, message:'Konten website berhasil ditambahkan.', data:{ id } });
+});
+
+// PUT /api/content/website/:id — admin: edit konten
+router.put('/website/:id', authenticate, isStaff, (req, res) => {
+    const db = getDB();
+    const { id } = req.params;
+    const exists = db.prepare('SELECT * FROM website_contents WHERE id = ?').get(id);
+    if (!exists) return res.status(404).json({ success:false, message:'Konten tidak ditemukan.' });
+
+    const normalized = normalizeContentPayload(req.body, true);
+    if (!normalized.ok) return res.status(400).json({ success:false, message:normalized.message });
+    const fields = [];
+    const vals = { id, now:nowISO() };
+    for (const [key, value] of Object.entries(normalized.data)) {
+        fields.push(`${key} = @${key}`);
+        vals[key] = value;
+    }
+    if (!fields.length) return res.status(400).json({ success:false, message:'Tidak ada perubahan.' });
+    fields.push('updated_at = @now');
+
+    db.prepare(`UPDATE website_contents SET ${fields.join(', ')} WHERE id = @id`).run(vals);
+    log(req.user.sub, 'WEBSITE_CONTENT_UPDATED', 'website_contents', id, null, req.ip);
+    return res.status(200).json({ success:true, message:'Konten website berhasil diperbarui.' });
+});
+
+// DELETE /api/content/website/:id — admin: hapus konten
+router.delete('/website/:id', authenticate, isStaff, (req, res) => {
+    const db = getDB();
+    const info = db.prepare('DELETE FROM website_contents WHERE id = ?').run(req.params.id);
+    if (!info.changes) return res.status(404).json({ success:false, message:'Konten tidak ditemukan.' });
+    log(req.user.sub, 'WEBSITE_CONTENT_DELETED', 'website_contents', req.params.id, null, req.ip);
+    return res.status(200).json({ success:true, message:'Konten website berhasil dihapus.' });
 });
 
 /* ════════════════════════════════════════

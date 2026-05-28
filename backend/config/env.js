@@ -96,6 +96,8 @@ module.exports = {
     FRONTEND_URL:  process.env.FRONTEND_URL || 'http://localhost:3001',
     ALLOWED_ORIGINS: (process.env.ALLOWED_ORIGINS || '')
         .split(',').map(o => o.trim()).filter(Boolean),
+    ALLOWED_ORIGIN_SUFFIXES: (process.env.ALLOWED_ORIGIN_SUFFIXES || '')
+        .split(',').map(o => o.trim().replace(/^\./, '').toLowerCase()).filter(Boolean),
     LOGIN_MAX_ATTEMPTS:   parseInt(process.env.LOGIN_MAX_ATTEMPTS)   || 5,
     LOGIN_WINDOW_MINUTES: parseInt(process.env.LOGIN_WINDOW_MINUTES) || 15,
     RESET_TOKEN_EXPIRY:   parseInt(process.env.RESET_TOKEN_EXPIRY)   || 15,

@@ -42,6 +42,7 @@ app.use(helmet({
 
 /* ── CORS (dynamic, dari env) ─────────────────────────────────────── */
 const allowedOrigins = [...ENV.ALLOWED_ORIGINS];
+const allowedOriginSuffixes = [...ENV.ALLOWED_ORIGIN_SUFFIXES];
 if (ENV.IS_DEV) {
     allowedOrigins.push(
         'http://localhost:3000', 'http://localhost:3001',
@@ -49,10 +50,28 @@ if (ENV.IS_DEV) {
     );
 }
 
+function isPrivateLanHost(hostname) {
+    return /^(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})$/.test(hostname);
+}
+
+function isAllowedOrigin(origin) {
+    if (allowedOrigins.includes(origin)) return true;
+
+    let parsed;
+    try { parsed = new URL(origin); } catch { return false; }
+
+    const hostname = parsed.hostname.toLowerCase();
+    if (ENV.IS_DEV && parsed.protocol === 'http:' && isPrivateLanHost(hostname)) return true;
+
+    return allowedOriginSuffixes.some(suffix =>
+        hostname === suffix || hostname.endsWith(`.${suffix}`)
+    );
+}
+
 app.use(cors({
     origin: (origin, cb) => {
         if (!origin) return cb(null, true); // Server-to-server / curl
-        if (allowedOrigins.includes(origin)) return cb(null, true);
+        if (isAllowedOrigin(origin)) return cb(null, true);
         console.warn(`[CORS] Blocked: ${origin}`);
         cb(new Error(`Origin tidak diizinkan: ${origin}`));
     },
@@ -397,12 +416,13 @@ function setupWebSocket() {
     function handleAdminReply(msg, ws) {
         const target = clients.get(msg.targetNisn);
         const examId = cleanText(msg.examId, 80) || target?.examId || null;
+        const adminName = cleanText(msg.senderName, 120) || ws.adminUser?.nama || 'Panitia CBT';
         const saved = saveCbtMessage({
             examId,
             sessionId: target?.sessionId || null,
             nisn: cleanText(msg.targetNisn, 30),
             senderRole: ws.adminUser?.role || 'admin',
-            senderName: ws.adminUser?.nama || 'Panitia CBT',
+            senderName: adminName,
             messageType: 'admin_reply',
             message: msg.message,
             createdBy: ws.adminUser?.sub || null
@@ -416,7 +436,7 @@ function setupWebSocket() {
             id: saved.id,
             exam_id: examId,
             nisn: cleanText(msg.targetNisn, 30),
-            sender_name: ws.adminUser?.nama || 'Panitia CBT',
+            sender_name: adminName,
             message: saved.message,
             created_at: new Date().toISOString()
         };
@@ -426,10 +446,11 @@ function setupWebSocket() {
 
     function handleAdminBroadcast(msg, ws) {
         const examId = cleanText(msg.examId, 80) || ws.examFilter || null;
+        const adminName = cleanText(msg.senderName, 120) || ws.adminUser?.nama || 'Panitia CBT';
         const saved = saveCbtMessage({
             examId,
             senderRole: ws.adminUser?.role || 'admin',
-            senderName: ws.adminUser?.nama || 'Panitia CBT',
+            senderName: adminName,
             messageType: 'announcement',
             message: msg.message,
             createdBy: ws.adminUser?.sub || null
@@ -442,7 +463,7 @@ function setupWebSocket() {
             type: 'announcement',
             id: saved.id,
             exam_id: examId,
-            sender_name: ws.adminUser?.nama || 'Panitia CBT',
+            sender_name: adminName,
             message: saved.message,
             created_at: new Date().toISOString()
         };
@@ -561,6 +582,7 @@ function setupRoutes() {
     app.use('/api/ppdb',    require('./routes/ppdb'));
     app.use('/api/cbt',     require('./routes/cbt'));
     app.use('/api/lms',     require('./routes/lms'));      // NEW
+    app.use('/api/kantin',  require('./routes/kantin'));
     app.use('/api/upload',  require('./routes/upload'));   // NEW
 
     // ── Admin panel pages ────────────────────────────────────────────

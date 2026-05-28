@@ -15,6 +15,8 @@ const CBT_FULL_ACCESS = ['super_admin', 'kepala_sekolah', 'wakil_kepala_sekolah'
 const VALID_MAPEL = ['matematika', 'bindo', 'basing', 'pkk', 'sejarah', 'produktif'];
 const VALID_STATUS = ['draft', 'open', 'closed', 'archived'];
 const VALID_ANSWERS = ['A', 'B', 'C', 'D', 'E'];
+const VALID_QUESTION_TYPES = ['multiple_choice', 'essay'];
+const VALID_MEDIA_TYPES = ['image', 'audio', 'video', 'canvas'];
 
 function nowISO() {
     return new Date().toISOString();
@@ -40,13 +42,31 @@ function sanitizeQuestion(row) {
     return {
         id: row.id,
         soal: row.soal,
+        question_type: row.question_type || 'multiple_choice',
         opsi: [row.opsi_a, row.opsi_b, row.opsi_c, row.opsi_d, row.opsi_e].filter(Boolean),
+        media_type: row.media_type || null,
+        media_url: row.media_url || null,
+        media_alt: row.media_alt || null,
+        canvas_data: safeParseJson(row.canvas_data),
+        essay_min_words: row.essay_min_words || 0,
     };
 }
 
 function cleanText(value, max = 240) {
     if (value === undefined || value === null) return null;
     return String(value).replace(/[<>]/g, '').trim().slice(0, max) || null;
+}
+
+function cleanUrl(value, max = 500) {
+    const text = cleanText(value, max);
+    if (!text) return null;
+    if (/^(https?:\/\/|\/uploads\/|uploads\/|asset\/|\/asset\/)/i.test(text)) return text;
+    return null;
+}
+
+function normalizeKeywordList(value) {
+    if (Array.isArray(value)) return value.map(v => cleanText(v, 80)).filter(Boolean).join(', ');
+    return cleanText(value, 1000);
 }
 
 function notifyStudents(db, students, { judul, pesan, tipe = 'cbt', link = '/LMS.html' }) {
@@ -98,9 +118,12 @@ function assertExamAccess(user, exam, res) {
 
 function normalizeQuestionPayload(raw, index = 0) {
     const opsi = Array.isArray(raw?.opsi) ? raw.opsi : [];
+    const questionType = VALID_QUESTION_TYPES.includes(raw?.question_type) ? raw.question_type : 'multiple_choice';
+    const mediaType = VALID_MEDIA_TYPES.includes(raw?.media_type) ? raw.media_type : null;
     const q = {
         mapel: raw?.mapel,
         jenis_ujian: cleanText(raw?.jenis_ujian || 'CBT', 40) || 'CBT',
+        question_type: questionType,
         soal: cleanText(raw?.soal, 2000),
         opsi_a: cleanText(raw?.opsi_a ?? opsi[0], 800),
         opsi_b: cleanText(raw?.opsi_b ?? opsi[1], 800),
@@ -108,17 +131,33 @@ function normalizeQuestionPayload(raw, index = 0) {
         opsi_d: cleanText(raw?.opsi_d ?? opsi[3], 800),
         opsi_e: cleanText(raw?.opsi_e ?? opsi[4], 800),
         jawaban: String(raw?.jawaban || '').trim().toUpperCase(),
+        essay_keywords: normalizeKeywordList(raw?.essay_keywords),
+        essay_min_words: Math.max(0, Math.min(parseInt(raw?.essay_min_words) || 0, 1000)),
+        media_type: mediaType,
+        media_url: mediaType === 'canvas' ? null : cleanUrl(raw?.media_url),
+        media_alt: cleanText(raw?.media_alt, 240),
+        canvas_data: mediaType === 'canvas' ? cleanText(
+            typeof raw?.canvas_data === 'string' ? raw.canvas_data : JSON.stringify(raw?.canvas_data || null),
+            8000
+        ) : null,
         tingkat: cleanText(raw?.tingkat || 'sedang', 40) || 'sedang',
         urutan: Math.max(1, parseInt(raw?.urutan) || index + 1)
     };
-    if (!q.soal || !q.opsi_a || !q.opsi_b || !q.opsi_c || !q.opsi_d) {
-        return { ok: false, message: `Soal nomor ${index + 1}: pertanyaan dan opsi A-D wajib diisi.` };
+    if (!q.soal) {
+        return { ok: false, message: `Soal nomor ${index + 1}: pertanyaan wajib diisi.` };
     }
-    if (!VALID_ANSWERS.includes(q.jawaban)) {
-        return { ok: false, message: `Soal nomor ${index + 1}: jawaban benar harus A-E.` };
-    }
-    if (q.jawaban === 'E' && !q.opsi_e) {
-        return { ok: false, message: `Soal nomor ${index + 1}: opsi E wajib diisi karena kunci jawabannya E.` };
+    if (q.question_type === 'multiple_choice') {
+        if (!q.opsi_a || !q.opsi_b || !q.opsi_c || !q.opsi_d) {
+            return { ok: false, message: `Soal nomor ${index + 1}: opsi A-D wajib diisi untuk pilihan ganda.` };
+        }
+        if (!VALID_ANSWERS.includes(q.jawaban)) {
+            return { ok: false, message: `Soal nomor ${index + 1}: jawaban benar harus A-E.` };
+        }
+        if (q.jawaban === 'E' && !q.opsi_e) {
+            return { ok: false, message: `Soal nomor ${index + 1}: opsi E wajib diisi karena kunci jawabannya E.` };
+        }
+    } else {
+        q.jawaban = null;
     }
     return { ok: true, data: q };
 }
@@ -128,8 +167,9 @@ function createAndAssignQuestions(db, exam, questions, userId) {
     const now = nowISO();
     const insertQuestion = db.prepare(`
         INSERT INTO bank_soal
-        (id,mapel,jenis_ujian,soal,opsi_a,opsi_b,opsi_c,opsi_d,opsi_e,jawaban,tingkat,created_by,is_active,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
+        (id,mapel,jenis_ujian,question_type,soal,opsi_a,opsi_b,opsi_c,opsi_d,opsi_e,jawaban,
+         essay_keywords,essay_min_words,media_type,media_url,media_alt,canvas_data,tingkat,created_by,is_active,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
     `);
     const insertExamQuestion = db.prepare(`
         INSERT INTO cbt_exam_questions (id, exam_id, question_id, urutan, created_at)
@@ -139,9 +179,11 @@ function createAndAssignQuestions(db, exam, questions, userId) {
     questions.forEach((item, index) => {
         const questionId = uuidv4();
         insertQuestion.run(
-            questionId, exam.mapel, item.jenis_ujian || 'CBT', item.soal,
+            questionId, exam.mapel, item.jenis_ujian || 'CBT', item.question_type || 'multiple_choice', item.soal,
             item.opsi_a, item.opsi_b, item.opsi_c, item.opsi_d, item.opsi_e || null,
-            item.jawaban, item.tingkat || 'sedang', userId, now, now
+            item.jawaban || null, item.essay_keywords || null, item.essay_min_words || 0,
+            item.media_type || null, item.media_url || null, item.media_alt || null, item.canvas_data || null,
+            item.tingkat || 'sedang', userId, now, now
         );
         insertExamQuestion.run(uuidv4(), exam.id, questionId, item.urutan || index + 1, now);
         total++;
@@ -206,7 +248,8 @@ function assignQuestionsIfNeeded(db, exam) {
     if (!exam) return [];
 
     const existing = db.prepare(`
-        SELECT b.id, b.soal, b.opsi_a, b.opsi_b, b.opsi_c, b.opsi_d, b.opsi_e
+            SELECT b.id, b.soal, b.question_type, b.opsi_a, b.opsi_b, b.opsi_c, b.opsi_d, b.opsi_e,
+                   b.media_type, b.media_url, b.media_alt, b.canvas_data, b.essay_min_words
         FROM cbt_exam_questions eq
         JOIN bank_soal b ON b.id = eq.question_id
         WHERE eq.exam_id = ? AND b.is_active = 1
@@ -216,7 +259,8 @@ function assignQuestionsIfNeeded(db, exam) {
 
     const count = Math.max(1, Math.min(parseInt(exam.question_count) || 40, 100));
     const rows = db.prepare(`
-        SELECT id, soal, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e
+        SELECT id, soal, question_type, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e,
+               media_type, media_url, media_alt, canvas_data, essay_min_words
         FROM bank_soal
         WHERE mapel = ? AND is_active = 1
         ORDER BY RANDOM()
@@ -240,7 +284,7 @@ function assignQuestionsIfNeeded(db, exam) {
 function listExamQuestionsForGrading(db, examId, mapel) {
     if (examId) {
         const rows = db.prepare(`
-            SELECT b.id, b.jawaban
+            SELECT b.id, b.jawaban, b.question_type, b.essay_keywords, b.essay_min_words
             FROM cbt_exam_questions eq
             JOIN bank_soal b ON b.id = eq.question_id
             WHERE eq.exam_id = ? AND b.is_active = 1
@@ -249,7 +293,7 @@ function listExamQuestionsForGrading(db, examId, mapel) {
         if (rows.length) return rows;
     }
     return db.prepare(`
-        SELECT id, jawaban
+        SELECT id, jawaban, question_type, essay_keywords, essay_min_words
         FROM bank_soal
         WHERE mapel = ? AND is_active = 1
         ORDER BY id
@@ -301,12 +345,17 @@ router.get('/bank-soal', authenticate, authorize(...STAFF), (req, res) => {
 
     try {
         const rows = db.prepare(`
-            SELECT id,mapel,jenis_ujian,soal,opsi_a,opsi_b,opsi_c,opsi_d,opsi_e,jawaban,tingkat,is_active,created_at,updated_at
+            SELECT id,mapel,jenis_ujian,question_type,soal,opsi_a,opsi_b,opsi_c,opsi_d,opsi_e,jawaban,
+                   essay_keywords,essay_min_words,media_type,media_url,media_alt,canvas_data,
+                   tingkat,is_active,created_at,updated_at
             FROM bank_soal
             ${where}
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?
-        `).all(...params, limitInt, offset);
+        `).all(...params, limitInt, offset).map(row => ({
+            ...row,
+            canvas_data: safeParseJson(row.canvas_data)
+        }));
         const total = db.prepare(`SELECT COUNT(*) as c FROM bank_soal ${where}`).get(...params)?.c || 0;
         return res.json({
             success: true,
@@ -320,30 +369,26 @@ router.get('/bank-soal', authenticate, authorize(...STAFF), (req, res) => {
 
 router.post('/bank-soal', authenticate, authorize(...STAFF), (req, res) => {
     const db = getDB();
-    const { mapel, jenis_ujian = 'CBT', soal, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e = null, jawaban, tingkat = 'sedang' } = req.body;
+    const normalized = normalizeQuestionPayload(req.body, 0);
+    const q = normalized.data;
+    const { mapel } = req.body;
     if (!validateMapel(mapel)) return res.status(400).json({ success: false, message: 'Mapel tidak valid.' });
-    if (!soal || !opsi_a || !opsi_b || !opsi_c || !opsi_d || !jawaban) {
-        return res.status(400).json({ success: false, message: 'Soal, opsi A-D, dan jawaban wajib diisi.' });
-    }
-    if (!['A', 'B', 'C', 'D', 'E'].includes(String(jawaban).toUpperCase())) {
-        return res.status(400).json({ success: false, message: 'Jawaban harus A, B, C, D, atau E.' });
-    }
-    if (String(jawaban).toUpperCase() === 'E' && !opsi_e) {
-        return res.status(400).json({ success: false, message: 'Opsi E wajib diisi jika jawaban E.' });
-    }
+    if (!normalized.ok) return res.status(400).json({ success: false, message: normalized.message });
 
     try {
         const id = uuidv4();
         const now = nowISO();
         db.prepare(`
             INSERT INTO bank_soal
-            (id,mapel,jenis_ujian,soal,opsi_a,opsi_b,opsi_c,opsi_d,opsi_e,jawaban,tingkat,created_by,is_active,created_at,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
+            (id,mapel,jenis_ujian,question_type,soal,opsi_a,opsi_b,opsi_c,opsi_d,opsi_e,jawaban,
+             essay_keywords,essay_min_words,media_type,media_url,media_alt,canvas_data,tingkat,created_by,is_active,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
         `).run(
-            id, mapel, String(jenis_ujian || 'CBT').trim(), String(soal).trim(),
-            String(opsi_a).trim(), String(opsi_b).trim(), String(opsi_c).trim(), String(opsi_d).trim(),
-            opsi_e ? String(opsi_e).trim() : null,
-            String(jawaban).toUpperCase(), String(tingkat || 'sedang').trim(), req.user.sub, now, now
+            id, mapel, q.jenis_ujian, q.question_type, q.soal,
+            q.opsi_a, q.opsi_b, q.opsi_c, q.opsi_d, q.opsi_e || null,
+            q.jawaban || null, q.essay_keywords || null, q.essay_min_words || 0,
+            q.media_type || null, q.media_url || null, q.media_alt || null, q.canvas_data || null,
+            q.tingkat || 'sedang', req.user.sub, now, now
         );
         return res.status(201).json({ success: true, message: 'Soal CBT berhasil ditambahkan.', data: { id } });
     } catch (err) {
@@ -357,16 +402,26 @@ router.put('/bank-soal/:id', authenticate, authorize(...STAFF), (req, res) => {
     const existing = db.prepare('SELECT id FROM bank_soal WHERE id = ?').get(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: 'Soal tidak ditemukan.' });
 
-    const allowed = ['mapel','jenis_ujian','soal','opsi_a','opsi_b','opsi_c','opsi_d','opsi_e','jawaban','tingkat','is_active'];
+    const allowed = [
+        'mapel','jenis_ujian','question_type','soal','opsi_a','opsi_b','opsi_c','opsi_d','opsi_e','jawaban',
+        'essay_keywords','essay_min_words','media_type','media_url','media_alt','canvas_data','tingkat','is_active'
+    ];
     const fields = [];
     const vals = { id: req.params.id, now: nowISO() };
     for (const key of allowed) {
         if (req.body[key] === undefined) continue;
         if (key === 'mapel' && !validateMapel(req.body[key])) return res.status(400).json({ success: false, message: 'Mapel tidak valid.' });
-        if (key === 'jawaban' && !['A','B','C','D','E'].includes(String(req.body[key]).toUpperCase())) {
+        if (key === 'question_type' && !VALID_QUESTION_TYPES.includes(req.body[key])) return res.status(400).json({ success: false, message: 'Tipe soal tidak valid.' });
+        if (key === 'media_type' && req.body[key] && !VALID_MEDIA_TYPES.includes(req.body[key])) return res.status(400).json({ success: false, message: 'Tipe media tidak valid.' });
+        if (key === 'jawaban' && req.body[key] !== null && req.body[key] !== '' && !['A','B','C','D','E'].includes(String(req.body[key]).toUpperCase())) {
             return res.status(400).json({ success: false, message: 'Jawaban harus A-E.' });
         }
-        vals[key] = key === 'jawaban' ? String(req.body[key]).toUpperCase() : req.body[key];
+        if (key === 'jawaban') vals[key] = req.body[key] ? String(req.body[key]).toUpperCase() : null;
+        else if (key === 'essay_keywords') vals[key] = normalizeKeywordList(req.body[key]);
+        else if (key === 'essay_min_words') vals[key] = Math.max(0, Math.min(parseInt(req.body[key]) || 0, 1000));
+        else if (key === 'media_url') vals[key] = cleanUrl(req.body[key]);
+        else if (key === 'canvas_data') vals[key] = cleanText(typeof req.body[key] === 'string' ? req.body[key] : JSON.stringify(req.body[key] || null), 8000);
+        else vals[key] = req.body[key];
         fields.push(`${key} = @${key}`);
     }
     if (!fields.length) return res.status(400).json({ success: false, message: 'Tidak ada perubahan.' });
@@ -966,7 +1021,8 @@ router.get('/soal/ujian/:mapel', (req, res) => {
         let rows = assignQuestionsIfNeeded(db, exam);
         if (!rows.length) {
             rows = db.prepare(`
-                SELECT id, soal, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e
+                SELECT id, soal, question_type, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e,
+                       media_type, media_url, media_alt, canvas_data, essay_min_words
                 FROM bank_soal
                 WHERE mapel = ? AND is_active = 1
                 ORDER BY RANDOM()
@@ -1015,43 +1071,76 @@ router.post('/submit', (req, res) => {
         const answerMap = new Map();
         for (const item of answers) {
             const qid = String(item.question_id || '').trim();
-            const jawaban = String(item.jawaban || '').toUpperCase();
-            if (qid && /^[A-E]$/.test(jawaban)) answerMap.set(qid, jawaban);
+            const jawaban = String(item.jawaban ?? '').trim();
+            if (qid && jawaban) answerMap.set(qid, jawaban);
         }
 
         let benar = 0;
         let salah = 0;
         let kosong = 0;
+        let essayCorrect = 0;
+        let essayPending = 0;
         const insertAnswer = db.prepare(`
-            INSERT INTO cbt_answers (id, exam_id, session_id, nisn, question_id, jawaban, is_correct, answered_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO cbt_answers (id, exam_id, session_id, nisn, question_id, jawaban, answer_type, is_correct, keyword_hits, answered_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(session_id, question_id) DO UPDATE SET
                 jawaban = excluded.jawaban,
+                answer_type = excluded.answer_type,
                 is_correct = excluded.is_correct,
+                keyword_hits = excluded.keyword_hits,
                 answered_at = excluded.answered_at
         `);
 
         const tx = db.transaction(() => {
             for (const q of questions) {
+                const type = q.question_type || 'multiple_choice';
                 const jawaban = answerMap.get(q.id) || null;
                 if (!jawaban) {
                     kosong++;
-                    insertAnswer.run(uuidv4(), session.exam_id || null, session.id, nisn, q.id, null, null, nowISO());
+                    insertAnswer.run(uuidv4(), session.exam_id || null, session.id, nisn, q.id, null, type, null, null, nowISO());
                     continue;
                 }
-                const isCorrect = jawaban === String(q.jawaban).toUpperCase() ? 1 : 0;
+                let normalizedAnswer = jawaban;
+                let isCorrect = 0;
+                let keywordHits = null;
+                if (type === 'essay') {
+                    const text = jawaban.toLowerCase().replace(/\s+/g, ' ').trim();
+                    const keywords = String(q.essay_keywords || '')
+                        .split(/[,;\n]/)
+                        .map(k => k.trim().toLowerCase())
+                        .filter(Boolean);
+                    const minWords = Math.max(0, parseInt(q.essay_min_words) || 0);
+                    const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+                    const hits = keywords.filter(k => text.includes(k));
+                    keywordHits = JSON.stringify({ required: keywords, hits, minWords, words });
+                    if (!keywords.length) {
+                        essayPending++;
+                        isCorrect = 0;
+                    } else {
+                        isCorrect = hits.length === keywords.length && words >= minWords ? 1 : 0;
+                        if (isCorrect) essayCorrect++;
+                    }
+                } else {
+                    normalizedAnswer = jawaban.toUpperCase();
+                    if (!/^[A-E]$/.test(normalizedAnswer)) {
+                        salah++;
+                        insertAnswer.run(uuidv4(), session.exam_id || null, session.id, nisn, q.id, jawaban, type, 0, null, nowISO());
+                        continue;
+                    }
+                    isCorrect = normalizedAnswer === String(q.jawaban).toUpperCase() ? 1 : 0;
+                }
                 if (isCorrect) benar++;
                 else salah++;
-                insertAnswer.run(uuidv4(), session.exam_id || null, session.id, nisn, q.id, jawaban, isCorrect, nowISO());
+                insertAnswer.run(uuidv4(), session.exam_id || null, session.id, nisn, q.id, normalizedAnswer, type, isCorrect, keywordHits, nowISO());
             }
 
             const total = questions.length;
             const nilai = total ? Math.round((benar / total) * 100) : 0;
             db.prepare('DELETE FROM cbt_results WHERE session_id = ?').run(session.id);
             db.prepare(`
-                INSERT INTO cbt_results (id, exam_id, session_id, nisn, mapel, benar, salah, kosong, nilai, selesai_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(uuidv4(), session.exam_id || null, session.id, nisn, session.mapel, benar, salah, kosong, nilai, nowISO());
+                INSERT INTO cbt_results (id, exam_id, session_id, nisn, mapel, benar, salah, kosong, nilai, essay_correct, essay_pending, selesai_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(uuidv4(), session.exam_id || null, session.id, nisn, session.mapel, benar, salah, kosong, nilai, essayCorrect, essayPending, nowISO());
             db.prepare(`
                 UPDATE cbt_sessions
                 SET used = 1, status = 'finished', end_time = ?, start_time = COALESCE(start_time, ?)
@@ -1065,7 +1154,7 @@ router.post('/submit', (req, res) => {
         return res.json({
             success: true,
             message: 'Jawaban berhasil dikumpulkan.',
-            data: { benar, salah, kosong, nilai, total, lulus: nilai >= 70 }
+            data: { benar, salah, kosong, nilai, total, essay_correct: essayCorrect, essay_pending: essayPending, lulus: nilai >= 70 }
         });
     } catch (err) {
         console.error('[CBT submit]', err.message);

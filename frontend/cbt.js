@@ -245,13 +245,37 @@ function renderQuestion() {
 
     document.getElementById('q-current').textContent = idx + 1;
 
-    // Teks soal
+    // Teks, media, dan area jawaban soal
     document.getElementById('q-text').innerHTML =
-        `<p>${escHtml(soal.soal)}</p>`;
+        `<p>${escHtml(soal.soal)}</p>${renderQuestionMedia(soal)}`;
+    renderCanvasMedia(document.getElementById('q-text'));
 
-    // Opsi
+    // Opsi / esai
     const container = document.getElementById('q-options');
     container.innerHTML = '';
+    if ((soal.question_type || 'multiple_choice') === 'essay') {
+        const saved = state.jawaban[idx] || '';
+        const minWords = Number(soal.essay_min_words || 0);
+        container.innerHTML = `
+            <div class="essay-answer">
+                <label for="essay-answer-${idx}">Jawaban Esai</label>
+                <textarea id="essay-answer-${idx}" rows="8" maxlength="4000" placeholder="Tulis jawaban esai dengan kalimat lengkap.">${escHtml(saved)}</textarea>
+                <div class="essay-meta"><span id="essay-words-${idx}">0 kata</span>${minWords ? `<span>Minimal ${minWords} kata</span>` : ''}</div>
+            </div>
+        `;
+        const textarea = document.getElementById(`essay-answer-${idx}`);
+        const updateWords = () => {
+            const text = textarea.value.trim();
+            state.jawaban[idx] = text;
+            const count = text ? text.split(/\s+/).filter(Boolean).length : 0;
+            document.getElementById(`essay-words-${idx}`).textContent = `${count} kata`;
+            setSaveStatus(text ? 'saved' : 'idle');
+            updateNavGrid();
+            updateExamProgress();
+        };
+        textarea.addEventListener('input', updateWords);
+        updateWords();
+    } else {
     soal.opsi.forEach((opt, i) => {
         const letter  = LETTERS[i];
         const isChosen= state.jawaban[idx] === letter;
@@ -263,6 +287,7 @@ function renderQuestion() {
         btn.addEventListener('click', () => selectAnswer(letter));
         container.appendChild(btn);
     });
+    }
 
     // Ragu-ragu
     document.getElementById('ragu-check').checked = state.raguList.has(idx);
@@ -276,6 +301,57 @@ function renderQuestion() {
     updateNavGrid();
     updateExamProgress();
     setSaveStatus(state.jawaban[idx] ? 'saved' : 'idle');
+}
+
+function renderQuestionMedia(soal) {
+    const type = soal.media_type;
+    const url = soal.media_url;
+    const alt = escHtml(soal.media_alt || 'Media soal');
+    if (type === 'image' && url) return `<figure class="question-media"><img src="${escHtml(url)}" alt="${alt}" loading="lazy"></figure>`;
+    if (type === 'audio' && url) return `<figure class="question-media"><audio controls preload="metadata" src="${escHtml(url)}"></audio></figure>`;
+    if (type === 'video' && url) return `<figure class="question-media"><video controls preload="metadata" src="${escHtml(url)}"></video></figure>`;
+    if (type === 'canvas' && soal.canvas_data) {
+        return `<figure class="question-media"><canvas class="question-canvas" data-canvas='${escHtml(JSON.stringify(soal.canvas_data))}' width="640" height="320"></canvas></figure>`;
+    }
+    return '';
+}
+
+function renderCanvasMedia(scope) {
+    scope?.querySelectorAll('.question-canvas').forEach(canvas => {
+        let data = null;
+        try { data = JSON.parse(canvas.dataset.canvas || 'null'); } catch { data = null; }
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= canvas.width; x += 32) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        }
+        for (let y = 0; y <= canvas.height; y += 32) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        }
+        if (data?.label) {
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '700 20px Sora, sans-serif';
+            ctx.fillText(String(data.label).slice(0, 80), 24, 42);
+        }
+        if (Array.isArray(data?.shapes)) {
+            data.shapes.slice(0, 40).forEach(shape => {
+                ctx.strokeStyle = shape.color || '#002244';
+                ctx.fillStyle = shape.fill || 'transparent';
+                ctx.lineWidth = Number(shape.width || 3);
+                if (shape.type === 'circle') {
+                    ctx.beginPath(); ctx.arc(Number(shape.x || 80), Number(shape.y || 80), Number(shape.r || 30), 0, Math.PI * 2); ctx.stroke();
+                } else if (shape.type === 'line') {
+                    ctx.beginPath(); ctx.moveTo(Number(shape.x1 || 0), Number(shape.y1 || 0)); ctx.lineTo(Number(shape.x2 || 120), Number(shape.y2 || 80)); ctx.stroke();
+                } else {
+                    ctx.strokeRect(Number(shape.x || 40), Number(shape.y || 60), Number(shape.w || 120), Number(shape.h || 70));
+                }
+            });
+        }
+    });
 }
 
 function selectAnswer(letter) {
@@ -514,6 +590,7 @@ async function submitExamToServer() {
     const answers = state.soalList.map((soal, i) => ({
         question_id: soal.id,
         jawaban: state.jawaban[i] || null,
+        answer_type: soal.question_type || 'multiple_choice',
     })).filter(item => item.question_id);
 
     const res = await fetch(`${CBT_API}/submit`, {
@@ -549,6 +626,9 @@ function renderResult(result) {
     document.getElementById('result-sub').textContent   = lulus
         ? `Nilaimu ${nilai} — Di atas KKM. Kerja bagus!`
         : `Nilaimu ${nilai} — Di bawah KKM (70). Tetap semangat!`;
+    if (result.essay_pending) {
+        document.getElementById('result-sub').textContent += ` ${result.essay_pending} esai belum punya kata kunci koreksi dari guru.`;
+    }
 
     document.getElementById('res-correct').textContent = benar;
     document.getElementById('res-wrong').textContent   = salah;
@@ -651,12 +731,22 @@ function updateEmergencyBadge() {
     badge.classList.toggle('hidden', emergencyChat.unread <= 0);
 }
 
-function addEmergencyMessage(message, type = 'system') {
+function addEmergencyMessage(message, type = 'system', senderName = '') {
     const feed = document.getElementById('emergency-feed');
     if (!feed) return;
+    const label = senderName || (type === 'me'
+        ? (state.siswa || state.nisn || 'Saya')
+        : type === 'admin'
+            ? 'Panitia CBT'
+            : type === 'announcement'
+                ? 'Administrator'
+                : 'Sistem');
     const item = document.createElement('div');
     item.className = `emergency-msg ${type}`;
-    item.innerHTML = escHtml(message || '');
+    item.innerHTML = `
+        <span class="emergency-sender">${escHtml(label)}</span>
+        <span class="emergency-text">${escHtml(message || '')}</span>
+    `;
     feed.appendChild(item);
     feed.scrollTop = feed.scrollHeight;
     if (!emergencyChat.open && ['admin', 'announcement'].includes(type)) {
@@ -684,7 +774,7 @@ function sendEmergencyMessage(event) {
         addEmergencyMessage('Pesan terlalu panjang. Maksimal 500 karakter.', 'system');
         return;
     }
-    addEmergencyMessage(message, 'me');
+    addEmergencyMessage(message, 'me', state.siswa || state.nisn || 'Saya');
     sendToAdmin({
         type: 'student_help',
         exam_id: state.examId,
@@ -738,10 +828,10 @@ function connectAdminSocket(studentData) {
                     case 'broadcast':
                     case 'announcement':
                         examLock._warn(`📢 ${msg.message}`);
-                        addEmergencyMessage(msg.message, 'announcement');
+                        addEmergencyMessage(msg.message, 'announcement', msg.sender_name || 'Administrator');
                         break;
                     case 'admin_reply':
-                        addEmergencyMessage(msg.message, 'admin');
+                        addEmergencyMessage(msg.message, 'admin', msg.sender_name || 'Panitia CBT');
                         break;
                     case 'student_help_ack':
                         markLastEmergencyMessageSent();

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="LMS SMKN 1 Terisi — Platform Belajar Digital">
     <meta name="auth-required" content="true">
-    <meta name="auth-roles" content="siswa,guru,wali_murid">
+    <meta name="auth-roles" content="siswa,wali_murid">
     <title>LMS | SMK Negeri 1 Terisi</title>
     <link rel="icon" type="image/png" href="asset/Logo SMK.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,7 +44,7 @@
             </div>
 
             <div class="lms-form-panel">
-                <a href="index.html" class="lms-back"><i class="fas fa-arrow-left"></i> Kembali</a>
+                <a href="/login.html" class="lms-back"><i class="fas fa-arrow-left"></i> Kembali ke Login Siswa</a>
                 <h3>Selamat Datang</h3>
                 <p class="form-sub">Masuk ke portal belajarmu</p>
 
@@ -55,6 +55,9 @@
                     </button>
                     <button class="role-btn" data-role="guru" onclick="setRole('guru',this)">
                         <i class="fas fa-chalkboard-teacher"></i> Guru
+                    </button>
+                    <button class="role-btn" data-role="tata_usaha" onclick="setRole('tata_usaha',this)">
+                        <i class="fas fa-briefcase"></i> Staff
                     </button>
                 </div>
 
@@ -123,8 +126,14 @@
                 <button class="snav-item" data-page="nilai" onclick="navigate('nilai',this)">
                     <i class="fas fa-chart-bar"></i><span>Nilai Saya</span>
                 </button>
+                <button class="snav-item" data-page="kantin" onclick="navigate('kantin',this)">
+                    <i class="fas fa-store"></i><span>Kantin ku</span>
+                </button>
                 <button class="snav-item" data-page="profil" onclick="navigate('profil',this)">
                     <i class="fas fa-id-card"></i><span>Profil & Biodata</span>
+                </button>
+                <button class="snav-item staff-only hidden" data-page="staff" onclick="navigate('staff',this)">
+                    <i class="fas fa-clipboard-list"></i><span>Ruang Staff</span>
                 </button>
                 <hr class="snav-hr">
                 <button class="snav-item" onclick="lmsLogout()">
@@ -239,6 +248,10 @@
                         <span class="service-icon orange"><i class="fas fa-user-plus"></i></span>
                         <span><strong>PPDB</strong><small>Informasi penerimaan siswa</small></span>
                     </a>
+                    <button class="service-tile" type="button" onclick="navigate('kantin', document.querySelector('[data-page=kantin]'))">
+                        <span class="service-icon teal"><i class="fas fa-store"></i></span>
+                        <span><strong>Kantin ku</strong><small>Jual, pesan, dan bayar jajanan siswa</small></span>
+                    </button>
                 </div>
 
                 <!-- Grid Beranda -->
@@ -332,6 +345,82 @@
             <div class="page-content" id="page-nilai">
                 <h2 class="page-title">Rekap Nilai</h2>
                 <div class="nilai-grid" id="nilai-grid"></div>
+            </div>
+
+            <!-- Page: KANTIN KU -->
+            <div class="page-content" id="page-kantin">
+                <h2 class="page-title">Kantin ku</h2>
+                <div class="kantin-layout">
+                    <section class="kantin-panel">
+                        <div class="kantin-head">
+                            <div>
+                                <h3>Pasar Siswa</h3>
+                                <p>Temukan dagangan teman sekolah dan pesan langsung dari penjualnya.</p>
+                            </div>
+                            <button class="small-action" onclick="fetchKantinProducts()"><i class="fas fa-rotate"></i> Refresh</button>
+                        </div>
+                        <div class="kantin-grid" id="kantin-products">
+                            <div class="staff-empty">Memuat produk kantin...</div>
+                        </div>
+                    </section>
+
+                    <section class="kantin-panel">
+                        <div class="kantin-head">
+                            <div>
+                                <h3>Jual Dagangan</h3>
+                                <p>Upload produk dengan harga jelas. Pembayaran e-money dicatat sebagai referensi transaksi.</p>
+                            </div>
+                        </div>
+                        <form class="kantin-form" id="kantin-form" onsubmit="createKantinProduct(event)">
+                            <label>Nama Produk
+                                <input id="kantin-name" type="text" maxlength="120" placeholder="Contoh: Risol Mayo" required>
+                            </label>
+                            <label>Deskripsi
+                                <textarea id="kantin-desc" maxlength="700" rows="3" placeholder="Bahan, ukuran, varian rasa, atau info stok."></textarea>
+                            </label>
+                            <div class="form-grid">
+                                <label>Harga
+                                    <input id="kantin-price" type="number" min="500" step="500" placeholder="5000" required>
+                                </label>
+                                <label>Stok
+                                    <input id="kantin-stock" type="number" min="0" step="1" value="1" required>
+                                </label>
+                            </div>
+                            <label>Nomor Chat Penjual
+                                <input id="kantin-chat" type="tel" maxlength="30" placeholder="08xxxxxxxxxx">
+                            </label>
+                            <label>Metode e-money
+                                <select id="kantin-emoney">
+                                    <option value="DANA">DANA</option>
+                                    <option value="OVO">OVO</option>
+                                    <option value="GoPay">GoPay</option>
+                                    <option value="ShopeePay">ShopeePay</option>
+                                    <option value="QRIS">QRIS</option>
+                                    <option value="Tunai">Tunai</option>
+                                </select>
+                            </label>
+                            <label>Nomor/ID e-money
+                                <input id="kantin-emoney-id" type="text" maxlength="80" placeholder="Nomor e-wallet atau catatan QRIS">
+                            </label>
+                            <label>URL Foto Produk
+                                <input id="kantin-image" type="url" maxlength="500" placeholder="https://...">
+                            </label>
+                            <button class="small-action primary" type="submit"><i class="fas fa-cloud-arrow-up"></i> Terbitkan Produk</button>
+                        </form>
+                    </section>
+
+                    <section class="kantin-panel">
+                        <div class="kantin-head">
+                            <div>
+                                <h3>Pesanan Saya</h3>
+                                <p>Riwayat pemesanan dari pasar siswa.</p>
+                            </div>
+                        </div>
+                        <div class="kantin-orders" id="kantin-orders">
+                            <div class="staff-empty">Belum ada pesanan.</div>
+                        </div>
+                    </section>
+                </div>
             </div>
 
             <!-- Page: PROFIL -->
@@ -449,6 +538,127 @@
                                 <i class="fas fa-save"></i> Simpan Profil
                             </button>
                         </form>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Page: STAFF / GURU -->
+            <div class="page-content" id="page-staff">
+                <div class="staff-hero">
+                    <div>
+                        <span class="staff-kicker">Ruang kerja guru & staff</span>
+                        <h2>Administrasi Siswa Terpadu</h2>
+                        <p>Kelola data akademik, tugas, materi, nilai, dan absensi dari satu tempat. Prioritas siswa otomatis dihitung dari kelengkapan data dan aktivitas akademik.</p>
+                    </div>
+                    <button class="staff-primary" onclick="fetchStaffStudents()"><i class="fas fa-rotate"></i> Refresh Data</button>
+                </div>
+
+                <div class="staff-insights">
+                    <div class="staff-insight-card"><span>Total Siswa</span><strong id="staff-total-students">-</strong><small>Terfilter saat ini</small></div>
+                    <div class="staff-insight-card warn"><span>Perlu Follow-up</span><strong id="staff-risk-students">-</strong><small>Nilai rendah / data minim</small></div>
+                    <div class="staff-insight-card"><span>Profil Belum Lengkap</span><strong id="staff-incomplete-students">-</strong><small>Kontak/kelas kosong</small></div>
+                    <div class="staff-insight-card blue"><span>CBT Terekam</span><strong id="staff-cbt-students">-</strong><small>Punya histori ujian</small></div>
+                </div>
+
+                <div class="staff-workspace">
+                    <section class="staff-panel">
+                        <div class="staff-panel-head">
+                            <div>
+                                <h3><i class="fas fa-users"></i> Radar Siswa</h3>
+                                <p>Cari siswa, buka detail, lalu lanjutkan input nilai/absensi tanpa pindah halaman.</p>
+                            </div>
+                        </div>
+                        <div class="staff-filter-row">
+                            <input id="staff-search" type="search" placeholder="Cari nama, NISN, email, atau kelas..." oninput="debouncedFetchStaffStudents()">
+                            <select id="staff-class-filter" onchange="fetchStaffStudents()">
+                                <option value="">Semua kelas</option>
+                            </select>
+                        </div>
+                        <div class="staff-student-list" id="staff-student-list">
+                            <p class="staff-empty">Memuat daftar siswa...</p>
+                        </div>
+                    </section>
+
+                    <section class="staff-panel staff-detail-panel">
+                        <div id="staff-detail-empty" class="staff-empty-state">
+                            <i class="fas fa-user-check"></i>
+                            <strong>Pilih siswa dari daftar</strong>
+                            <span>Detail nilai, absensi, tugas, dan CBT akan tampil di sini.</span>
+                        </div>
+                        <div id="staff-detail-panel" class="hidden">
+                            <div class="staff-detail-head">
+                                <div>
+                                    <h3 id="staff-detail-name">Nama Siswa</h3>
+                                    <p id="staff-detail-meta">-</p>
+                                </div>
+                                <button onclick="navigate('profil', document.querySelector('[data-page=profil]'));fetchProfil(lmsState.staffSelectedNisn || '')"><i class="fas fa-id-card"></i> Edit Biodata</button>
+                            </div>
+                            <div class="staff-detail-quick" id="staff-detail-quick"></div>
+                            <div class="staff-detail-body" id="staff-detail-body"></div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="staff-admin-grid">
+                    <section class="staff-panel">
+                        <div class="staff-panel-head"><h3><i class="fas fa-tasks"></i> Buat Tugas Kelas</h3></div>
+                        <div class="staff-form">
+                            <input id="staff-task-title" type="text" placeholder="Judul tugas">
+                            <div class="staff-form-grid">
+                                <input id="staff-task-mapel" type="text" placeholder="Mapel">
+                                <select id="staff-task-kelas"><option value="">Pilih kelas</option></select>
+                            </div>
+                            <input id="staff-task-deadline" type="datetime-local">
+                            <textarea id="staff-task-desc" rows="3" placeholder="Instruksi tugas"></textarea>
+                            <button onclick="createStaffTask()"><i class="fas fa-paper-plane"></i> Terbitkan Tugas</button>
+                        </div>
+                    </section>
+
+                    <section class="staff-panel">
+                        <div class="staff-panel-head"><h3><i class="fas fa-folder-open"></i> Upload Materi</h3></div>
+                        <div class="staff-form">
+                            <select id="staff-materi-kelas"><option value="">Pilih kelas/mapel target</option></select>
+                            <input id="staff-materi-file" type="file" accept=".pdf,.ppt,.pptx,.doc,.docx,.mp4,.jpg,.jpeg,.png">
+                            <button onclick="uploadStaffMateri()"><i class="fas fa-cloud-upload-alt"></i> Upload Materi</button>
+                        </div>
+                    </section>
+
+                    <section class="staff-panel">
+                        <div class="staff-panel-head"><h3><i class="fas fa-star"></i> Input Nilai Cepat</h3></div>
+                        <div class="staff-form">
+                            <input id="staff-grade-nisn" type="text" maxlength="10" placeholder="NISN siswa">
+                            <div class="staff-form-grid">
+                                <select id="staff-grade-semester">
+                                    <option value="ganjil">Ganjil</option>
+                                    <option value="genap">Genap</option>
+                                </select>
+                                <input id="staff-grade-mapel" type="text" placeholder="Mapel">
+                            </div>
+                            <div class="staff-form-grid four">
+                                <input id="staff-grade-uh" type="number" min="0" max="100" placeholder="UH">
+                                <input id="staff-grade-uts" type="number" min="0" max="100" placeholder="UTS">
+                                <input id="staff-grade-uas" type="number" min="0" max="100" placeholder="UAS">
+                                <input id="staff-grade-tugas" type="number" min="0" max="100" placeholder="Tugas">
+                            </div>
+                            <input id="staff-grade-kkm" type="number" min="0" max="100" value="70" placeholder="KKM">
+                            <button onclick="saveStaffGrade()"><i class="fas fa-save"></i> Simpan Nilai</button>
+                        </div>
+                    </section>
+
+                    <section class="staff-panel">
+                        <div class="staff-panel-head"><h3><i class="fas fa-calendar-check"></i> Absensi Cepat</h3></div>
+                        <div class="staff-form">
+                            <input id="staff-att-nisn" type="text" maxlength="10" placeholder="NISN siswa">
+                            <input id="staff-att-date" type="date">
+                            <select id="staff-att-status">
+                                <option value="hadir">Hadir</option>
+                                <option value="sakit">Sakit</option>
+                                <option value="izin">Izin</option>
+                                <option value="alpha">Alpha</option>
+                            </select>
+                            <input id="staff-att-note" type="text" placeholder="Keterangan opsional">
+                            <button onclick="saveStaffAttendance()"><i class="fas fa-check"></i> Simpan Absensi</button>
+                        </div>
                     </section>
                 </div>
             </div>

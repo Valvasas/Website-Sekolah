@@ -314,6 +314,10 @@
         .cbt-question-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
         .cbt-question-title{font-weight:800;color:var(--navy);font-size:.82rem;}
         .cbt-option-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+        .cbt-question-settings,.cbt-essay-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+        .cbt-question-card.is-essay .q-mc-fields{display:none;}
+        .cbt-question-card:not(.is-essay) .q-essay-fields{display:none;}
+        .q-canvas-data{grid-column:1/-1;min-height:68px;}
         .cbt-builder-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
         .cbt-live-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
         .cbt-live-grid{display:grid;gap:14px;}
@@ -361,6 +365,18 @@
         .history-table th,.history-table td{padding:8px;border-bottom:1px solid var(--border);text-align:left;}
         .history-table th{color:var(--muted);font-size:.68rem;text-transform:uppercase;}
         .selected{background:#f8fafc;}
+        .content-manager-grid{display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:16px;align-items:start;}
+        .content-preview-img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;border:1px solid var(--border);background:#f1f5f9;}
+        .content-list-title{font-weight:800;color:var(--navy);line-height:1.35;}
+        .content-list-meta{font-size:.7rem;color:var(--muted);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;}
+        .content-img-thumb{width:74px;aspect-ratio:4/3;object-fit:cover;border-radius:9px;border:1px solid var(--border);background:#f1f5f9;}
+        .content-actions{display:flex;gap:6px;flex-wrap:wrap;}
+        .form-group textarea{
+            padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;
+            font-family:'Sora',sans-serif;font-size:0.85rem;color:var(--navy);
+            outline:none;transition:var(--trans);resize:vertical;min-height:90px;
+        }
+        .form-group textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,175,55,0.15);}
 
         /* Pages */
         .page{display:none;}
@@ -370,7 +386,7 @@
         @media(max-width:900px){
             .stats-row{grid-template-columns:repeat(3,1fr);}
             .cbt-guide{grid-template-columns:1fr 1fr;}
-            .cbt-form-grid,.cbt-builder-head,.cbt-chat-panel,.student-data-grid{grid-template-columns:1fr;}
+            .cbt-form-grid,.cbt-builder-head,.cbt-chat-panel,.student-data-grid,.content-manager-grid{grid-template-columns:1fr;}
         }
         @media(max-width:768px){
             .sidebar{transform:translateX(-100%);}
@@ -380,6 +396,27 @@
             .stats-row{grid-template-columns:repeat(2,1fr);}
             .form-row{grid-template-columns:1fr;}
             .cbt-option-grid{grid-template-columns:1fr;}
+            .cbt-question-settings,.cbt-essay-grid{grid-template-columns:1fr;}
+            .topbar{padding:12px 14px;}
+            .content{padding:18px 14px;}
+            .toolbar,.cbt-live-toolbar,.cbt-builder-actions{align-items:stretch;display:grid;grid-template-columns:1fr;}
+            .toolbar .search-input,.toolbar .filter-select,.toolbar button,
+            .cbt-live-toolbar .search-input,.cbt-live-toolbar .filter-select,
+            .cbt-builder-actions button{width:100%;min-width:0!important;}
+            .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+            .data-table{min-width:720px;}
+            .content-manager-grid .card{min-width:0;}
+            .live-media{grid-template-columns:1fr;}
+            .live-student{min-width:0;}
+        }
+        @media(max-width:520px){
+            .stats-row{grid-template-columns:1fr;}
+            .topbar h1{font-size:1rem;}
+            .card-header{align-items:flex-start;flex-direction:column;}
+            .card-header button,.card-header .btn-primary,.card-header .btn-act,.card-header .btn-export{width:100%;}
+            .content-img-thumb{width:56px;}
+            .modal-box{width:calc(100vw - 20px);max-height:92vh;}
+            .form-actions{display:grid;grid-template-columns:1fr;gap:8px;}
         }
     </style>
 </head>
@@ -426,6 +463,9 @@
 
         <hr class="nav-divider">
         <span class="sb-section-label">Konten</span>
+        <button class="nav-item" data-nav-page="content" onclick="switchPage('content', this)">
+            <i class="fas fa-newspaper"></i> Konten Website
+        </button>
         <button class="nav-item" onclick="window.location.href='/index.html'">
             <i class="fas fa-globe"></i> Lihat Website
         </button>
@@ -599,6 +639,121 @@
         </div>
     </div>
 
+    <!-- ══ PAGE: KONTEN WEBSITE ══ -->
+    <div class="content page" id="page-content">
+        <div class="content-manager-grid">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-pen-to-square"></i> Form Konten Website</div>
+                    <button class="btn-act" onclick="resetWebsiteContentForm()"><i class="fas fa-plus"></i> Baru</button>
+                </div>
+                <div class="card-body">
+                    <form id="websiteContentForm" onsubmit="submitWebsiteContent(event)">
+                        <input type="hidden" id="wcId">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="wcType">Tipe *</label>
+                                <select id="wcType" required onchange="syncWebsiteContentHints()">
+                                    <option value="berita">Berita Sekolah</option>
+                                    <option value="galeri">Galeri Sekolah</option>
+                                    <option value="ppdb_info">Info PPDB</option>
+                                    <option value="info">Info Umum</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="wcPlacement">Placement</label>
+                                <input type="text" id="wcPlacement" placeholder="home, galeri, hero_ppdb">
+                            </div>
+                            <div class="form-group full">
+                                <label for="wcTitle">Judul *</label>
+                                <input type="text" id="wcTitle" maxlength="160" placeholder="Contoh: PPDB Gelombang 2 Dibuka" required>
+                            </div>
+                            <div class="form-group full">
+                                <label for="wcExcerpt">Ringkasan</label>
+                                <textarea id="wcExcerpt" rows="3" maxlength="400" placeholder="Ringkasan pendek yang tampil di card."></textarea>
+                            </div>
+                            <div class="form-group full">
+                                <label for="wcBody">Isi Detail</label>
+                                <textarea id="wcBody" rows="5" maxlength="5000" placeholder="Isi lengkap informasi. Hindari menaruh HTML mentah."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="wcCategory">Kategori</label>
+                                <select id="wcCategory">
+                                    <option value="">Umum</option>
+                                    <option value="akademik">Akademik</option>
+                                    <option value="eskul">Ekstrakurikuler</option>
+                                    <option value="prestasi">Prestasi</option>
+                                    <option value="fasilitas">Fasilitas</option>
+                                    <option value="umum">Umum</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="wcIcon">Icon FontAwesome</label>
+                                <input type="text" id="wcIcon" placeholder="fas fa-bullhorn">
+                            </div>
+                            <div class="form-group">
+                                <label for="wcLinkUrl">Link Tujuan</label>
+                                <input type="url" id="wcLinkUrl" placeholder="https://... atau /ppdb.html">
+                            </div>
+                            <div class="form-group">
+                                <label for="wcSortOrder">Urutan</label>
+                                <input type="number" id="wcSortOrder" value="0">
+                            </div>
+                            <div class="form-group full">
+                                <label for="wcImageFile">Upload Gambar</label>
+                                <input type="file" id="wcImageFile" accept="image/png,image/jpeg,image/webp" onchange="uploadWebsiteContentImage()">
+                            </div>
+                            <div class="form-group full">
+                                <label for="wcImageUrl">URL Gambar</label>
+                                <input type="text" id="wcImageUrl" placeholder="/uploads/website/file.webp atau /asset/foto.jpg" oninput="previewWebsiteContentImage()">
+                            </div>
+                            <div class="form-group full">
+                                <img id="wcImagePreview" class="content-preview-img" alt="Preview gambar konten" style="display:none;">
+                            </div>
+                            <div class="form-group">
+                                <label for="wcActive">Status</label>
+                                <select id="wcActive">
+                                    <option value="1">Aktif</option>
+                                    <option value="0">Draft / Nonaktif</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn-primary" type="submit" id="wcSubmitBtn"><i class="fas fa-save"></i> Simpan Konten</button>
+                    </form>
+                    <div class="cbt-quick-note"><strong>Catatan:</strong> konten aktif akan tersedia melalui API website. Galeri dan PPDB info otomatis bisa dipakai frontend tanpa ubah database manual.</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-layer-group"></i> Daftar Konten</div>
+                    <div class="toolbar" style="flex:1;justify-content:flex-end;">
+                        <select class="filter-select" id="wcFilterType" onchange="loadWebsiteContents()">
+                            <option value="">Semua tipe</option>
+                            <option value="berita">Berita</option>
+                            <option value="galeri">Galeri</option>
+                            <option value="ppdb_info">PPDB Info</option>
+                            <option value="info">Info Umum</option>
+                        </select>
+                        <input type="text" class="search-input" id="wcSearch" placeholder="Cari konten..." style="min-width:180px;flex:0 1 220px;" oninput="debounce(loadWebsiteContents, 400)()">
+                        <button class="btn-act" onclick="loadWebsiteContents()"><i class="fas fa-sync"></i></button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Konten</th><th>Tipe</th><th>Placement</th><th>Status</th><th>Aksi</th></tr>
+                        </thead>
+                        <tbody id="websiteContentTbody">
+                            <tr><td colspan="5" class="empty-cell">Memuat konten...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="websiteContentPagination"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- ══ PAGE: CBT ══ -->
     <div class="content page" id="page-cbt">
         <div class="card">
@@ -660,19 +815,36 @@
                         <option value="sejarah">Sejarah Indonesia</option>
                         <option value="produktif">Kompetensi Keahlian</option>
                     </select>
+                    <select class="filter-select" id="qType" onchange="syncQuickQuestionFields()">
+                        <option value="multiple_choice">Pilihan Ganda</option>
+                        <option value="essay">Esai</option>
+                    </select>
                     <input type="text" class="search-input" id="qSoal" placeholder="Tulis pertanyaan" style="min-width:260px;">
-                    <input type="text" class="search-input" id="qA" placeholder="Opsi A">
-                    <input type="text" class="search-input" id="qB" placeholder="Opsi B">
-                    <input type="text" class="search-input" id="qC" placeholder="Opsi C">
-                    <input type="text" class="search-input" id="qD" placeholder="Opsi D">
-                    <input type="text" class="search-input" id="qE" placeholder="Opsi E">
-                    <select class="filter-select" id="qJawaban">
+                    <input type="text" class="search-input q-mc-quick" id="qA" placeholder="Opsi A">
+                    <input type="text" class="search-input q-mc-quick" id="qB" placeholder="Opsi B">
+                    <input type="text" class="search-input q-mc-quick" id="qC" placeholder="Opsi C">
+                    <input type="text" class="search-input q-mc-quick" id="qD" placeholder="Opsi D">
+                    <input type="text" class="search-input q-mc-quick" id="qE" placeholder="Opsi E">
+                    <select class="filter-select q-mc-quick" id="qJawaban">
                         <option value="A">A</option>
                         <option value="B">B</option>
                         <option value="C">C</option>
                         <option value="D">D</option>
                         <option value="E">E</option>
                     </select>
+                    <input type="text" class="search-input q-essay-quick" id="qEssayKeywords" placeholder="Kata kunci esai, pisahkan koma" style="display:none;min-width:230px;">
+                    <input type="number" class="search-input q-essay-quick" id="qEssayMinWords" min="0" max="1000" value="0" placeholder="Minimal kata" style="display:none;max-width:130px;">
+                    <select class="filter-select" id="qMediaType">
+                        <option value="">Tanpa media</option>
+                        <option value="image">Gambar</option>
+                        <option value="audio">Audio</option>
+                        <option value="video">Video</option>
+                        <option value="canvas">Canvas</option>
+                    </select>
+                    <input type="file" class="search-input" id="qMediaFile" accept="image/png,image/jpeg,image/webp,audio/mpeg,audio/wav,audio/ogg,video/mp4,video/webm" onchange="uploadCbtQuestionMedia()" style="max-width:260px;">
+                    <input type="url" class="search-input" id="qMediaUrl" placeholder="URL media">
+                    <input type="text" class="search-input" id="qMediaAlt" placeholder="Alt/caption media">
+                    <textarea class="search-input" id="qCanvasData" rows="2" placeholder='Canvas JSON, contoh: {"label":"Diagram","shapes":[{"type":"circle","x":120,"y":90,"r":36}]}' style="min-width:300px;"></textarea>
                     <button class="btn-primary" onclick="createCbtQuestion()"><i class="fas fa-plus"></i> Tambah Soal</button>
                 </div>
             </div>
@@ -720,10 +892,10 @@
             <div class="table-wrap">
                 <table class="data-table">
                     <thead>
-                        <tr><th>Nama</th><th>NISN</th><th>Token</th><th>Status</th><th>Mulai</th><th>Selesai</th></tr>
+                        <tr><th>Nama</th><th>NISN</th><th>Token</th><th>Status</th><th>Mulai</th><th>Selesai</th><th>Aksi</th></tr>
                     </thead>
                     <tbody id="cbtTokensTbody">
-                        <tr><td colspan="6" class="empty-cell">Pilih sesi untuk melihat token.</td></tr>
+                        <tr><td colspan="7" class="empty-cell">Pilih sesi untuk melihat token.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -732,7 +904,10 @@
         <div class="card">
             <div class="card-header">
                 <div class="card-title"><i class="fas fa-eye"></i> Monitoring Sesi Terpilih</div>
-                <button class="btn-act" onclick="loadCbtMonitor(selectedCbtExam)"><i class="fas fa-sync"></i> Refresh Monitor</button>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn-act" onclick="loadCbtMonitor(selectedCbtExam)"><i class="fas fa-sync"></i> Refresh Monitor</button>
+                    <button class="btn-act del" onclick="forceFinishCbtExam()"><i class="fas fa-stop-circle"></i> Akhiri Semua</button>
+                </div>
             </div>
             <div class="card-body">
                 <div class="cbt-live-toolbar">
@@ -925,8 +1100,8 @@
    CONFIG & STATE
 ══════════════════════════════════════════ */
 const API   = '/api';
-let token   = localStorage.getItem('accessToken');
-let userData= JSON.parse(localStorage.getItem('userData') || '{}');
+let token   = localStorage.getItem('adminAccessToken') || localStorage.getItem('accessToken');
+let userData= JSON.parse(localStorage.getItem('adminUserData') || localStorage.getItem('userData') || '{}');
 let currentPage = 1;
 let logPage     = 1;
 let currentSection = 'dashboard';
@@ -940,6 +1115,8 @@ let cbtMessages = [];
 let studentRows = [];
 let studentPage = 1;
 let selectedStudentNisn = null;
+let websiteContentRows = [];
+let websiteContentPage = 1;
 let cbtMonitorSocket = null;
 let cbtMonitorTimer = null;
 let schoolClasses = [];
@@ -964,10 +1141,16 @@ let schoolClasses = [];
 })();
 
 function redirectToLogin() {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userData');
+    const adminToken = localStorage.getItem('adminAccessToken');
+    if (!adminToken || localStorage.getItem('accessToken') === adminToken) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userData');
+    }
+    localStorage.removeItem('adminAccessToken');
+    localStorage.removeItem('adminRefreshToken');
+    localStorage.removeItem('adminUserData');
     window.location.href = '/admin-panel/login.html';
 }
 
@@ -1003,11 +1186,11 @@ function initDashboard(user) {
 
 function rolePages(role) {
     const pages = {
-        super_admin: ['dashboard','users','students','cbt','auditlog'],
-        kepala_sekolah: ['dashboard','students','cbt'],
-        wakil_kepala_sekolah: ['dashboard','students','cbt'],
-        guru: ['dashboard','students','cbt'],
-        tata_usaha: ['dashboard','students','cbt']
+        super_admin: ['dashboard','users','students','content','cbt','auditlog'],
+        kepala_sekolah: ['dashboard','students','content','cbt'],
+        wakil_kepala_sekolah: ['dashboard','students','content','cbt'],
+        guru: ['dashboard','students','content','cbt'],
+        tata_usaha: ['dashboard','students','content','cbt']
     };
     return pages[role] || ['dashboard'];
 }
@@ -1047,7 +1230,7 @@ function switchPage(name, btn) {
     if (navBtn) navBtn.classList.add('active');
 
     currentSection = name;
-    const titles = { dashboard:'Dashboard', users:'Manajemen User', students:'Data Siswa', cbt:'CBT', auditlog:'Audit Log' };
+    const titles = { dashboard:'Dashboard', users:'Manajemen User', students:'Data Siswa', content:'Konten Website', cbt:'CBT', auditlog:'Audit Log' };
     document.getElementById('topbarTitle').textContent = titles[name] || 'Dashboard';
 
     if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
@@ -1055,6 +1238,7 @@ function switchPage(name, btn) {
     // Load data untuk page
     if (name === 'users')    loadUsers();
     if (name === 'students') loadStudentDirectory();
+    if (name === 'content')  loadWebsiteContents();
     if (name === 'cbt')      loadCbtDashboard();
     if (name === 'auditlog') loadAuditLogs();
     if (name === 'dashboard') loadDashboard();
@@ -1266,6 +1450,214 @@ function exportStudentData() {
 }
 
 /* ══════════════════════════════════════════
+   KONTEN WEBSITE ADMIN
+══════════════════════════════════════════ */
+function websiteContentTypeLabel(type) {
+    return {
+        berita: 'Berita Sekolah',
+        galeri: 'Galeri',
+        ppdb_info: 'Info PPDB',
+        info: 'Info Umum'
+    }[type] || type || '-';
+}
+
+function syncWebsiteContentHints() {
+    const type = document.getElementById('wcType')?.value || 'berita';
+    const placement = document.getElementById('wcPlacement');
+    const icon = document.getElementById('wcIcon');
+    const category = document.getElementById('wcCategory');
+    if (placement && !placement.value) {
+        placement.value = type === 'galeri' ? 'galeri'
+            : type === 'ppdb_info' ? 'hero_ppdb'
+            : type === 'berita' ? 'home'
+            : 'general';
+    }
+    if (icon && !icon.value) {
+        icon.value = type === 'ppdb_info' ? 'fas fa-clipboard-list'
+            : type === 'berita' ? 'fas fa-newspaper'
+            : type === 'galeri' ? 'fas fa-image'
+            : 'fas fa-circle-info';
+    }
+    if (category && type !== 'galeri' && !category.value) category.value = '';
+}
+
+function resetWebsiteContentForm() {
+    document.getElementById('websiteContentForm')?.reset();
+    document.getElementById('wcId').value = '';
+    document.getElementById('wcSortOrder').value = '0';
+    document.getElementById('wcActive').value = '1';
+    document.getElementById('wcSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Simpan Konten';
+    const preview = document.getElementById('wcImagePreview');
+    if (preview) { preview.style.display = 'none'; preview.removeAttribute('src'); }
+    syncWebsiteContentHints();
+}
+
+function previewWebsiteContentImage() {
+    const url = document.getElementById('wcImageUrl')?.value.trim();
+    const preview = document.getElementById('wcImagePreview');
+    if (!preview) return;
+    if (!url) {
+        preview.style.display = 'none';
+        preview.removeAttribute('src');
+        return;
+    }
+    preview.src = url;
+    preview.style.display = '';
+}
+
+async function uploadWebsiteContentImage() {
+    const input = document.getElementById('wcImageFile');
+    const file = input?.files?.[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append('image', file);
+    form.append('entity_type', 'website_contents');
+    try {
+        const res = await fetch(`${API}/upload/website`, {
+            method: 'POST',
+            headers: { Authorization:`Bearer ${token}` },
+            body: form
+        });
+        const data = await res.json();
+        if (!data.success) return showToast(data.message || 'Upload gambar gagal.', 'error');
+        document.getElementById('wcImageUrl').value = data.data.fileUrl;
+        previewWebsiteContentImage();
+        showToast('Gambar konten berhasil di-upload.', 'success');
+    } catch(e) {
+        showToast('Upload gambar gagal. Cek koneksi/server.', 'error');
+    } finally {
+        input.value = '';
+    }
+}
+
+function collectWebsiteContentPayload() {
+    return {
+        type: document.getElementById('wcType').value,
+        placement: document.getElementById('wcPlacement').value.trim() || 'general',
+        title: document.getElementById('wcTitle').value.trim(),
+        excerpt: document.getElementById('wcExcerpt').value.trim(),
+        body: document.getElementById('wcBody').value.trim(),
+        image_url: document.getElementById('wcImageUrl').value.trim(),
+        link_url: document.getElementById('wcLinkUrl').value.trim(),
+        category: document.getElementById('wcCategory').value || '',
+        icon: document.getElementById('wcIcon').value.trim(),
+        sort_order: parseInt(document.getElementById('wcSortOrder').value) || 0,
+        is_active: parseInt(document.getElementById('wcActive').value) || 0
+    };
+}
+
+async function submitWebsiteContent(event) {
+    event.preventDefault();
+    const id = document.getElementById('wcId').value;
+    const payload = collectWebsiteContentPayload();
+    if (!payload.title) return showToast('Judul konten wajib diisi.', 'error');
+    const btn = document.getElementById('wcSubmitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+    try {
+        const data = await apiFetch(id ? `/content/website/${id}` : '/content/website', id ? 'PUT' : 'POST', payload);
+        showToast(data.message || (data.success ? 'Konten tersimpan.' : 'Gagal menyimpan konten.'), data.success ? 'success' : 'error');
+        if (data.success) {
+            resetWebsiteContentForm();
+            await loadWebsiteContents();
+        }
+    } catch(e) {
+        showToast('Gagal menyimpan konten website.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Simpan Konten';
+    }
+}
+
+async function loadWebsiteContents(page = websiteContentPage) {
+    websiteContentPage = page;
+    const tbody = document.getElementById('websiteContentTbody');
+    if (!tbody) return;
+    const params = new URLSearchParams({ page, limit: 30 });
+    const type = document.getElementById('wcFilterType')?.value || '';
+    const search = document.getElementById('wcSearch')?.value || '';
+    if (type) params.set('type', type);
+    if (search) params.set('search', search);
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-cell"><i class="fas fa-spinner fa-spin"></i> Memuat konten...</td></tr>';
+    try {
+        const data = await apiFetch(`/content/website/all?${params}`);
+        if (!data.success) {
+            tbody.innerHTML = `<tr><td colspan="5" class="empty-cell">${escapeHtml(data.message || 'Gagal memuat konten.')}</td></tr>`;
+            return;
+        }
+        websiteContentRows = data.data.rows || [];
+        if (!websiteContentRows.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Belum ada konten. Tambahkan berita, galeri, atau info PPDB dari form kiri.</td></tr>';
+            document.getElementById('websiteContentPagination').innerHTML = '';
+            return;
+        }
+        tbody.innerHTML = websiteContentRows.map(item => `
+            <tr>
+                <td>
+                    <div style="display:flex;gap:12px;align-items:flex-start;min-width:260px;">
+                        ${item.image_url ? `<img class="content-img-thumb" src="${escapeAttr(item.image_url)}" alt="${escapeAttr(item.title)}">` : '<div class="content-img-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--muted);"><i class="fas fa-image"></i></div>'}
+                        <div style="min-width:0;">
+                            <div class="content-list-title">${escapeHtml(item.title)}</div>
+                            <div class="content-list-meta">
+                                <span>${escapeHtml(item.category || 'umum')}</span>
+                                <span>Urutan ${Number(item.sort_order || 0)}</span>
+                                ${item.link_url ? '<span>Link aktif</span>' : ''}
+                            </div>
+                            ${item.excerpt ? `<div style="font-size:.72rem;color:var(--muted);margin-top:5px;line-height:1.45;">${escapeHtml(item.excerpt)}</div>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td>${websiteContentTypeLabel(item.type)}</td>
+                <td>${escapeHtml(item.placement || '-')}</td>
+                <td><span class="badge ${item.is_active ? 'badge-active' : 'badge-inactive'}">${item.is_active ? 'Aktif' : 'Draft'}</span></td>
+                <td>
+                    <div class="content-actions">
+                        <button class="btn-act edit" onclick="editWebsiteContent('${item.id}')"><i class="fas fa-edit"></i> Edit</button>
+                        <button class="btn-act del" onclick="deleteWebsiteContent('${item.id}','${escapeAttr(item.title)}')"><i class="fas fa-trash"></i> Hapus</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+        renderPagination('websiteContentPagination', data.data.pagination, loadWebsiteContents);
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Gagal memuat konten website.</td></tr>';
+    }
+}
+
+function editWebsiteContent(id) {
+    const item = websiteContentRows.find(row => row.id === id);
+    if (!item) return;
+    document.getElementById('wcId').value = item.id;
+    document.getElementById('wcType').value = item.type || 'berita';
+    document.getElementById('wcPlacement').value = item.placement || '';
+    document.getElementById('wcTitle').value = item.title || '';
+    document.getElementById('wcExcerpt').value = item.excerpt || '';
+    document.getElementById('wcBody').value = item.body || '';
+    document.getElementById('wcCategory').value = item.category || '';
+    document.getElementById('wcIcon').value = item.icon || '';
+    document.getElementById('wcLinkUrl').value = item.link_url || '';
+    document.getElementById('wcSortOrder').value = Number(item.sort_order || 0);
+    document.getElementById('wcActive').value = item.is_active ? '1' : '0';
+    document.getElementById('wcImageUrl').value = item.image_url || '';
+    document.getElementById('wcSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Konten';
+    previewWebsiteContentImage();
+    window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function deleteWebsiteContent(id, title) {
+    document.getElementById('confirmTitle').textContent = 'Hapus Konten Website?';
+    document.getElementById('confirmMsg').textContent = `Konten "${title}" akan dihapus permanen dari daftar website.`;
+    document.getElementById('confirmOkBtn').style.background = 'var(--red)';
+    document.getElementById('confirmOkBtn').onclick = async () => {
+        closeModal('confirmModal');
+        const data = await apiFetch(`/content/website/${id}`, 'DELETE');
+        showToast(data.message || 'Konten dihapus.', data.success ? 'success' : 'error');
+        if (data.success) loadWebsiteContents();
+    };
+    openModal('confirmModal');
+}
+
+/* ══════════════════════════════════════════
    USERS TABLE
 ══════════════════════════════════════════ */
 async function loadUsers(page = currentPage) {
@@ -1344,6 +1736,7 @@ async function loadUsers(page = currentPage) {
 async function loadCbtDashboard() {
     await loadCbtKelas();
     if (!document.querySelector('#cbtQuestionBuilder .cbt-question-card')) addCbtBuilderQuestion();
+    syncQuickQuestionFields();
     await loadCbtQuestions();
     await loadCbtExams();
     connectCbtMonitorSocket();
@@ -1418,8 +1811,20 @@ function addCbtBuilderQuestion(data = {}) {
             <div class="cbt-question-title">Soal <span class="cbt-question-number">${index}</span></div>
             <button class="btn-act del" type="button" onclick="removeCbtBuilderQuestion('${id}')"><i class="fas fa-trash"></i></button>
         </div>
+        <div class="cbt-question-settings">
+            <select class="filter-select q-type" onchange="syncBuilderQuestionType(this.closest('.cbt-question-card'))" aria-label="Tipe soal">
+                <option value="multiple_choice" ${(data.question_type || 'multiple_choice') !== 'essay' ? 'selected' : ''}>Pilihan Ganda</option>
+                <option value="essay" ${data.question_type === 'essay' ? 'selected' : ''}>Esai</option>
+            </select>
+            <select class="filter-select q-media-type" aria-label="Tipe media">
+                <option value="" ${!data.media_type ? 'selected' : ''}>Tanpa media</option>
+                ${['image','audio','video','canvas'].map(type => `<option value="${type}" ${data.media_type === type ? 'selected' : ''}>${type}</option>`).join('')}
+            </select>
+            <input class="search-input q-media-url" type="url" placeholder="URL media" value="${escapeAttr(data.media_url || '')}">
+            <input class="search-input q-media-alt" type="text" placeholder="Alt/caption media" value="${escapeAttr(data.media_alt || '')}">
+        </div>
         <textarea class="search-input q-soal" rows="3" placeholder="Tulis pertanyaan...">${escapeHtml(data.soal || '')}</textarea>
-        <div class="cbt-option-grid">
+        <div class="cbt-option-grid q-mc-fields">
             <input class="search-input q-a" type="text" placeholder="Opsi A" value="${escapeAttr(data.opsi_a || '')}">
             <input class="search-input q-b" type="text" placeholder="Opsi B" value="${escapeAttr(data.opsi_b || '')}">
             <input class="search-input q-c" type="text" placeholder="Opsi C" value="${escapeAttr(data.opsi_c || '')}">
@@ -1429,9 +1834,21 @@ function addCbtBuilderQuestion(data = {}) {
                 ${['A','B','C','D','E'].map(letter => `<option value="${letter}" ${String(data.jawaban || 'A').toUpperCase() === letter ? 'selected' : ''}>Kunci ${letter}</option>`).join('')}
             </select>
         </div>
+        <div class="cbt-essay-grid q-essay-fields">
+            <input class="search-input q-keywords" type="text" placeholder="Kata kunci esai, pisahkan koma" value="${escapeAttr(Array.isArray(data.essay_keywords) ? data.essay_keywords.join(', ') : (data.essay_keywords || ''))}">
+            <input class="search-input q-min-words" type="number" min="0" max="1000" placeholder="Minimal kata" value="${Number(data.essay_min_words || 0)}">
+            <textarea class="search-input q-canvas-data" rows="2" placeholder='Canvas JSON opsional'>${escapeHtml(data.canvas_data ? JSON.stringify(data.canvas_data) : '')}</textarea>
+        </div>
     `;
     list.appendChild(card);
+    syncBuilderQuestionType(card);
     refreshCbtBuilderNumbers();
+}
+
+function syncBuilderQuestionType(card) {
+    if (!card) return;
+    const type = card.querySelector('.q-type')?.value || 'multiple_choice';
+    card.classList.toggle('is-essay', type === 'essay');
 }
 
 function removeCbtBuilderQuestion(id) {
@@ -1457,11 +1874,25 @@ function resetCbtBuilder() {
     addCbtBuilderQuestion();
 }
 
+function parseCanvasDataInput(raw, label = 'Canvas JSON') {
+    const text = String(raw || '').trim();
+    if (!text) return null;
+    try {
+        return JSON.parse(text);
+    } catch {
+        throw new Error(`${label} tidak valid. Pakai format JSON yang benar.`);
+    }
+}
+
 function collectCbtBuilderQuestions() {
     const cards = [...document.querySelectorAll('#cbtQuestionBuilder .cbt-question-card')];
     const questions = [];
     for (const [index, card] of cards.entries()) {
+        const questionType = card.querySelector('.q-type')?.value || 'multiple_choice';
+        const mediaType = card.querySelector('.q-media-type')?.value || '';
+        const canvasData = parseCanvasDataInput(card.querySelector('.q-canvas-data')?.value || '', `Soal ${index + 1}: Canvas JSON`);
         const q = {
+            question_type: questionType,
             soal: card.querySelector('.q-soal')?.value.trim() || '',
             opsi_a: card.querySelector('.q-a')?.value.trim() || '',
             opsi_b: card.querySelector('.q-b')?.value.trim() || '',
@@ -1469,16 +1900,30 @@ function collectCbtBuilderQuestions() {
             opsi_d: card.querySelector('.q-d')?.value.trim() || '',
             opsi_e: card.querySelector('.q-e')?.value.trim() || '',
             jawaban: card.querySelector('.q-jawaban')?.value || 'A',
+            essay_keywords: card.querySelector('.q-keywords')?.value.trim() || '',
+            essay_min_words: Number(card.querySelector('.q-min-words')?.value || 0),
+            media_type: mediaType || null,
+            media_url: card.querySelector('.q-media-url')?.value.trim() || null,
+            media_alt: card.querySelector('.q-media-alt')?.value.trim() || null,
+            canvas_data: canvasData,
             urutan: index + 1
         };
-        const touched = Object.values(q).some(v => String(v || '').trim()) && q.soal;
-        const anyField = [q.soal, q.opsi_a, q.opsi_b, q.opsi_c, q.opsi_d, q.opsi_e].some(Boolean);
+        const touched = [q.soal, q.opsi_a, q.opsi_b, q.opsi_c, q.opsi_d, q.opsi_e, q.essay_keywords, q.media_url, q.media_alt, card.querySelector('.q-canvas-data')?.value].some(v => String(v || '').trim()) && q.soal;
+        const anyField = [q.soal, q.opsi_a, q.opsi_b, q.opsi_c, q.opsi_d, q.opsi_e, q.essay_keywords, q.media_url, q.media_alt, card.querySelector('.q-canvas-data')?.value].some(Boolean);
         if (!anyField) continue;
-        if (!q.soal || !q.opsi_a || !q.opsi_b || !q.opsi_c || !q.opsi_d) {
-            throw new Error(`Soal ${index + 1}: pertanyaan dan opsi A-D wajib lengkap.`);
-        }
-        if (q.jawaban === 'E' && !q.opsi_e) {
-            throw new Error(`Soal ${index + 1}: opsi E wajib diisi karena kunci E.`);
+        if (!q.soal) throw new Error(`Soal ${index + 1}: pertanyaan wajib diisi.`);
+        if (mediaType === 'canvas' && !q.canvas_data) throw new Error(`Soal ${index + 1}: media canvas butuh Canvas JSON.`);
+        if (questionType === 'essay') {
+            if (!q.essay_keywords) throw new Error(`Soal ${index + 1}: kata kunci esai wajib diisi.`);
+            q.opsi_a = q.opsi_b = q.opsi_c = q.opsi_d = q.opsi_e = null;
+            q.jawaban = null;
+        } else {
+            if (!q.opsi_a || !q.opsi_b || !q.opsi_c || !q.opsi_d) {
+                throw new Error(`Soal ${index + 1}: pertanyaan dan opsi A-D wajib lengkap.`);
+            }
+            if (q.jawaban === 'E' && !q.opsi_e) {
+                throw new Error(`Soal ${index + 1}: opsi E wajib diisi karena kunci E.`);
+            }
         }
         if (touched) questions.push(q);
     }
@@ -1501,10 +1946,15 @@ async function loadCbtQuestions() {
             <tr>
                 <td>
                     <strong>${escapeHtml(q.soal)}</strong>
-                    <div style="font-size:0.7rem;color:var(--muted);">A. ${escapeHtml(q.opsi_a)} · B. ${escapeHtml(q.opsi_b)} · C. ${escapeHtml(q.opsi_c)} · D. ${escapeHtml(q.opsi_d)}${q.opsi_e ? ` · E. ${escapeHtml(q.opsi_e)}` : ''}</div>
+                    <div style="font-size:0.7rem;color:var(--muted);">
+                        ${(q.question_type || 'multiple_choice') === 'essay'
+                            ? `Esai · Kata kunci: ${escapeHtml(q.essay_keywords || '-')}${q.essay_min_words ? ` · Min ${q.essay_min_words} kata` : ''}`
+                            : `A. ${escapeHtml(q.opsi_a)} · B. ${escapeHtml(q.opsi_b)} · C. ${escapeHtml(q.opsi_c)} · D. ${escapeHtml(q.opsi_d)}${q.opsi_e ? ` · E. ${escapeHtml(q.opsi_e)}` : ''}`}
+                        ${q.media_type ? ` · Media: ${escapeHtml(q.media_type)}` : ''}
+                    </div>
                 </td>
                 <td>${formatMapel(q.mapel)}</td>
-                <td><strong>${escapeHtml(q.jawaban)}</strong></td>
+                <td><strong>${(q.question_type || 'multiple_choice') === 'essay' ? 'Esai' : escapeHtml(q.jawaban)}</strong></td>
                 <td><span class="badge ${q.is_active ? 'badge-active' : 'badge-inactive'}">${q.is_active ? 'Aktif' : 'Nonaktif'}</span></td>
                 <td>
                     <button class="btn-act edit" onclick="editCbtQuestion('${q.id}')"><i class="fas fa-edit"></i></button>
@@ -1517,9 +1967,50 @@ async function loadCbtQuestions() {
     }
 }
 
+function syncQuickQuestionFields() {
+    const isEssay = document.getElementById('qType')?.value === 'essay';
+    document.querySelectorAll('.q-mc-quick').forEach(el => el.style.display = isEssay ? 'none' : '');
+    document.querySelectorAll('.q-essay-quick').forEach(el => el.style.display = isEssay ? '' : 'none');
+}
+
+async function uploadCbtQuestionMedia() {
+    const input = document.getElementById('qMediaFile');
+    const file = input?.files?.[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append('file', file);
+    form.append('entity_type', 'cbt_question');
+    try {
+        const res = await fetch(`${API}/upload/cbt`, {
+            method: 'POST',
+            headers: { Authorization:`Bearer ${token}` },
+            body: form
+        });
+        const data = await res.json();
+        if (!data.success) return showToast(data.message || 'Upload media CBT gagal.', 'error');
+        document.getElementById('qMediaUrl').value = data.data.fileUrl;
+        document.getElementById('qMediaType').value = data.data.mediaType;
+        document.getElementById('qMediaAlt').value = file.name.replace(/\.[^.]+$/, '');
+        showToast('Media CBT berhasil di-upload.', 'success');
+    } catch {
+        showToast('Upload media CBT gagal. Cek koneksi/server.', 'error');
+    } finally {
+        if (input) input.value = '';
+    }
+}
+
 async function createCbtQuestion() {
+    const questionType = document.getElementById('qType')?.value || 'multiple_choice';
+    const mediaType = document.getElementById('qMediaType')?.value || '';
+    let canvasData = null;
+    try {
+        canvasData = parseCanvasDataInput(document.getElementById('qCanvasData')?.value || '', 'Canvas JSON');
+    } catch(e) {
+        return showToast(e.message, 'error');
+    }
     const payload = {
         mapel: document.getElementById('qMapel').value,
+        question_type: questionType,
         soal: document.getElementById('qSoal').value.trim(),
         opsi_a: document.getElementById('qA').value.trim(),
         opsi_b: document.getElementById('qB').value.trim(),
@@ -1527,17 +2018,36 @@ async function createCbtQuestion() {
         opsi_d: document.getElementById('qD').value.trim(),
         opsi_e: document.getElementById('qE').value.trim() || null,
         jawaban: document.getElementById('qJawaban').value,
+        essay_keywords: document.getElementById('qEssayKeywords')?.value.trim() || '',
+        essay_min_words: Number(document.getElementById('qEssayMinWords')?.value || 0),
+        media_type: mediaType || null,
+        media_url: document.getElementById('qMediaUrl')?.value.trim() || null,
+        media_alt: document.getElementById('qMediaAlt')?.value.trim() || null,
+        canvas_data: canvasData,
         jenis_ujian: 'CBT',
         tingkat: 'sedang'
     };
-    if (!payload.soal || !payload.opsi_a || !payload.opsi_b || !payload.opsi_c || !payload.opsi_d) {
+    if (!payload.soal) return showToast('Pertanyaan wajib diisi.', 'error');
+    if (mediaType === 'canvas' && !canvasData) return showToast('Media canvas butuh Canvas JSON.', 'error');
+    if (questionType === 'essay') {
+        if (!payload.essay_keywords) return showToast('Kata kunci esai wajib diisi.', 'error');
+        payload.opsi_a = payload.opsi_b = payload.opsi_c = payload.opsi_d = payload.opsi_e = null;
+        payload.jawaban = null;
+    } else if (!payload.opsi_a || !payload.opsi_b || !payload.opsi_c || !payload.opsi_d) {
         return showToast('Soal dan opsi A-D wajib diisi.', 'error');
     }
     try {
         const data = await apiFetch('/cbt/bank-soal', 'POST', payload);
         showToast(data.message || 'Soal ditambahkan.', data.success ? 'success' : 'error');
         if (data.success) {
-            ['qSoal','qA','qB','qC','qD','qE'].forEach(id => document.getElementById(id).value = '');
+            ['qSoal','qA','qB','qC','qD','qE','qEssayKeywords','qMediaUrl','qMediaAlt','qCanvasData'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            const minWords = document.getElementById('qEssayMinWords');
+            if (minWords) minWords.value = '0';
+            const media = document.getElementById('qMediaType');
+            if (media) media.value = '';
             await loadCbtQuestions();
         }
     } catch(e) {
@@ -1548,15 +2058,75 @@ async function createCbtQuestion() {
 async function editCbtQuestion(id) {
     const q = cbtQuestionRows.find(item => item.id === id);
     if (!q) return;
+    const questionType = prompt('Tipe soal (multiple_choice / essay):', q.question_type || 'multiple_choice');
+    if (questionType === null) return;
+    const type = questionType.trim() === 'essay' ? 'essay' : 'multiple_choice';
     const soal = prompt('Edit pertanyaan:', q.soal);
     if (soal === null) return;
-    const jawaban = prompt('Jawaban benar (A-E):', q.jawaban);
-    if (jawaban === null) return;
+    const mediaType = prompt('Tipe media (kosong / image / audio / video / canvas):', q.media_type || '');
+    if (mediaType === null) return;
+    const mediaUrl = prompt('URL media:', q.media_url || '');
+    if (mediaUrl === null) return;
+    const mediaAlt = prompt('Alt/caption media:', q.media_alt || '');
+    if (mediaAlt === null) return;
+    const canvasRaw = prompt('Canvas JSON (opsional):', q.canvas_data ? JSON.stringify(q.canvas_data) : '');
+    if (canvasRaw === null) return;
+    let canvasData = null;
     try {
-        const data = await apiFetch(`/cbt/bank-soal/${id}`, 'PUT', {
-            soal: soal.trim(),
-            jawaban: jawaban.trim().toUpperCase()
+        canvasData = parseCanvasDataInput(canvasRaw, 'Canvas JSON');
+    } catch(e) {
+        return showToast(e.message, 'error');
+    }
+    if (!soal.trim()) return showToast('Pertanyaan wajib diisi.', 'error');
+    const payload = {
+        question_type: type,
+        soal: soal.trim(),
+        media_type: mediaType.trim() || null,
+        media_url: mediaUrl.trim() || null,
+        media_alt: mediaAlt.trim() || null,
+        canvas_data: canvasData
+    };
+    if (payload.media_type === 'canvas' && !payload.canvas_data) return showToast('Media canvas butuh Canvas JSON.', 'error');
+    if (type === 'essay') {
+        const keywords = prompt('Kata kunci esai, pisahkan koma:', q.essay_keywords || '');
+        if (keywords === null) return;
+        const minWords = prompt('Minimal kata:', q.essay_min_words || '0');
+        if (minWords === null) return;
+        if (!keywords.trim()) return showToast('Kata kunci esai wajib diisi.', 'error');
+        Object.assign(payload, {
+            opsi_a: null, opsi_b: null, opsi_c: null, opsi_d: null, opsi_e: null, jawaban: null,
+            essay_keywords: keywords.trim(),
+            essay_min_words: Number(minWords || 0)
         });
+    } else {
+        const opsiA = prompt('Opsi A:', q.opsi_a || '');
+        if (opsiA === null) return;
+        const opsiB = prompt('Opsi B:', q.opsi_b || '');
+        if (opsiB === null) return;
+        const opsiC = prompt('Opsi C:', q.opsi_c || '');
+        if (opsiC === null) return;
+        const opsiD = prompt('Opsi D:', q.opsi_d || '');
+        if (opsiD === null) return;
+        const opsiE = prompt('Opsi E (opsional):', q.opsi_e || '');
+        if (opsiE === null) return;
+        const jawaban = prompt('Jawaban benar (A-E):', q.jawaban || 'A');
+        if (jawaban === null) return;
+        if (!opsiA.trim() || !opsiB.trim() || !opsiC.trim() || !opsiD.trim()) {
+            return showToast('Opsi A-D wajib diisi untuk pilihan ganda.', 'error');
+        }
+        Object.assign(payload, {
+            opsi_a: opsiA.trim(),
+            opsi_b: opsiB.trim(),
+            opsi_c: opsiC.trim(),
+            opsi_d: opsiD.trim(),
+            opsi_e: opsiE.trim() || null,
+            jawaban: jawaban.trim().toUpperCase(),
+            essay_keywords: '',
+            essay_min_words: 0
+        });
+    }
+    try {
+        const data = await apiFetch(`/cbt/bank-soal/${id}`, 'PUT', payload);
         showToast(data.message || 'Soal diperbarui.', data.success ? 'success' : 'error');
         await loadCbtQuestions();
     } catch(e) {
@@ -1608,6 +2178,9 @@ async function loadCbtExams() {
                         ${e.status === 'open'
                             ? `<button class="btn-act del" onclick="setCbtStatus('${e.id}','closed')"><i class="fas fa-lock"></i> Tutup</button>`
                             : `<button class="btn-act active" onclick="setCbtStatus('${e.id}','open')"><i class="fas fa-unlock"></i> Buka</button>`}
+                        ${userData.role === 'super_admin' && e.status !== 'archived'
+                            ? `<button class="btn-act del" onclick="archiveCbtExam('${e.id}','${escapeAttr(e.title)}')"><i class="fas fa-box-archive"></i> Arsip</button>`
+                            : ''}
                     </div>
                 </td>
             </tr>
@@ -1678,6 +2251,18 @@ async function generateCbtTokens(examId) {
     }
 }
 
+async function archiveCbtExam(examId, title) {
+    if (!confirm(`Arsipkan sesi CBT "${title}"? Sesi arsip tidak bisa dibuka lagi.`)) return;
+    try {
+        const data = await apiFetch(`/cbt/exams/${examId}`, 'DELETE');
+        showToast(data.message || 'Sesi CBT diarsipkan.', data.success ? 'success' : 'error');
+        if (selectedCbtExam === examId) selectedCbtExam = null;
+        await loadCbtExams();
+    } catch(e) {
+        showToast('Gagal mengarsipkan sesi CBT.', 'error');
+    }
+}
+
 async function setCbtStatus(examId, status) {
     try {
         const data = await apiFetch(`/cbt/exams/${examId}/status`, 'PATCH', { status });
@@ -1698,12 +2283,12 @@ async function selectCbtExam(examId) {
 
 async function loadCbtTokens(examId) {
     const tbody = document.getElementById('cbtTokensTbody');
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-cell"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell"><i class="fas fa-spinner fa-spin"></i> Memuat...</td></tr>';
     try {
         const data = await apiFetch(`/cbt/exams/${examId}/tokens`);
         cbtTokenRows = data.data || [];
         if (!cbtTokenRows.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">Belum ada token. Klik tombol kunci pada sesi.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Belum ada token. Klik tombol kunci pada sesi.</td></tr>';
             return;
         }
         tbody.innerHTML = cbtTokenRows.map(t => `
@@ -1714,10 +2299,28 @@ async function loadCbtTokens(examId) {
                 <td>${t.used ? 'Selesai' : escapeHtml(t.status || 'issued')}</td>
                 <td>${t.start_time ? formatTime(t.start_time) : '-'}</td>
                 <td>${t.end_time ? formatTime(t.end_time) : '-'}</td>
+                <td>
+                    <button class="btn-act del" onclick="revokeCbtToken('${escapeAttr(t.token)}')" ${t.status === 'revoked' ? 'disabled' : ''}>
+                        <i class="fas fa-ban"></i> Revoke
+                    </button>
+                </td>
             </tr>
         `).join('');
     } catch(e) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">Gagal memuat token.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Gagal memuat token.</td></tr>';
+    }
+}
+
+async function revokeCbtToken(tokenValue) {
+    if (!selectedCbtExam) return showToast('Pilih sesi CBT dulu.', 'warning');
+    if (!confirm(`Invalidasi token ${tokenValue}? Siswa tidak bisa memakai token ini lagi.`)) return;
+    try {
+        const data = await apiFetch(`/cbt/token/${encodeURIComponent(tokenValue)}`, 'DELETE');
+        showToast(data.message || 'Token diinvalidasi.', data.success ? 'success' : 'error');
+        await loadCbtTokens(selectedCbtExam);
+        await loadCbtMonitor(selectedCbtExam);
+    } catch(e) {
+        showToast('Gagal invalidasi token.', 'error');
     }
 }
 
@@ -1908,6 +2511,8 @@ function openCbtStudentDetail(nisn) {
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
             <input class="search-input" id="cbtReplyText" placeholder="Balas kendala siswa ini..." style="flex:1;min-width:220px;">
             <button class="btn-primary" onclick="sendCbtReply('${escapeAttr(row.nisn)}')"><i class="fas fa-paper-plane"></i> Balas</button>
+            <button class="btn-act edit" onclick="sendCbtWarning('${escapeAttr(row.nisn)}')"><i class="fas fa-triangle-exclamation"></i> Warning</button>
+            <button class="btn-act del" onclick="kickCbtStudent('${escapeAttr(row.nisn)}')"><i class="fas fa-user-slash"></i> Kick</button>
         </div>
     `;
     openModal('cbtDetailModal');
@@ -1976,8 +2581,9 @@ async function sendCbtAnnouncement() {
     const input = document.getElementById('cbtAnnouncementText');
     const message = input.value.trim();
     if (!message) return showToast('Isi announcement tidak boleh kosong.', 'error');
+    const senderName = userData.nama || userData.nama_lengkap || userData.email || 'Panitia CBT';
     if (cbtMonitorSocket?.readyState === WebSocket.OPEN) {
-        cbtMonitorSocket.send(JSON.stringify({ type:'admin_broadcast', examId:selectedCbtExam, message }));
+        cbtMonitorSocket.send(JSON.stringify({ type:'admin_broadcast', examId:selectedCbtExam, message, senderName }));
     } else {
         await apiFetch(`/cbt/exams/${selectedCbtExam}/announcement`, 'POST', { message });
     }
@@ -1992,9 +2598,45 @@ function sendCbtReply(nisn) {
     if (!cbtMonitorSocket || cbtMonitorSocket.readyState !== WebSocket.OPEN) {
         return showToast('WebSocket belum tersambung. Coba beberapa detik lagi.', 'warning');
     }
-    cbtMonitorSocket.send(JSON.stringify({ type:'admin_reply', examId:selectedCbtExam, targetNisn:nisn, message }));
+    cbtMonitorSocket.send(JSON.stringify({
+        type:'admin_reply',
+        examId:selectedCbtExam,
+        targetNisn:nisn,
+        message,
+        senderName: userData.nama || userData.nama_lengkap || userData.email || 'Panitia CBT'
+    }));
     input.value = '';
     showToast('Balasan dikirim.', 'success');
+}
+
+function sendCbtWarning(nisn) {
+    const message = prompt('Isi peringatan untuk siswa:', 'Tetap fokus di halaman ujian dan jangan keluar aplikasi.');
+    if (message === null) return;
+    if (!message.trim()) return showToast('Isi warning tidak boleh kosong.', 'error');
+    if (!cbtMonitorSocket || cbtMonitorSocket.readyState !== WebSocket.OPEN) {
+        return showToast('WebSocket belum tersambung. Coba beberapa detik lagi.', 'warning');
+    }
+    cbtMonitorSocket.send(JSON.stringify({ type:'admin_warn', examId:selectedCbtExam, targetNisn:nisn, message:message.trim() }));
+    showToast('Warning dikirim.', 'success');
+}
+
+function kickCbtStudent(nisn) {
+    if (!confirm(`Keluarkan siswa ${nisn} dari sesi live?`)) return;
+    if (!cbtMonitorSocket || cbtMonitorSocket.readyState !== WebSocket.OPEN) {
+        return showToast('WebSocket belum tersambung. Coba beberapa detik lagi.', 'warning');
+    }
+    cbtMonitorSocket.send(JSON.stringify({ type:'admin_kick', examId:selectedCbtExam, targetNisn:nisn }));
+    showToast('Perintah kick dikirim.', 'success');
+}
+
+function forceFinishCbtExam() {
+    if (!selectedCbtExam) return showToast('Pilih sesi CBT dulu.', 'warning');
+    if (!confirm('Akhiri paksa semua peserta live pada sesi ini? Gunakan hanya saat ujian benar-benar selesai.')) return;
+    if (!cbtMonitorSocket || cbtMonitorSocket.readyState !== WebSocket.OPEN) {
+        return showToast('WebSocket belum tersambung. Coba beberapa detik lagi.', 'warning');
+    }
+    cbtMonitorSocket.send(JSON.stringify({ type:'admin_end_all', examId:selectedCbtExam }));
+    showToast('Perintah akhiri semua dikirim.', 'success');
 }
 
 function restartCbtMonitorPolling() {
@@ -2278,12 +2920,18 @@ function confirmActivate(id, nama) {
    LOGOUT
 ══════════════════════════════════════════ */
 async function handleLogout() {
-    const refreshToken = localStorage.getItem('refreshToken');
+    const refreshToken = localStorage.getItem('adminRefreshToken') || localStorage.getItem('refreshToken');
     await apiFetch('/auth/logout', 'POST', { refreshToken }).catch(() => {});
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userData');
+    const adminToken = localStorage.getItem('adminAccessToken');
+    if (!adminToken || localStorage.getItem('accessToken') === adminToken) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userData');
+    }
+    localStorage.removeItem('adminAccessToken');
+    localStorage.removeItem('adminRefreshToken');
+    localStorage.removeItem('adminUserData');
     window.location.href = '/admin-panel/login.html';
 }
 

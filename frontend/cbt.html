@@ -4,12 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="CBT Online SMKN 1 Terisi — Ujian Berbasis Komputer">
+    <meta name="auth-required" content="true">
+    <meta name="auth-roles" content="siswa">
     <title>CBT Online | SMK Negeri 1 Terisi</title>
     <link rel="icon" type="image/png" href="asset/Logo SMK.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="/auth-guard.js"></script>
     <link rel="stylesheet" href="cbt.css">
 </head>
 <body>
@@ -19,7 +22,7 @@
         <div class="login-bg" aria-hidden="true"></div>
 
         <div class="login-wrap">
-            <a href="index.html" class="back-link"><i class="fas fa-arrow-left"></i> Kembali ke Beranda</a>
+            <a href="LMS.html" class="back-link"><i class="fas fa-arrow-left"></i> Kembali ke LMS</a>
 
             <div class="login-card">
                 <div class="login-logo">
@@ -253,7 +256,7 @@
             </div>
 
             <div class="result-actions">
-                <a href="index.html" class="btn-secondary"><i class="fas fa-home"></i> Beranda</a>
+                <a href="LMS.html" class="btn-secondary"><i class="fas fa-home"></i> LMS Siswa</a>
                 <button class="btn-primary-cbt" onclick="window.print()"><i class="fas fa-print"></i> Cetak Hasil</button>
             </div>
         </div>
