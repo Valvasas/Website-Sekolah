@@ -1177,27 +1177,57 @@ function getNotifIcon(tipe) {
     }[tipe] || 'bullhorn';
 }
 
+function debounce(fn, wait = 300) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), wait);
+    };
+}
+
 /* ── Kantin ku ─────────────────────────────────────────────── */
+const kantinState = { profile: null, seller: null, products: [] };
+
+function switchKantinTab(tab) {
+    document.querySelectorAll('[data-kantin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.kantinTab === tab));
+    document.querySelectorAll('.kantin-section').forEach(section => section.classList.remove('active'));
+    document.getElementById(`kantin-section-${tab}`)?.classList.add('active');
+    if (tab === 'seller') {
+        fetchKantinProfile().catch(() => {});
+        fetchKantinSellerDashboard().catch(() => {});
+    }
+    if (tab === 'orders') fetchKantinOrders().catch(() => {});
+}
+
 async function fetchKantinProducts() {
     const el = document.getElementById('kantin-products');
     if (!el) return;
     el.innerHTML = '<div class="staff-empty">Memuat produk kantin...</div>';
     try {
-        const data = await apiFetch('/kantin/products');
+        const params = new URLSearchParams();
+        const search = document.getElementById('kantin-search')?.value.trim() || '';
+        const category = document.getElementById('kantin-category-filter')?.value || '';
+        if (search) params.set('search', search);
+        if (category) params.set('category', category);
+        const data = await apiFetch(`/kantin/products${params.toString() ? `?${params}` : ''}`);
         const products = data.success ? (data.data || []) : [];
+        kantinState.products = products;
+        kantinState.profile = data.profile || kantinState.profile;
         if (!products.length) {
             el.innerHTML = '<div class="staff-empty">Belum ada dagangan siswa. Jadilah penjual pertama.</div>';
             return;
         }
         el.innerHTML = products.map(p => `
             <article class="kantin-card">
-                <div class="kantin-photo" style="${p.image_url ? `background-image:url('${escAttr(p.image_url)}')` : ''}">
+                <button class="kantin-photo" type="button" onclick="previewKantinProduct('${escAttr(p.id)}')" style="${p.image_url ? `background-image:url('${escAttr(p.image_url)}')` : ''}">
                     ${p.image_url ? '' : '<i class="fas fa-bowl-food"></i>'}
-                </div>
+                </button>
                 <div class="kantin-info">
                     <strong>${escHtml(p.name)}</strong>
                     <span>${escHtml(p.description || 'Tanpa deskripsi')}</span>
+                    <small>${escHtml(p.category || 'produk')} ${p.tags ? `· ${escHtml(p.tags)}` : ''}</small>
                     <small>Penjual: ${escHtml(p.seller_name || 'Siswa')} ${p.seller_class ? `· ${escHtml(p.seller_class)}` : ''}</small>
+                    ${p.preference_score ? '<small><i class="fas fa-wand-magic-sparkles"></i> Cocok dengan minatmu</small>' : ''}
                 </div>
                 <div class="kantin-foot">
                     <b>${formatRupiah(p.price)}</b>
@@ -1212,6 +1242,73 @@ async function fetchKantinProducts() {
         `).join('');
     } catch (e) {
         el.innerHTML = '<div class="staff-empty">Gagal memuat Kantin ku.</div>';
+    }
+}
+
+async function fetchKantinProfile() {
+    const data = await apiFetch('/kantin/profile');
+    const profile = data.success ? (data.data || {}) : {};
+    kantinState.profile = profile;
+    document.getElementById('kantin-focus').value = profile.selling_focus || '';
+    document.getElementById('kantin-target').value = profile.target_market || '';
+    document.getElementById('kantin-hobbies').value = profile.hobbies || '';
+    document.getElementById('kantin-preferences').value = profile.preferences || '';
+    const payments = String(profile.payment_methods || '').split(',').map(v => v.trim());
+    document.querySelectorAll('#kantin-payment-checks input[type="checkbox"]').forEach(input => {
+        input.checked = payments.includes(input.value);
+    });
+}
+
+async function saveKantinProfile(event) {
+    event.preventDefault();
+    const payment_methods = [...document.querySelectorAll('#kantin-payment-checks input:checked')].map(i => i.value).join(', ');
+    const payload = {
+        selling_focus: document.getElementById('kantin-focus').value.trim(),
+        payment_methods,
+        target_market: document.getElementById('kantin-target').value.trim(),
+        hobbies: document.getElementById('kantin-hobbies').value.trim(),
+        preferences: document.getElementById('kantin-preferences').value.trim(),
+    };
+    const data = await apiFetch('/kantin/profile', { method:'PUT', body:JSON.stringify(payload) });
+    showToast(data.message || 'Profil Kantin diproses.', data.success ? 'green' : 'red');
+    if (data.success) fetchKantinProducts().catch(() => {});
+}
+
+async function fetchKantinSellerDashboard() {
+    const statsEl = document.getElementById('kantin-seller-stats');
+    const listEl = document.getElementById('kantin-my-products');
+    if (statsEl) statsEl.innerHTML = '<div class="staff-empty">Memuat statistik...</div>';
+    if (listEl) listEl.innerHTML = '<div class="staff-empty">Memuat postingan...</div>';
+    try {
+        const data = await apiFetch('/kantin/seller/dashboard');
+        const dashboard = data.success ? data.data : { products:[], orders:[], stats:{} };
+        kantinState.seller = dashboard;
+        const s = dashboard.stats || {};
+        if (statsEl) statsEl.innerHTML = [
+            ['Postingan', s.total_products || 0],
+            ['Produk Aktif', s.active_products || 0],
+            ['Pesanan', s.total_orders || 0],
+            ['Pending', s.pending_orders || 0],
+            ['Omzet', formatRupiah(s.gross_profit || 0)]
+        ].map(([label, value]) => `<div class="kantin-stat"><b>${escHtml(value)}</b><span>${escHtml(label)}</span></div>`).join('');
+        if (!dashboard.products?.length) {
+            if (listEl) listEl.innerHTML = '<div class="staff-empty">Belum ada postingan jualan.</div>';
+            return;
+        }
+        if (listEl) listEl.innerHTML = dashboard.products.map(p => `
+            <div class="kantin-order">
+                <strong>${escHtml(p.name)}</strong>
+                <span>${formatRupiah(p.price)} · Stok ${Number(p.stock || 0)} · ${escHtml(p.status || 'active')}</span>
+                <small>${escHtml(p.category || 'produk')} ${p.tags ? `· ${escHtml(p.tags)}` : ''}</small>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="small-action" onclick="editKantinProduct('${escAttr(p.id)}')"><i class="fas fa-pen"></i> Edit</button>
+                    <button class="small-action" onclick="archiveKantinProduct('${escAttr(p.id)}')"><i class="fas fa-box-archive"></i> Arsip</button>
+                </div>
+            </div>
+        `).join('');
+    } catch {
+        if (statsEl) statsEl.innerHTML = '<div class="staff-empty">Gagal memuat dashboard pedagang.</div>';
+        if (listEl) listEl.innerHTML = '<div class="staff-empty">Gagal memuat postingan.</div>';
     }
 }
 
@@ -1247,9 +1344,12 @@ async function fetchKantinOrders() {
 
 async function createKantinProduct(event) {
     event.preventDefault();
+    const editId = document.getElementById('kantin-product-id')?.value || '';
     const payload = {
         name: document.getElementById('kantin-name').value.trim(),
         description: document.getElementById('kantin-desc').value.trim(),
+        category: document.getElementById('kantin-category').value,
+        tags: document.getElementById('kantin-tags').value.trim(),
         price: Number(document.getElementById('kantin-price').value || 0),
         stock: Number(document.getElementById('kantin-stock').value || 0),
         chat_contact: document.getElementById('kantin-chat').value.trim(),
@@ -1259,15 +1359,102 @@ async function createKantinProduct(event) {
     };
     if (!payload.name || payload.price < 500) return showToast('Nama produk dan harga minimal Rp500 wajib diisi.', 'orange');
     try {
-        const data = await apiFetch('/kantin/products', { method: 'POST', body: JSON.stringify(payload) });
+        const data = await apiFetch(editId ? `/kantin/products/${encodeURIComponent(editId)}` : '/kantin/products', { method: editId ? 'PUT' : 'POST', body: JSON.stringify(payload) });
         showToast(data.message || 'Produk diproses.', data.success ? 'green' : 'red');
         if (data.success) {
-            document.getElementById('kantin-form').reset();
+            resetKantinProductForm();
             await fetchKantinProducts();
+            await fetchKantinSellerDashboard();
         }
     } catch {
         showToast('Gagal menerbitkan produk.', 'red');
     }
+}
+
+function editKantinProduct(id) {
+    const p = kantinState.seller?.products?.find(item => item.id === id);
+    if (!p) return;
+    document.getElementById('kantin-product-id').value = p.id;
+    document.getElementById('kantin-name').value = p.name || '';
+    document.getElementById('kantin-desc').value = p.description || '';
+    document.getElementById('kantin-category').value = p.category || 'makanan';
+    document.getElementById('kantin-tags').value = p.tags || '';
+    document.getElementById('kantin-price').value = Number(p.price || 0);
+    document.getElementById('kantin-stock').value = Number(p.stock || 0);
+    document.getElementById('kantin-chat').value = p.chat_contact || '';
+    document.getElementById('kantin-emoney').value = p.emoney_provider || 'DANA';
+    document.getElementById('kantin-emoney-id').value = p.emoney_account || '';
+    document.getElementById('kantin-image').value = p.image_url || '';
+    document.getElementById('kantin-submit-btn').innerHTML = '<i class="fas fa-save"></i> Update Produk';
+    previewKantinImage();
+}
+
+async function archiveKantinProduct(id) {
+    if (!confirm('Arsipkan produk ini dari pasar siswa?')) return;
+    const data = await apiFetch(`/kantin/products/${encodeURIComponent(id)}`, { method:'DELETE' });
+    showToast(data.message || 'Produk diproses.', data.success ? 'green' : 'red');
+    if (data.success) {
+        fetchKantinProducts().catch(() => {});
+        fetchKantinSellerDashboard().catch(() => {});
+    }
+}
+
+function resetKantinProductForm() {
+    document.getElementById('kantin-form')?.reset();
+    document.getElementById('kantin-product-id').value = '';
+    document.getElementById('kantin-submit-btn').innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Terbitkan Produk';
+    previewKantinImage();
+}
+
+async function uploadKantinImage() {
+    const input = document.getElementById('kantin-image-file');
+    const file = input?.files?.[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append('image', file);
+    form.append('entity_type', 'kantin_product');
+    try {
+        const res = await fetch(`${API}/upload/kantin`, {
+            method:'POST',
+            headers:{ Authorization:`Bearer ${token}` },
+            body:form
+        });
+        const data = await res.json();
+        if (!data.success) return showToast(data.message || 'Upload foto gagal.', 'red');
+        document.getElementById('kantin-image').value = data.data.fileUrl;
+        previewKantinImage();
+        showToast('Foto produk berhasil di-upload.', 'green');
+    } catch {
+        showToast('Upload foto gagal.', 'red');
+    } finally {
+        if (input) input.value = '';
+    }
+}
+
+function previewKantinImage() {
+    const img = document.getElementById('kantin-image-preview');
+    if (!img) return;
+    const url = document.getElementById('kantin-image')?.value.trim();
+    if (!url) {
+        img.style.display = 'none';
+        img.removeAttribute('src');
+        return;
+    }
+    img.src = url;
+    img.style.display = 'block';
+}
+
+function previewKantinPhoto(url, title = 'Foto produk') {
+    if (!url) return;
+    document.getElementById('modal-preview-title').textContent = title || 'Foto produk';
+    document.getElementById('modal-preview-body').innerHTML = `<img src="${escAttr(url)}" alt="${escAttr(title)}" style="width:100%;max-height:72vh;object-fit:contain;border-radius:12px;background:#f8fafc;">`;
+    openModal('modal-preview-media');
+}
+
+function previewKantinProduct(id) {
+    const product = kantinState.products.find(item => item.id === id) || kantinState.seller?.products?.find(item => item.id === id);
+    if (!product?.image_url) return;
+    previewKantinPhoto(product.image_url, product.name || 'Foto produk');
 }
 
 async function orderKantinProduct(id) {
@@ -1330,6 +1517,8 @@ function navigate(pageId, btn) {
     if (pageId === 'profil') fetchProfil(lmsState.targetNisn || '').catch(() => {});
     if (pageId === 'kantin') {
         fetchKantinProducts().catch(() => {});
+        fetchKantinProfile().catch(() => {});
+        fetchKantinSellerDashboard().catch(() => {});
         fetchKantinOrders().catch(() => {});
     }
     if (pageId === 'staff') fetchStaffStudents().catch(() => {});
@@ -1452,7 +1641,7 @@ function lmsLogout() {
 
 /* ── Helper functions ───────────────────────────────────────── */
 function escHtml(str) {
-    return String(str || '').replace(/[&<>"']/g, c =>
+    return String(str === undefined || str === null ? '' : str).replace(/[&<>"']/g, c =>
         ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[c])
     );
 }

@@ -319,6 +319,21 @@
         .cbt-question-card:not(.is-essay) .q-essay-fields{display:none;}
         .q-canvas-data{grid-column:1/-1;min-height:68px;}
         .cbt-builder-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+        .admin-fold{border:1.5px solid var(--border);border-radius:12px;background:#fff;overflow:hidden;}
+        .admin-fold summary{cursor:pointer;list-style:none;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:900;color:var(--navy);}
+        .admin-fold summary::-webkit-details-marker{display:none;}
+        .admin-fold summary span{font-size:.72rem;color:var(--muted);font-weight:700;}
+        .admin-fold[open] summary{border-bottom:1px solid var(--border);background:#f8fafc;}
+        .admin-fold-body{padding:14px;display:grid;gap:12px;}
+        .bank-material-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px;}
+        .bank-material-btn{border:1.5px solid var(--border);background:#fff;border-radius:10px;padding:10px;text-align:left;cursor:pointer;color:var(--navy);font-weight:800;display:grid;gap:4px;transition:var(--trans);}
+        .bank-material-btn span{font-size:.68rem;color:var(--muted);font-weight:700;}
+        .bank-material-btn.active,.bank-material-btn:hover{border-color:var(--gold);background:#fffbeb;}
+        .media-preview{display:none;border:1.5px dashed var(--border);border-radius:12px;background:#f8fafc;padding:10px;min-width:220px;max-width:360px;}
+        .media-preview.active{display:block;}
+        .media-preview img,.media-preview video{width:100%;max-height:220px;object-fit:contain;border-radius:9px;background:#0f172a;}
+        .media-preview audio{width:100%;}
+        .media-preview small{display:block;margin-top:6px;color:var(--muted);font-size:.7rem;line-height:1.45;}
         .cbt-live-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
         .cbt-live-grid{display:grid;gap:14px;}
         .live-class-group{display:grid;gap:10px;}
@@ -367,6 +382,13 @@
         .selected{background:#f8fafc;}
         .content-manager-grid{display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:16px;align-items:start;}
         .content-preview-img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;border:1px solid var(--border);background:#f1f5f9;}
+        .content-preview-shell{border:1.5px solid var(--border);border-radius:12px;background:#f8fafc;padding:12px;display:grid;gap:10px;}
+        .content-layout-preview{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+        .content-layout-preview .preview-media{aspect-ratio:16/9;background:#e2e8f0 center/cover;display:flex;align-items:center;justify-content:center;color:var(--muted);}
+        .content-layout-preview .preview-copy{padding:12px;display:grid;gap:6px;}
+        .content-layout-preview b{color:var(--navy);font-size:.9rem;}
+        .content-layout-preview p{color:var(--muted);font-size:.75rem;line-height:1.5;margin:0;}
+        .content-layout-preview a{color:var(--blue);font-size:.74rem;font-weight:800;text-decoration:none;}
         .content-list-title{font-weight:800;color:var(--navy);line-height:1.35;}
         .content-list-meta{font-size:.7rem;color:var(--muted);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;}
         .content-img-thumb{width:74px;aspect-ratio:4/3;object-fit:cover;border-radius:9px;border:1px solid var(--border);background:#f1f5f9;}
@@ -662,23 +684,33 @@
                             </div>
                             <div class="form-group">
                                 <label for="wcPlacement">Placement</label>
-                                <input type="text" id="wcPlacement" placeholder="home, galeri, hero_ppdb">
+                                <select id="wcPlacement" onchange="renderWebsiteContentPreview()">
+                                    <option value="home">Beranda / Home</option>
+                                    <option value="hero_home">Hero Beranda</option>
+                                    <option value="galeri">Galeri</option>
+                                    <option value="hero_ppdb">Hero PPDB</option>
+                                    <option value="ppdb">Halaman PPDB</option>
+                                    <option value="akademik">Akademik</option>
+                                    <option value="kesiswaan">Kesiswaan</option>
+                                    <option value="jurusan">Jurusan</option>
+                                    <option value="general">Umum</option>
+                                </select>
                             </div>
                             <div class="form-group full">
                                 <label for="wcTitle">Judul *</label>
-                                <input type="text" id="wcTitle" maxlength="160" placeholder="Contoh: PPDB Gelombang 2 Dibuka" required>
+                                <input type="text" id="wcTitle" maxlength="160" placeholder="Contoh: PPDB Gelombang 2 Dibuka" required oninput="renderWebsiteContentPreview()">
                             </div>
                             <div class="form-group full">
                                 <label for="wcExcerpt">Ringkasan</label>
-                                <textarea id="wcExcerpt" rows="3" maxlength="400" placeholder="Ringkasan pendek yang tampil di card."></textarea>
+                                <textarea id="wcExcerpt" rows="3" maxlength="400" placeholder="Ringkasan pendek yang tampil di card." oninput="renderWebsiteContentPreview()"></textarea>
                             </div>
                             <div class="form-group full">
                                 <label for="wcBody">Isi Detail</label>
-                                <textarea id="wcBody" rows="5" maxlength="5000" placeholder="Isi lengkap informasi. Hindari menaruh HTML mentah."></textarea>
+                                <textarea id="wcBody" rows="5" maxlength="5000" placeholder="Isi lengkap informasi. Link boleh ditempel sebagai teks biasa, sistem akan tetap menyanitasi data."></textarea>
                             </div>
                             <div class="form-group">
                                 <label for="wcCategory">Kategori</label>
-                                <select id="wcCategory">
+                                <select id="wcCategory" onchange="renderWebsiteContentPreview()">
                                     <option value="">Umum</option>
                                     <option value="akademik">Akademik</option>
                                     <option value="eskul">Ekstrakurikuler</option>
@@ -693,7 +725,26 @@
                             </div>
                             <div class="form-group">
                                 <label for="wcLinkUrl">Link Tujuan</label>
-                                <input type="url" id="wcLinkUrl" placeholder="https://... atau /ppdb.html">
+                                <select id="wcLinkUrl" onchange="syncWebsiteCustomLink();renderWebsiteContentPreview()">
+                                    <option value="">Tanpa link</option>
+                                    <option value="/index.html">Beranda</option>
+                                    <option value="/profil.html">Profil</option>
+                                    <option value="/akademik.html">Akademik</option>
+                                    <option value="/kesiswaan.html">Kesiswaan</option>
+                                    <option value="/fasilitas.html">Fasilitas</option>
+                                    <option value="/galeri.html">Galeri</option>
+                                    <option value="/ppdb.html">PPDB</option>
+                                    <option value="/panduan.html">Panduan</option>
+                                    <option value="/LMS.html">LMS</option>
+                                    <option value="/cbt.html">CBT</option>
+                                    <option value="/SKL.html">SKL</option>
+                                    <option value="/jurusan-tkj.html">Jurusan TKJ</option>
+                                    <option value="/jurusan-akl.html">Jurusan AKL</option>
+                                    <option value="/jurusan-tbsm.html">Jurusan TBSM</option>
+                                    <option value="/jurusan-atph.html">Jurusan ATPH</option>
+                                    <option value="custom">Link custom...</option>
+                                </select>
+                                <input type="url" id="wcCustomLinkUrl" placeholder="https://... atau /nama-halaman.html" style="display:none;margin-top:8px;" oninput="renderWebsiteContentPreview()">
                             </div>
                             <div class="form-group">
                                 <label for="wcSortOrder">Urutan</label>
@@ -709,6 +760,20 @@
                             </div>
                             <div class="form-group full">
                                 <img id="wcImagePreview" class="content-preview-img" alt="Preview gambar konten" style="display:none;">
+                            </div>
+                            <div class="form-group full">
+                                <label>Preview Layout</label>
+                                <div class="content-preview-shell">
+                                    <div class="content-layout-preview" id="wcLayoutPreview">
+                                        <div class="preview-media"><i class="fas fa-image"></i></div>
+                                        <div class="preview-copy">
+                                            <b>Judul konten</b>
+                                            <p>Ringkasan konten akan muncul di sini.</p>
+                                            <a href="#" onclick="return false;">Tanpa link</a>
+                                        </div>
+                                    </div>
+                                    <button class="btn-act" type="button" onclick="openWebsiteContentPreview()"><i class="fas fa-eye"></i> Lihat Detail Preview</button>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label for="wcActive">Status</label>
@@ -800,14 +865,20 @@
             </div>
         </div>
 
-        <div class="card">
+        <details class="admin-fold" id="cbtBankFold">
+            <summary>
+                <div><i class="fas fa-folder-tree"></i> Bank Soal CBT & CRUD</div>
+                <span>Disembunyikan default agar panel admin tetap bersih</span>
+            </summary>
+        <div class="card" style="border:0;box-shadow:none;border-radius:0;">
             <div class="card-header">
-                <div class="card-title"><i class="fas fa-question-circle"></i> Bank Soal CBT</div>
+                <div class="card-title"><i class="fas fa-question-circle"></i> Tambah Soal Berdasarkan Materi</div>
                 <button class="btn-act" onclick="loadCbtQuestions()"><i class="fas fa-sync"></i> Refresh Soal</button>
             </div>
             <div class="card-body">
+                <div class="bank-material-grid" id="bankMaterialGrid"></div>
                 <div class="toolbar">
-                    <select class="filter-select" id="qMapel" onchange="loadCbtQuestions()">
+                    <select class="filter-select" id="qMapel" onchange="renderBankMaterialGrid();loadCbtQuestions()">
                         <option value="matematika">Matematika</option>
                         <option value="bindo">Bahasa Indonesia</option>
                         <option value="basing">Bahasa Inggris</option>
@@ -834,7 +905,7 @@
                     </select>
                     <input type="text" class="search-input q-essay-quick" id="qEssayKeywords" placeholder="Kata kunci esai, pisahkan koma" style="display:none;min-width:230px;">
                     <input type="number" class="search-input q-essay-quick" id="qEssayMinWords" min="0" max="1000" value="0" placeholder="Minimal kata" style="display:none;max-width:130px;">
-                    <select class="filter-select" id="qMediaType">
+                    <select class="filter-select" id="qMediaType" onchange="previewCbtQuestionMedia()">
                         <option value="">Tanpa media</option>
                         <option value="image">Gambar</option>
                         <option value="audio">Audio</option>
@@ -842,11 +913,14 @@
                         <option value="canvas">Canvas</option>
                     </select>
                     <input type="file" class="search-input" id="qMediaFile" accept="image/png,image/jpeg,image/webp,audio/mpeg,audio/wav,audio/ogg,video/mp4,video/webm" onchange="uploadCbtQuestionMedia()" style="max-width:260px;">
-                    <input type="url" class="search-input" id="qMediaUrl" placeholder="URL media">
-                    <input type="text" class="search-input" id="qMediaAlt" placeholder="Alt/caption media">
+                    <input type="url" class="search-input" id="qMediaUrl" placeholder="URL media" oninput="previewCbtQuestionMedia()">
+                    <input type="text" class="search-input" id="qMediaAlt" placeholder="Alt/caption/video notes media">
                     <textarea class="search-input" id="qCanvasData" rows="2" placeholder='Canvas JSON, contoh: {"label":"Diagram","shapes":[{"type":"circle","x":120,"y":90,"r":36}]}' style="min-width:300px;"></textarea>
-                    <button class="btn-primary" onclick="createCbtQuestion()"><i class="fas fa-plus"></i> Tambah Soal</button>
+                    <div class="media-preview" id="qMediaPreview"></div>
+                    <button class="btn-primary" id="qSubmitBtn" onclick="createCbtQuestion()"><i class="fas fa-plus"></i> Tambah Soal</button>
+                    <button class="btn-act" id="qCancelEditBtn" onclick="resetCbtQuestionForm()" style="display:none;"><i class="fas fa-xmark"></i> Batal Edit</button>
                 </div>
+                <div class="cbt-quick-note"><strong>Catatan media:</strong> gambar/video akan tampil juga di ruang pengerjaan siswa. Kolom alt/caption bisa dipakai sebagai catatan video agar guru tahu konteks media yang dipasang.</div>
             </div>
             <div class="table-wrap">
                 <table class="data-table">
@@ -859,6 +933,7 @@
                 </table>
             </div>
         </div>
+        </details>
 
         <div class="card">
             <div class="card-header">
@@ -1092,6 +1167,19 @@
     </div>
 </div>
 
+<!-- ══ MODAL: PREVIEW ADMIN ══ -->
+<div class="modal-overlay" id="adminPreviewModal">
+    <div class="modal-box" style="max-width:760px;">
+        <div class="modal-header">
+            <span id="adminPreviewTitle">Preview</span>
+            <button class="modal-close" onclick="closeModal('adminPreviewModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" id="adminPreviewBody">
+            <div class="empty-cell">Belum ada preview.</div>
+        </div>
+    </div>
+</div>
+
 <!-- Toast container -->
 <div class="toast-wrap" id="toastWrap"></div>
 
@@ -1109,6 +1197,7 @@ let selectedCbtExam = null;
 let cbtTokenRows = [];
 let cbtResultRows = [];
 let cbtQuestionRows = [];
+let cbtEditingQuestionId = null;
 let cbtLiveRows = [];
 let cbtMonitorExam = null;
 let cbtMessages = [];
@@ -1443,10 +1532,10 @@ function renderStudentHistoryTable(title, headers, rows) {
 
 function exportStudentData() {
     if (!studentRows.length) return showToast('Tidak ada data siswa untuk diexport.', 'warning');
-    downloadCSV([
+    downloadExcelTable([
         ['Nama','NISN','Email','HP','Kelas','Jurusan','Total Ujian','Total Nilai'],
         ...studentRows.map(s => [s.nama_lengkap, s.nisn, s.email || '', s.no_hp || '', s.kelas || '', s.jurusan || '', s.total_ujian || 0, s.total_nilai || 0])
-    ], `data_siswa_${new Date().toISOString().slice(0,10)}.csv`);
+    ], `data_siswa_${new Date().toISOString().slice(0,10)}.xls`, 'Rekap Data Siswa');
 }
 
 /* ══════════════════════════════════════════
@@ -1479,6 +1568,7 @@ function syncWebsiteContentHints() {
             : 'fas fa-circle-info';
     }
     if (category && type !== 'galeri' && !category.value) category.value = '';
+    renderWebsiteContentPreview();
 }
 
 function resetWebsiteContentForm() {
@@ -1486,10 +1576,13 @@ function resetWebsiteContentForm() {
     document.getElementById('wcId').value = '';
     document.getElementById('wcSortOrder').value = '0';
     document.getElementById('wcActive').value = '1';
+    const customLink = document.getElementById('wcCustomLinkUrl');
+    if (customLink) { customLink.value = ''; customLink.style.display = 'none'; }
     document.getElementById('wcSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Simpan Konten';
     const preview = document.getElementById('wcImagePreview');
     if (preview) { preview.style.display = 'none'; preview.removeAttribute('src'); }
     syncWebsiteContentHints();
+    renderWebsiteContentPreview();
 }
 
 function previewWebsiteContentImage() {
@@ -1503,6 +1596,77 @@ function previewWebsiteContentImage() {
     }
     preview.src = url;
     preview.style.display = '';
+    renderWebsiteContentPreview();
+}
+
+function syncWebsiteCustomLink() {
+    const select = document.getElementById('wcLinkUrl');
+    const custom = document.getElementById('wcCustomLinkUrl');
+    if (!select || !custom) return;
+    custom.style.display = select.value === 'custom' ? '' : 'none';
+    if (select.value !== 'custom') custom.value = '';
+}
+
+function getWebsiteContentLinkValue() {
+    const select = document.getElementById('wcLinkUrl');
+    const custom = document.getElementById('wcCustomLinkUrl');
+    return select?.value === 'custom' ? (custom?.value.trim() || '') : (select?.value || '');
+}
+
+function setWebsiteContentLinkValue(value = '') {
+    const select = document.getElementById('wcLinkUrl');
+    const custom = document.getElementById('wcCustomLinkUrl');
+    if (!select || !custom) return;
+    const exists = [...select.options].some(opt => opt.value === value);
+    if (value && !exists) {
+        select.value = 'custom';
+        custom.value = value;
+    } else {
+        select.value = value || '';
+        custom.value = '';
+    }
+    syncWebsiteCustomLink();
+}
+
+function renderWebsiteContentPreview() {
+    const box = document.getElementById('wcLayoutPreview');
+    if (!box) return;
+    const title = document.getElementById('wcTitle')?.value.trim() || 'Judul konten';
+    const excerpt = document.getElementById('wcExcerpt')?.value.trim() || 'Ringkasan konten akan muncul di sini.';
+    const image = document.getElementById('wcImageUrl')?.value.trim() || '';
+    const link = getWebsiteContentLinkValue();
+    const placement = document.getElementById('wcPlacement')?.value || 'general';
+    box.innerHTML = `
+        <div class="preview-media" style="${image ? `background-image:url('${escapeAttr(image)}')` : ''}">
+            ${image ? '' : '<i class="fas fa-image"></i>'}
+        </div>
+        <div class="preview-copy">
+            <small style="color:var(--muted);font-weight:800;text-transform:uppercase;">${escapeHtml(placement)}</small>
+            <b>${escapeHtml(title)}</b>
+            <p>${escapeHtml(excerpt)}</p>
+            <a href="#" onclick="return false;">${link ? escapeHtml(link) : 'Tanpa link'}</a>
+        </div>
+    `;
+}
+
+function openWebsiteContentPreview() {
+    const payload = collectWebsiteContentPayload();
+    document.getElementById('adminPreviewTitle').textContent = 'Preview Konten Website';
+    document.getElementById('adminPreviewBody').innerHTML = `
+        <div class="content-layout-preview">
+            <div class="preview-media" style="${payload.image_url ? `background-image:url('${escapeAttr(payload.image_url)}')` : ''}">
+                ${payload.image_url ? '' : '<i class="fas fa-image"></i>'}
+            </div>
+            <div class="preview-copy">
+                <small style="color:var(--muted);font-weight:800;text-transform:uppercase;">${escapeHtml(websiteContentTypeLabel(payload.type))} · ${escapeHtml(payload.placement)}</small>
+                <b>${escapeHtml(payload.title || 'Judul konten')}</b>
+                <p>${escapeHtml(payload.excerpt || payload.body || 'Belum ada ringkasan.')}</p>
+                ${payload.link_url ? `<a href="${escapeAttr(payload.link_url)}" target="_blank" rel="noopener">${escapeHtml(payload.link_url)}</a>` : '<a href="#" onclick="return false;">Tanpa link</a>'}
+            </div>
+        </div>
+        ${payload.image_url ? `<button class="btn-act" style="margin-top:12px;" onclick="openMediaPreview('${escapeAttr(payload.image_url)}','image','${escapeAttr(payload.title || 'Gambar konten')}')"><i class="fas fa-magnifying-glass-plus"></i> Perbesar Gambar</button>` : ''}
+    `;
+    openModal('adminPreviewModal');
 }
 
 async function uploadWebsiteContentImage() {
@@ -1538,7 +1702,7 @@ function collectWebsiteContentPayload() {
         excerpt: document.getElementById('wcExcerpt').value.trim(),
         body: document.getElementById('wcBody').value.trim(),
         image_url: document.getElementById('wcImageUrl').value.trim(),
-        link_url: document.getElementById('wcLinkUrl').value.trim(),
+        link_url: getWebsiteContentLinkValue(),
         category: document.getElementById('wcCategory').value || '',
         icon: document.getElementById('wcIcon').value.trim(),
         sort_order: parseInt(document.getElementById('wcSortOrder').value) || 0,
@@ -1595,7 +1759,7 @@ async function loadWebsiteContents(page = websiteContentPage) {
             <tr>
                 <td>
                     <div style="display:flex;gap:12px;align-items:flex-start;min-width:260px;">
-                        ${item.image_url ? `<img class="content-img-thumb" src="${escapeAttr(item.image_url)}" alt="${escapeAttr(item.title)}">` : '<div class="content-img-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--muted);"><i class="fas fa-image"></i></div>'}
+                        ${item.image_url ? `<img class="content-img-thumb" src="${escapeAttr(item.image_url)}" alt="${escapeAttr(item.title)}" onclick="openWebsiteContentImage('${item.id}')" style="cursor:zoom-in;">` : '<div class="content-img-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--muted);"><i class="fas fa-image"></i></div>'}
                         <div style="min-width:0;">
                             <div class="content-list-title">${escapeHtml(item.title)}</div>
                             <div class="content-list-meta">
@@ -1612,6 +1776,7 @@ async function loadWebsiteContents(page = websiteContentPage) {
                 <td><span class="badge ${item.is_active ? 'badge-active' : 'badge-inactive'}">${item.is_active ? 'Aktif' : 'Draft'}</span></td>
                 <td>
                     <div class="content-actions">
+                        <button class="btn-act" onclick="previewWebsiteContentRow('${item.id}')"><i class="fas fa-eye"></i> Preview</button>
                         <button class="btn-act edit" onclick="editWebsiteContent('${item.id}')"><i class="fas fa-edit"></i> Edit</button>
                         <button class="btn-act del" onclick="deleteWebsiteContent('${item.id}','${escapeAttr(item.title)}')"><i class="fas fa-trash"></i> Hapus</button>
                     </div>
@@ -1635,13 +1800,41 @@ function editWebsiteContent(id) {
     document.getElementById('wcBody').value = item.body || '';
     document.getElementById('wcCategory').value = item.category || '';
     document.getElementById('wcIcon').value = item.icon || '';
-    document.getElementById('wcLinkUrl').value = item.link_url || '';
+    setWebsiteContentLinkValue(item.link_url || '');
     document.getElementById('wcSortOrder').value = Number(item.sort_order || 0);
     document.getElementById('wcActive').value = item.is_active ? '1' : '0';
     document.getElementById('wcImageUrl').value = item.image_url || '';
     document.getElementById('wcSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Konten';
     previewWebsiteContentImage();
+    renderWebsiteContentPreview();
     window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function previewWebsiteContentRow(id) {
+    const item = websiteContentRows.find(row => row.id === id);
+    if (!item) return;
+    document.getElementById('adminPreviewTitle').textContent = item.title || 'Preview Konten';
+    document.getElementById('adminPreviewBody').innerHTML = `
+        <div class="content-layout-preview">
+            <div class="preview-media" style="${item.image_url ? `background-image:url('${escapeAttr(item.image_url)}')` : ''}">
+                ${item.image_url ? '' : '<i class="fas fa-image"></i>'}
+            </div>
+            <div class="preview-copy">
+                <small style="color:var(--muted);font-weight:800;text-transform:uppercase;">${escapeHtml(websiteContentTypeLabel(item.type))} · ${escapeHtml(item.placement || 'general')}</small>
+                <b>${escapeHtml(item.title || '-')}</b>
+                <p>${escapeHtml(item.excerpt || item.body || 'Belum ada deskripsi.')}</p>
+                ${item.link_url ? `<a href="${escapeAttr(item.link_url)}" target="_blank" rel="noopener">${escapeHtml(item.link_url)}</a>` : '<a href="#" onclick="return false;">Tanpa link</a>'}
+            </div>
+        </div>
+        ${item.body ? `<div style="margin-top:12px;color:var(--text);font-size:.84rem;line-height:1.65;white-space:pre-wrap;">${escapeHtml(item.body)}</div>` : ''}
+    `;
+    openModal('adminPreviewModal');
+}
+
+function openWebsiteContentImage(id) {
+    const item = websiteContentRows.find(row => row.id === id);
+    if (!item?.image_url) return;
+    openMediaPreview(item.image_url, 'image', item.title || 'Gambar konten');
 }
 
 function deleteWebsiteContent(id, title) {
@@ -1735,8 +1928,10 @@ async function loadUsers(page = currentPage) {
 ══════════════════════════════════════════ */
 async function loadCbtDashboard() {
     await loadCbtKelas();
+    renderBankMaterialGrid();
     if (!document.querySelector('#cbtQuestionBuilder .cbt-question-card')) addCbtBuilderQuestion();
     syncQuickQuestionFields();
+    previewCbtQuestionMedia();
     await loadCbtQuestions();
     await loadCbtExams();
     connectCbtMonitorSocket();
@@ -1794,8 +1989,41 @@ function syncCbtBuilderMapel() {
     const qMapel = document.getElementById('qMapel');
     if (qMapel && mapel) {
         qMapel.value = mapel;
+        renderBankMaterialGrid();
         loadCbtQuestions();
     }
+}
+
+function getMapelOptions() {
+    return [
+        ['matematika', 'Matematika'],
+        ['bindo', 'Bahasa Indonesia'],
+        ['basing', 'Bahasa Inggris'],
+        ['pkk', 'PKK'],
+        ['sejarah', 'Sejarah Indonesia'],
+        ['produktif', 'Kompetensi Keahlian']
+    ];
+}
+
+function renderBankMaterialGrid() {
+    const grid = document.getElementById('bankMaterialGrid');
+    if (!grid) return;
+    const active = document.getElementById('qMapel')?.value || document.getElementById('cbtMapel')?.value || 'matematika';
+    grid.innerHTML = getMapelOptions().map(([value, label]) => {
+        return `<button type="button" class="bank-material-btn ${active === value ? 'active' : ''}" onclick="selectBankMaterial('${value}')">
+            ${escapeHtml(label)}
+            <span>${active === value ? `${cbtQuestionRows.filter(q => q.is_active).length} soal aktif` : 'pilih materi'}</span>
+        </button>`;
+    }).join('');
+}
+
+function selectBankMaterial(mapel) {
+    const qMapel = document.getElementById('qMapel');
+    const cbtMapel = document.getElementById('cbtMapel');
+    if (qMapel) qMapel.value = mapel;
+    if (cbtMapel) cbtMapel.value = mapel;
+    renderBankMaterialGrid();
+    loadCbtQuestions();
 }
 
 function addCbtBuilderQuestion(data = {}) {
@@ -1938,6 +2166,7 @@ async function loadCbtQuestions() {
     try {
         const data = await apiFetch(`/cbt/bank-soal?mapel=${encodeURIComponent(mapel)}&limit=100`);
         cbtQuestionRows = data.data?.questions || [];
+        renderBankMaterialGrid();
         if (!cbtQuestionRows.length) {
             tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Belum ada soal untuk mapel ini. Tambahkan soal dulu sebelum membuat sesi.</td></tr>';
             return;
@@ -1946,6 +2175,8 @@ async function loadCbtQuestions() {
             <tr>
                 <td>
                     <strong>${escapeHtml(q.soal)}</strong>
+                    ${q.media_type === 'image' && q.media_url ? `<div style="margin:8px 0;"><img class="content-img-thumb" src="${escapeAttr(q.media_url)}" alt="${escapeAttr(q.media_alt || q.soal)}" onclick="openCbtQuestionMediaPreview('${q.id}')" style="cursor:zoom-in;"></div>` : ''}
+                    ${q.media_type === 'video' && q.media_url ? `<div style="margin:8px 0;"><button class="btn-act" onclick="openCbtQuestionMediaPreview('${q.id}')"><i class="fas fa-play"></i> Preview video</button></div>` : ''}
                     <div style="font-size:0.7rem;color:var(--muted);">
                         ${(q.question_type || 'multiple_choice') === 'essay'
                             ? `Esai · Kata kunci: ${escapeHtml(q.essay_keywords || '-')}${q.essay_min_words ? ` · Min ${q.essay_min_words} kata` : ''}`
@@ -1971,6 +2202,7 @@ function syncQuickQuestionFields() {
     const isEssay = document.getElementById('qType')?.value === 'essay';
     document.querySelectorAll('.q-mc-quick').forEach(el => el.style.display = isEssay ? 'none' : '');
     document.querySelectorAll('.q-essay-quick').forEach(el => el.style.display = isEssay ? '' : 'none');
+    previewCbtQuestionMedia();
 }
 
 async function uploadCbtQuestionMedia() {
@@ -1991,12 +2223,74 @@ async function uploadCbtQuestionMedia() {
         document.getElementById('qMediaUrl').value = data.data.fileUrl;
         document.getElementById('qMediaType').value = data.data.mediaType;
         document.getElementById('qMediaAlt').value = file.name.replace(/\.[^.]+$/, '');
+        previewCbtQuestionMedia({ name:file.name, size:file.size });
         showToast('Media CBT berhasil di-upload.', 'success');
     } catch {
         showToast('Upload media CBT gagal. Cek koneksi/server.', 'error');
     } finally {
         if (input) input.value = '';
     }
+}
+
+function previewCbtQuestionMedia(fileMeta = null) {
+    const box = document.getElementById('qMediaPreview');
+    if (!box) return;
+    const type = document.getElementById('qMediaType')?.value || '';
+    const url = document.getElementById('qMediaUrl')?.value.trim() || '';
+    const alt = document.getElementById('qMediaAlt')?.value.trim() || 'Preview media soal';
+    if (!type || (!url && type !== 'canvas')) {
+        box.classList.remove('active');
+        box.innerHTML = '';
+        return;
+    }
+    box.classList.add('active');
+    const meta = fileMeta ? ` · ${(fileMeta.size / 1024 / 1024).toFixed(2)} MB` : '';
+    if (type === 'image') {
+        box.innerHTML = `<img src="${escapeAttr(url)}" alt="${escapeAttr(alt)}"><small>${escapeHtml(alt)}${meta}. Pastikan objek utama tetap terbaca di layar HP.</small>`;
+    } else if (type === 'video') {
+        box.innerHTML = `<video controls preload="metadata" src="${escapeAttr(url)}"></video><small>${escapeHtml(alt)}${meta}. Caption ini dipakai sebagai video notes untuk guru dan siswa.</small>`;
+    } else if (type === 'audio') {
+        box.innerHTML = `<audio controls preload="metadata" src="${escapeAttr(url)}"></audio><small>${escapeHtml(alt)}${meta}</small>`;
+    } else if (type === 'canvas') {
+        box.innerHTML = '<small>Canvas akan dirender dari JSON. Pakai Preview di ruang CBT siswa untuk validasi akhir.</small>';
+    }
+}
+
+function openMediaPreview(url, type = 'image', caption = '') {
+    document.getElementById('adminPreviewTitle').textContent = caption || 'Preview Media';
+    const body = document.getElementById('adminPreviewBody');
+    if (type === 'video') {
+        body.innerHTML = `<video controls autoplay style="width:100%;max-height:70vh;border-radius:12px;background:#0f172a;" src="${escapeAttr(url)}"></video><p style="margin-top:10px;color:var(--muted);font-size:.82rem;">${escapeHtml(caption || '')}</p>`;
+    } else {
+        body.innerHTML = `<img src="${escapeAttr(url)}" alt="${escapeAttr(caption || 'Preview gambar')}" style="width:100%;max-height:72vh;object-fit:contain;border-radius:12px;background:#f8fafc;"><p style="margin-top:10px;color:var(--muted);font-size:.82rem;">${escapeHtml(caption || '')}</p>`;
+    }
+    openModal('adminPreviewModal');
+}
+
+function openCbtQuestionMediaPreview(id) {
+    const q = cbtQuestionRows.find(item => item.id === id);
+    if (!q?.media_url) return;
+    openMediaPreview(q.media_url, q.media_type || 'image', q.media_alt || q.soal || 'Media soal');
+}
+
+function resetCbtQuestionForm() {
+    cbtEditingQuestionId = null;
+    ['qSoal','qA','qB','qC','qD','qE','qEssayKeywords','qMediaUrl','qMediaAlt','qCanvasData'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    const minWords = document.getElementById('qEssayMinWords');
+    if (minWords) minWords.value = '0';
+    const qType = document.getElementById('qType');
+    if (qType) qType.value = 'multiple_choice';
+    const media = document.getElementById('qMediaType');
+    if (media) media.value = '';
+    const btn = document.getElementById('qSubmitBtn');
+    if (btn) btn.innerHTML = '<i class="fas fa-plus"></i> Tambah Soal';
+    const cancel = document.getElementById('qCancelEditBtn');
+    if (cancel) cancel.style.display = 'none';
+    syncQuickQuestionFields();
+    previewCbtQuestionMedia();
 }
 
 async function createCbtQuestion() {
@@ -2037,17 +2331,12 @@ async function createCbtQuestion() {
         return showToast('Soal dan opsi A-D wajib diisi.', 'error');
     }
     try {
-        const data = await apiFetch('/cbt/bank-soal', 'POST', payload);
-        showToast(data.message || 'Soal ditambahkan.', data.success ? 'success' : 'error');
+        const endpoint = cbtEditingQuestionId ? `/cbt/bank-soal/${cbtEditingQuestionId}` : '/cbt/bank-soal';
+        const method = cbtEditingQuestionId ? 'PUT' : 'POST';
+        const data = await apiFetch(endpoint, method, payload);
+        showToast(data.message || (cbtEditingQuestionId ? 'Soal diperbarui.' : 'Soal ditambahkan.'), data.success ? 'success' : 'error');
         if (data.success) {
-            ['qSoal','qA','qB','qC','qD','qE','qEssayKeywords','qMediaUrl','qMediaAlt','qCanvasData'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-            const minWords = document.getElementById('qEssayMinWords');
-            if (minWords) minWords.value = '0';
-            const media = document.getElementById('qMediaType');
-            if (media) media.value = '';
+            resetCbtQuestionForm();
             await loadCbtQuestions();
         }
     } catch(e) {
@@ -2058,80 +2347,28 @@ async function createCbtQuestion() {
 async function editCbtQuestion(id) {
     const q = cbtQuestionRows.find(item => item.id === id);
     if (!q) return;
-    const questionType = prompt('Tipe soal (multiple_choice / essay):', q.question_type || 'multiple_choice');
-    if (questionType === null) return;
-    const type = questionType.trim() === 'essay' ? 'essay' : 'multiple_choice';
-    const soal = prompt('Edit pertanyaan:', q.soal);
-    if (soal === null) return;
-    const mediaType = prompt('Tipe media (kosong / image / audio / video / canvas):', q.media_type || '');
-    if (mediaType === null) return;
-    const mediaUrl = prompt('URL media:', q.media_url || '');
-    if (mediaUrl === null) return;
-    const mediaAlt = prompt('Alt/caption media:', q.media_alt || '');
-    if (mediaAlt === null) return;
-    const canvasRaw = prompt('Canvas JSON (opsional):', q.canvas_data ? JSON.stringify(q.canvas_data) : '');
-    if (canvasRaw === null) return;
-    let canvasData = null;
-    try {
-        canvasData = parseCanvasDataInput(canvasRaw, 'Canvas JSON');
-    } catch(e) {
-        return showToast(e.message, 'error');
-    }
-    if (!soal.trim()) return showToast('Pertanyaan wajib diisi.', 'error');
-    const payload = {
-        question_type: type,
-        soal: soal.trim(),
-        media_type: mediaType.trim() || null,
-        media_url: mediaUrl.trim() || null,
-        media_alt: mediaAlt.trim() || null,
-        canvas_data: canvasData
-    };
-    if (payload.media_type === 'canvas' && !payload.canvas_data) return showToast('Media canvas butuh Canvas JSON.', 'error');
-    if (type === 'essay') {
-        const keywords = prompt('Kata kunci esai, pisahkan koma:', q.essay_keywords || '');
-        if (keywords === null) return;
-        const minWords = prompt('Minimal kata:', q.essay_min_words || '0');
-        if (minWords === null) return;
-        if (!keywords.trim()) return showToast('Kata kunci esai wajib diisi.', 'error');
-        Object.assign(payload, {
-            opsi_a: null, opsi_b: null, opsi_c: null, opsi_d: null, opsi_e: null, jawaban: null,
-            essay_keywords: keywords.trim(),
-            essay_min_words: Number(minWords || 0)
-        });
-    } else {
-        const opsiA = prompt('Opsi A:', q.opsi_a || '');
-        if (opsiA === null) return;
-        const opsiB = prompt('Opsi B:', q.opsi_b || '');
-        if (opsiB === null) return;
-        const opsiC = prompt('Opsi C:', q.opsi_c || '');
-        if (opsiC === null) return;
-        const opsiD = prompt('Opsi D:', q.opsi_d || '');
-        if (opsiD === null) return;
-        const opsiE = prompt('Opsi E (opsional):', q.opsi_e || '');
-        if (opsiE === null) return;
-        const jawaban = prompt('Jawaban benar (A-E):', q.jawaban || 'A');
-        if (jawaban === null) return;
-        if (!opsiA.trim() || !opsiB.trim() || !opsiC.trim() || !opsiD.trim()) {
-            return showToast('Opsi A-D wajib diisi untuk pilihan ganda.', 'error');
-        }
-        Object.assign(payload, {
-            opsi_a: opsiA.trim(),
-            opsi_b: opsiB.trim(),
-            opsi_c: opsiC.trim(),
-            opsi_d: opsiD.trim(),
-            opsi_e: opsiE.trim() || null,
-            jawaban: jawaban.trim().toUpperCase(),
-            essay_keywords: '',
-            essay_min_words: 0
-        });
-    }
-    try {
-        const data = await apiFetch(`/cbt/bank-soal/${id}`, 'PUT', payload);
-        showToast(data.message || 'Soal diperbarui.', data.success ? 'success' : 'error');
-        await loadCbtQuestions();
-    } catch(e) {
-        showToast('Gagal memperbarui soal.', 'error');
-    }
+    cbtEditingQuestionId = id;
+    document.getElementById('qMapel').value = q.mapel || 'matematika';
+    document.getElementById('qType').value = q.question_type || 'multiple_choice';
+    document.getElementById('qSoal').value = q.soal || '';
+    document.getElementById('qA').value = q.opsi_a || '';
+    document.getElementById('qB').value = q.opsi_b || '';
+    document.getElementById('qC').value = q.opsi_c || '';
+    document.getElementById('qD').value = q.opsi_d || '';
+    document.getElementById('qE').value = q.opsi_e || '';
+    document.getElementById('qJawaban').value = q.jawaban || 'A';
+    document.getElementById('qEssayKeywords').value = q.essay_keywords || '';
+    document.getElementById('qEssayMinWords').value = Number(q.essay_min_words || 0);
+    document.getElementById('qMediaType').value = q.media_type || '';
+    document.getElementById('qMediaUrl').value = q.media_url || '';
+    document.getElementById('qMediaAlt').value = q.media_alt || '';
+    document.getElementById('qCanvasData').value = q.canvas_data ? JSON.stringify(q.canvas_data) : '';
+    document.getElementById('qSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Soal';
+    document.getElementById('qCancelEditBtn').style.display = '';
+    syncQuickQuestionFields();
+    previewCbtQuestionMedia();
+    document.getElementById('cbtBankFold')?.setAttribute('open', '');
+    document.getElementById('qSoal')?.focus();
 }
 
 async function deleteCbtQuestion(id) {
@@ -2703,18 +2940,18 @@ function formatLocationPlain(row) {
 
 function exportCbtTokens() {
     if (!cbtTokenRows.length) return showToast('Tidak ada token untuk diexport.', 'warning');
-    downloadCSV([
+    downloadExcelTable([
         ['Nama','NISN','Token','Status','Mulai','Selesai'],
         ...cbtTokenRows.map(t => [t.nama_lengkap || '', t.nisn, t.token, t.used ? 'Selesai' : (t.status || ''), t.start_time || '', t.end_time || ''])
-    ], `cbt_tokens_${new Date().toISOString().slice(0,10)}.csv`);
+    ], `cbt_tokens_${new Date().toISOString().slice(0,10)}.xls`, 'Token CBT');
 }
 
 function exportCbtResults() {
     if (!cbtResultRows.length) return showToast('Tidak ada hasil untuk diexport.', 'warning');
-    downloadCSV([
+    downloadExcelTable([
         ['Nama','NISN','Nilai','Benar','Salah','Kosong','Perangkat','Browser','Kamera','Layar','Lokasi','Pelanggaran','Waktu'],
         ...cbtResultRows.map(r => [r.nama_lengkap || '', r.nisn, r.nilai, r.benar, r.salah, r.kosong, formatDeviceBrief(r), formatBrowserBrief(r), r.camera_status || '', r.screen_status || '', formatLocationPlain(r), r.violation_count || 0, r.selesai_at || ''])
-    ], `cbt_results_${new Date().toISOString().slice(0,10)}.csv`);
+    ], `cbt_results_${new Date().toISOString().slice(0,10)}.xls`, 'Hasil CBT');
 }
 
 /* ══════════════════════════════════════════
@@ -2950,7 +3187,7 @@ async function exportUsers() {
             u.role, u.is_active?'Aktif':'Nonaktif',
             u.is_verified?'Ya':'Belum', u.last_login||'-'
         ]);
-        downloadCSV([header, ...rows], `users_${new Date().toISOString().slice(0,10)}.csv`);
+        downloadExcelTable([header, ...rows], `users_${new Date().toISOString().slice(0,10)}.xls`, 'Manajemen User');
         showToast('Export berhasil!', 'success');
     } catch (err) {
         showToast('Gagal export data.', 'error');
@@ -2968,7 +3205,7 @@ async function exportAuditLogs() {
             l.created_at, l.action, l.nama_lengkap||'System',
             l.role||'-', l.ip_address||'-'
         ]);
-        downloadCSV([header, ...rows], `audit_log_${new Date().toISOString().slice(0,10)}.csv`);
+        downloadExcelTable([header, ...rows], `audit_log_${new Date().toISOString().slice(0,10)}.xls`, 'Audit Log');
         showToast('Export berhasil!', 'success');
     } catch (err) {
         showToast('Gagal export log.', 'error');
@@ -2981,6 +3218,31 @@ function downloadCSV(rows, filename) {
     const a    = document.createElement('a');
     a.href     = URL.createObjectURL(blob);
     a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+function downloadExcelTable(rows, filename, title = 'Export Data') {
+    const today = new Date().toLocaleString('id-ID');
+    const html = `
+        <html><head><meta charset="UTF-8">
+        <style>
+            body{font-family:Arial,sans-serif;}
+            h2{margin:0 0 4px;color:#002244;}
+            p{margin:0 0 14px;color:#64748b;}
+            table{border-collapse:collapse;width:100%;}
+            th{background:#002244;color:#ffffff;font-weight:700;text-align:left;}
+            th,td{border:1px solid #cbd5e1;padding:8px;mso-number-format:"\\@";}
+            tr:nth-child(even) td{background:#f8fafc;}
+        </style></head><body>
+        <h2>${escapeHtml(title)}</h2>
+        <p>Diexport: ${escapeHtml(today)}</p>
+        <table>${rows.map((row, idx) => `<tr>${row.map(cell => idx === 0 ? `<th>${escapeHtml(cell ?? '')}</th>` : `<td>${escapeHtml(cell ?? '')}</td>`).join('')}</tr>`).join('')}</table>
+        </body></html>`;
+    const blob = new Blob(['\uFEFF'+html], { type:'application/vnd.ms-excel;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename.endsWith('.xls') ? filename : filename.replace(/\.[^.]+$/, '') + '.xls';
     a.click();
     URL.revokeObjectURL(a.href);
 }
@@ -3064,7 +3326,7 @@ function renderPagination(containerId, pagination, loadFn) {
 }
 
 function escapeHtml(value) {
-    return String(value || '').replace(/[&<>"']/g, c => ({
+    return String(value === undefined || value === null ? '' : value).replace(/[&<>"']/g, c => ({
         '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'
     }[c]));
 }

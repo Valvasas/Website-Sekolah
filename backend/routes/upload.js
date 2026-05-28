@@ -21,6 +21,7 @@ const CATEGORIES = {
     materi:  path.join(UPLOAD_DIR, 'materi'),
     website: path.join(UPLOAD_DIR, 'website'),
     cbt:     path.join(UPLOAD_DIR, 'cbt'),
+    kantin:  path.join(UPLOAD_DIR, 'kantin'),
     general: path.join(UPLOAD_DIR, 'general'),
 };
 Object.values(CATEGORIES).forEach(dir => {
@@ -35,6 +36,7 @@ const ALLOWED_TYPES = {
     materi: ['application/pdf','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','video/mp4','image/jpeg','image/png'],
     website:['image/jpeg','image/png','image/webp'],
     cbt:    ['image/jpeg','image/png','image/webp','audio/mpeg','audio/wav','audio/ogg','video/mp4','video/webm'],
+    kantin: ['image/jpeg','image/png','image/webp'],
     general:['application/pdf','image/jpeg','image/png'],
 };
 
@@ -45,6 +47,7 @@ const MAX_SIZE = {
     materi: 50 * 1024 * 1024,  // 50MB
     website: 5 * 1024 * 1024,  //  5MB
     cbt:    80 * 1024 * 1024,  // 80MB
+    kantin:  5 * 1024 * 1024,  //  5MB
     general: 5 * 1024 * 1024,  //  5MB
 };
 
@@ -264,6 +267,33 @@ router.post('/website',
     }
 );
 
+// ── ROUTE: Upload foto produk Kantin ku (siswa) ───────────────────
+router.post('/kantin',
+    authenticate,
+    createUploader('kantin').single('image'),
+    (req, res) => {
+        if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada gambar yang di-upload.' });
+        try {
+            const db = getDB();
+            const record = saveFileRecord(db, {
+                uploaderId:   req.user.sub,
+                originalName: req.file.originalname,
+                fileName:     req.file.filename,
+                category:     'kantin',
+                mimeType:     req.file.mimetype,
+                size:         req.file.size,
+                entityType:   req.body.entity_type || 'kantin_product',
+                entityId:     req.body.entity_id || null,
+            });
+            return res.status(201).json({ success: true, message: 'Foto produk berhasil di-upload.', data: record });
+        } catch (err) {
+            fs.unlink(req.file.path, () => {});
+            console.error('[Upload Kantin]', err.message);
+            return res.status(500).json({ success: false, message: 'Gagal menyimpan foto produk.' });
+        }
+    }
+);
+
 // ── ROUTE: Upload media soal CBT (guru/staff) ─────────────────────
 router.post('/cbt',
     authenticate,
@@ -305,7 +335,7 @@ router.post('/cbt',
 router.get('/list/:category', authenticate, (req, res) => {
     const db       = getDB();
     const category = req.params.category;
-    const valid    = ['tugas','profil','ppdb','materi','website','cbt','general'];
+    const valid    = ['tugas','profil','ppdb','materi','website','cbt','kantin','general'];
     if (!valid.includes(category)) {
         return res.status(400).json({ success: false, message: 'Kategori tidak valid.' });
     }

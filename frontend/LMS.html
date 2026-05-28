@@ -351,65 +351,143 @@
             <div class="page-content" id="page-kantin">
                 <h2 class="page-title">Kantin ku</h2>
                 <div class="kantin-layout">
-                    <section class="kantin-panel">
+                    <div class="kantin-tabs" role="tablist" aria-label="Navigasi Kantin ku">
+                        <button class="active" type="button" data-kantin-tab="market" onclick="switchKantinTab('market')"><i class="fas fa-basket-shopping"></i> Pasar Jajanan</button>
+                        <button type="button" data-kantin-tab="seller" onclick="switchKantinTab('seller')"><i class="fas fa-store"></i> Dashboard Pedagang</button>
+                        <button type="button" data-kantin-tab="orders" onclick="switchKantinTab('orders')"><i class="fas fa-receipt"></i> Pesanan</button>
+                    </div>
+
+                    <section class="kantin-panel kantin-section active" id="kantin-section-market">
                         <div class="kantin-head">
                             <div>
                                 <h3>Pasar Siswa</h3>
-                                <p>Temukan dagangan teman sekolah dan pesan langsung dari penjualnya.</p>
+                                <p>Fokus belanja jajanan. Produk yang paling cocok dengan profil Kantin ku akan naik ke atas.</p>
                             </div>
                             <button class="small-action" onclick="fetchKantinProducts()"><i class="fas fa-rotate"></i> Refresh</button>
+                        </div>
+                        <div class="kantin-filter">
+                            <input id="kantin-search" type="search" placeholder="Cari jajanan atau penjual..." oninput="debounce(fetchKantinProducts, 350)()">
+                            <select id="kantin-category-filter" onchange="fetchKantinProducts()">
+                                <option value="">Semua kategori</option>
+                                <option value="makanan">Makanan</option>
+                                <option value="minuman">Minuman</option>
+                                <option value="snack">Snack</option>
+                                <option value="alat-sekolah">Alat sekolah</option>
+                                <option value="jasa">Jasa</option>
+                            </select>
                         </div>
                         <div class="kantin-grid" id="kantin-products">
                             <div class="staff-empty">Memuat produk kantin...</div>
                         </div>
                     </section>
 
-                    <section class="kantin-panel">
-                        <div class="kantin-head">
-                            <div>
-                                <h3>Jual Dagangan</h3>
-                                <p>Upload produk dengan harga jelas. Pembayaran e-money dicatat sebagai referensi transaksi.</p>
+                    <section class="kantin-section" id="kantin-section-seller">
+                        <div class="kantin-seller-grid">
+                            <div class="kantin-panel">
+                                <div class="kantin-head">
+                                    <div>
+                                        <h3>Akun Kantin ku</h3>
+                                        <p>Isi ini dulu supaya pasar tahu fokus jualanmu dan rekomendasi produk makin relevan.</p>
+                                    </div>
+                                </div>
+                                <form class="kantin-form" id="kantin-profile-form" onsubmit="saveKantinProfile(event)">
+                                    <label>Fokus jualan
+                                        <input id="kantin-focus" type="text" maxlength="240" placeholder="Contoh: snack pedas, minuman dingin">
+                                    </label>
+                                    <div class="kantin-check-group"><span>Metode pembayaran yang diterima</span>
+                                        <div class="check-row" id="kantin-payment-checks">
+                                            <label><input type="checkbox" value="DANA"> DANA</label>
+                                            <label><input type="checkbox" value="OVO"> OVO</label>
+                                            <label><input type="checkbox" value="GoPay"> GoPay</label>
+                                            <label><input type="checkbox" value="ShopeePay"> ShopeePay</label>
+                                            <label><input type="checkbox" value="QRIS"> QRIS</label>
+                                            <label><input type="checkbox" value="Tunai"> Tunai</label>
+                                        </div>
+                                    </div>
+                                    <label>Pasar utama
+                                        <input id="kantin-target" type="text" maxlength="240" placeholder="Contoh: anak TKJ, siswa pulang praktik, guru">
+                                    </label>
+                                    <label>Kesukaan & hobi
+                                        <input id="kantin-hobbies" type="text" maxlength="240" placeholder="Contoh: pedas, coklat, olahraga, anime">
+                                    </label>
+                                    <label>Preferensi produk yang ingin sering muncul
+                                        <input id="kantin-preferences" type="text" maxlength="240" placeholder="Pisahkan dengan koma, contoh: es, ayam, pedas">
+                                    </label>
+                                    <button class="small-action primary" type="submit"><i class="fas fa-user-check"></i> Simpan Akun Kantin</button>
+                                </form>
+                            </div>
+
+                            <div class="kantin-panel">
+                                <div class="kantin-head">
+                                    <div>
+                                        <h3>Posting Jualan</h3>
+                                        <p>Upload foto, atur kategori, dan kelola stok tanpa mengganggu halaman utama pembeli.</p>
+                                    </div>
+                                </div>
+                                <div class="kantin-stats" id="kantin-seller-stats"></div>
+                                <form class="kantin-form" id="kantin-form" onsubmit="createKantinProduct(event)">
+                                    <input id="kantin-product-id" type="hidden">
+                                    <label>Nama Produk
+                                        <input id="kantin-name" type="text" maxlength="120" placeholder="Contoh: Risol Mayo" required>
+                                    </label>
+                                    <div class="form-grid">
+                                        <label>Kategori
+                                            <select id="kantin-category">
+                                                <option value="makanan">Makanan</option>
+                                                <option value="minuman">Minuman</option>
+                                                <option value="snack">Snack</option>
+                                                <option value="alat-sekolah">Alat sekolah</option>
+                                                <option value="jasa">Jasa</option>
+                                            </select>
+                                        </label>
+                                        <label>Tag
+                                            <input id="kantin-tags" type="text" maxlength="240" placeholder="pedas, manis, dingin">
+                                        </label>
+                                    </div>
+                                    <label>Deskripsi
+                                        <textarea id="kantin-desc" maxlength="700" rows="3" placeholder="Bahan, ukuran, varian rasa, info stok, atau link katalog."></textarea>
+                                    </label>
+                                    <div class="form-grid">
+                                        <label>Harga
+                                            <input id="kantin-price" type="number" min="500" step="500" placeholder="5000" required>
+                                        </label>
+                                        <label>Stok
+                                            <input id="kantin-stock" type="number" min="0" step="1" value="1" required>
+                                        </label>
+                                    </div>
+                                    <label>Nomor Chat Penjual
+                                        <input id="kantin-chat" type="tel" maxlength="30" placeholder="08xxxxxxxxxx">
+                                    </label>
+                                    <label>Metode e-money utama
+                                        <select id="kantin-emoney">
+                                            <option value="DANA">DANA</option>
+                                            <option value="OVO">OVO</option>
+                                            <option value="GoPay">GoPay</option>
+                                            <option value="ShopeePay">ShopeePay</option>
+                                            <option value="QRIS">QRIS</option>
+                                            <option value="Tunai">Tunai</option>
+                                        </select>
+                                    </label>
+                                    <label>Nomor/ID e-money
+                                        <input id="kantin-emoney-id" type="text" maxlength="80" placeholder="Nomor e-wallet atau catatan QRIS">
+                                    </label>
+                                    <label>Upload Foto Produk
+                                        <input id="kantin-image-file" type="file" accept="image/png,image/jpeg,image/webp" onchange="uploadKantinImage()">
+                                    </label>
+                                    <label>URL Foto Produk
+                                        <input id="kantin-image" type="url" maxlength="500" placeholder="/uploads/kantin/foto.webp" oninput="previewKantinImage()">
+                                    </label>
+                                    <img id="kantin-image-preview" class="kantin-preview-img" alt="Preview foto produk">
+                                    <button class="small-action primary" id="kantin-submit-btn" type="submit"><i class="fas fa-cloud-arrow-up"></i> Terbitkan Produk</button>
+                                </form>
+                                <div class="kantin-orders" id="kantin-my-products" style="margin-top:14px;">
+                                    <div class="staff-empty">Belum ada postingan.</div>
+                                </div>
                             </div>
                         </div>
-                        <form class="kantin-form" id="kantin-form" onsubmit="createKantinProduct(event)">
-                            <label>Nama Produk
-                                <input id="kantin-name" type="text" maxlength="120" placeholder="Contoh: Risol Mayo" required>
-                            </label>
-                            <label>Deskripsi
-                                <textarea id="kantin-desc" maxlength="700" rows="3" placeholder="Bahan, ukuran, varian rasa, atau info stok."></textarea>
-                            </label>
-                            <div class="form-grid">
-                                <label>Harga
-                                    <input id="kantin-price" type="number" min="500" step="500" placeholder="5000" required>
-                                </label>
-                                <label>Stok
-                                    <input id="kantin-stock" type="number" min="0" step="1" value="1" required>
-                                </label>
-                            </div>
-                            <label>Nomor Chat Penjual
-                                <input id="kantin-chat" type="tel" maxlength="30" placeholder="08xxxxxxxxxx">
-                            </label>
-                            <label>Metode e-money
-                                <select id="kantin-emoney">
-                                    <option value="DANA">DANA</option>
-                                    <option value="OVO">OVO</option>
-                                    <option value="GoPay">GoPay</option>
-                                    <option value="ShopeePay">ShopeePay</option>
-                                    <option value="QRIS">QRIS</option>
-                                    <option value="Tunai">Tunai</option>
-                                </select>
-                            </label>
-                            <label>Nomor/ID e-money
-                                <input id="kantin-emoney-id" type="text" maxlength="80" placeholder="Nomor e-wallet atau catatan QRIS">
-                            </label>
-                            <label>URL Foto Produk
-                                <input id="kantin-image" type="url" maxlength="500" placeholder="https://...">
-                            </label>
-                            <button class="small-action primary" type="submit"><i class="fas fa-cloud-arrow-up"></i> Terbitkan Produk</button>
-                        </form>
                     </section>
 
-                    <section class="kantin-panel">
+                    <section class="kantin-panel kantin-section" id="kantin-section-orders">
                         <div class="kantin-head">
                             <div>
                                 <h3>Pesanan Saya</h3>
@@ -731,6 +809,17 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- MODAL: Preview Media -->
+        <div class="lms-modal-overlay" id="modal-preview-media">
+            <div class="lms-modal-box wide">
+                <div class="lmb-header">
+                    <h3 id="modal-preview-title">Preview</h3>
+                    <button onclick="closeModal('modal-preview-media')"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="lmb-body" id="modal-preview-body"></div>
             </div>
         </div>
 

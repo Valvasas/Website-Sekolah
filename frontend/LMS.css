@@ -564,15 +564,21 @@ button { cursor: pointer; font-family: inherit; }
 .forum-reply.admin-reply { background:#fffbeb; border-color:#fde68a; }
 
 /* ---- KANTIN KU ---- */
-.kantin-layout { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(300px,.8fr); gap:20px; align-items:start; }
+.kantin-layout { display:grid; grid-template-columns:minmax(0,1fr); gap:20px; align-items:start; }
 .kantin-panel { background:var(--white); border:1.5px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:20px; }
-.kantin-panel:first-child { grid-row:span 2; }
 .kantin-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:16px; }
 .kantin-head h3 { color:var(--navy); font-size:1rem; margin-bottom:4px; }
 .kantin-head p { color:var(--muted); font-size:.82rem; line-height:1.55; }
+.kantin-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.kantin-tabs button { border:1.5px solid var(--border); background:#fff; color:var(--navy); border-radius:10px; padding:10px 13px; font-weight:800; cursor:pointer; }
+.kantin-tabs button.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+.kantin-section { display:none; }
+.kantin-section.active { display:block; }
+.kantin-filter { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.kantin-filter input,.kantin-filter select { min-height:42px; border:1.5px solid var(--border); border-radius:10px; padding:9px 11px; font:inherit; background:#fff; }
 .kantin-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; }
 .kantin-card { border:1.5px solid var(--border); border-radius:12px; overflow:hidden; background:#fbfdff; display:flex; flex-direction:column; min-width:0; }
-.kantin-photo { aspect-ratio:16/10; background:#eef7f6 center/cover; color:#0f9f8f; display:flex; align-items:center; justify-content:center; font-size:1.8rem; }
+.kantin-photo { aspect-ratio:16/10; border:0; width:100%; background:#eef7f6 center/cover; color:#0f9f8f; display:flex; align-items:center; justify-content:center; font-size:1.8rem; cursor:zoom-in; }
 .kantin-info { display:grid; gap:6px; padding:13px; }
 .kantin-info strong { color:var(--navy); font-size:.92rem; }
 .kantin-info span, .kantin-info small, .kantin-pay { color:var(--muted); font-size:.75rem; line-height:1.45; }
@@ -583,6 +589,16 @@ button { cursor: pointer; font-family: inherit; }
 .kantin-form { display:grid; gap:12px; }
 .kantin-form label { display:grid; gap:7px; font-size:.78rem; font-weight:700; color:var(--muted); }
 .kantin-form input, .kantin-form select, .kantin-form textarea { width:100%; min-height:44px; border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; font:inherit; color:var(--text); background:#fbfdff; }
+.kantin-form .check-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px; }
+.kantin-check-group { display:grid; gap:7px; font-size:.78rem; font-weight:700; color:var(--muted); }
+.kantin-form .check-row label { display:flex; align-items:center; gap:7px; border:1px solid var(--border); border-radius:9px; padding:8px; font-weight:700; }
+.kantin-form .check-row input { width:auto; min-height:auto; }
+.kantin-preview-img { display:none; width:100%; max-height:220px; object-fit:contain; border:1.5px dashed var(--border); border-radius:12px; background:#f8fafc; }
+.kantin-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:14px; }
+.kantin-stat { border:1px solid var(--border); border-radius:10px; padding:12px; background:#f8fafc; }
+.kantin-stat b { display:block; color:var(--navy); font-size:1.1rem; }
+.kantin-stat span { color:var(--muted); font-size:.72rem; }
+.kantin-seller-grid { display:grid; grid-template-columns:minmax(300px,.8fr) minmax(0,1.2fr); gap:16px; align-items:start; }
 .small-action.primary { background:var(--navy); color:#fff; border-color:var(--navy); }
 .kantin-orders { display:grid; gap:10px; }
 .kantin-order { border:1px solid var(--border); border-radius:10px; padding:12px; display:grid; gap:5px; }
@@ -1160,8 +1176,7 @@ button { cursor: pointer; font-family: inherit; }
     .tb-menu { display:flex; }
     .beranda-grid { grid-template-columns:1fr; }
     .student-services { grid-template-columns:1fr; }
-    .kantin-layout { grid-template-columns:1fr; }
-    .kantin-panel:first-child { grid-row:auto; }
+    .kantin-layout,.kantin-seller-grid { grid-template-columns:1fr; }
     .profile-layout { grid-template-columns:1fr; }
     .profile-card { position:static; }
     .stat-cards { grid-template-columns:repeat(2,1fr); }

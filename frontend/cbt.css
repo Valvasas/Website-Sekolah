@@ -412,6 +412,14 @@ a:focus-visible {
     width: 100%;
     padding: 14px;
 }
+.question-media figcaption {
+    padding: 9px 12px 11px;
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    background: #fff;
+    border-top: 1px solid var(--border);
+}
 .question-canvas {
     display: block;
     width: 100%;

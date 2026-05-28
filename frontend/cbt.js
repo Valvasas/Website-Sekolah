@@ -307,9 +307,10 @@ function renderQuestionMedia(soal) {
     const type = soal.media_type;
     const url = soal.media_url;
     const alt = escHtml(soal.media_alt || 'Media soal');
-    if (type === 'image' && url) return `<figure class="question-media"><img src="${escHtml(url)}" alt="${alt}" loading="lazy"></figure>`;
-    if (type === 'audio' && url) return `<figure class="question-media"><audio controls preload="metadata" src="${escHtml(url)}"></audio></figure>`;
-    if (type === 'video' && url) return `<figure class="question-media"><video controls preload="metadata" src="${escHtml(url)}"></video></figure>`;
+    const caption = soal.media_alt ? `<figcaption>${alt}</figcaption>` : '';
+    if (type === 'image' && url) return `<figure class="question-media"><img src="${escHtml(url)}" alt="${alt}" loading="lazy">${caption}</figure>`;
+    if (type === 'audio' && url) return `<figure class="question-media"><audio controls preload="metadata" src="${escHtml(url)}"></audio>${caption}</figure>`;
+    if (type === 'video' && url) return `<figure class="question-media"><video controls preload="metadata" src="${escHtml(url)}"></video>${caption}</figure>`;
     if (type === 'canvas' && soal.canvas_data) {
         return `<figure class="question-media"><canvas class="question-canvas" data-canvas='${escHtml(JSON.stringify(soal.canvas_data))}' width="640" height="320"></canvas></figure>`;
     }

@@ -273,6 +273,8 @@ function setup() {
             seller_nisn TEXT,
             name TEXT NOT NULL,
             description TEXT,
+            category TEXT,
+            tags TEXT,
             price INTEGER NOT NULL,
             stock INTEGER NOT NULL DEFAULT 0,
             image_url TEXT,
@@ -280,6 +282,17 @@ function setup() {
             emoney_provider TEXT,
             emoney_account TEXT,
             status TEXT NOT NULL DEFAULT 'active',
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
+        CREATE TABLE IF NOT EXISTS kantin_profiles (
+            user_id TEXT PRIMARY KEY,
+            nisn TEXT,
+            selling_focus TEXT,
+            payment_methods TEXT,
+            target_market TEXT,
+            hobbies TEXT,
+            preferences TEXT,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         );
@@ -354,6 +367,10 @@ function setup() {
     if (!bankCols.includes('media_alt')) db.exec('ALTER TABLE bank_soal ADD COLUMN media_alt TEXT');
     if (!bankCols.includes('canvas_data')) db.exec('ALTER TABLE bank_soal ADD COLUMN canvas_data TEXT');
 
+    const kantinProductCols = db.pragma('table_info(kantin_products)').map(c => c.name);
+    if (!kantinProductCols.includes('category')) db.exec('ALTER TABLE kantin_products ADD COLUMN category TEXT');
+    if (!kantinProductCols.includes('tags')) db.exec('ALTER TABLE kantin_products ADD COLUMN tags TEXT');
+
     const answerCols = db.pragma('table_info(cbt_answers)').map(c => c.name);
     if (!answerCols.includes('answer_type')) db.exec("ALTER TABLE cbt_answers ADD COLUMN answer_type TEXT DEFAULT 'multiple_choice'");
     if (!answerCols.includes('keyword_hits')) db.exec('ALTER TABLE cbt_answers ADD COLUMN keyword_hits TEXT');
@@ -381,6 +398,7 @@ function setup() {
         CREATE INDEX IF NOT EXISTS idx_submission_tugas     ON submission_tugas(tugas_id, nisn);
         CREATE INDEX IF NOT EXISTS idx_website_contents     ON website_contents(type, placement, is_active, sort_order);
         CREATE INDEX IF NOT EXISTS idx_kantin_products      ON kantin_products(status, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_kantin_products_cat  ON kantin_products(status, category, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_kantin_orders_buyer  ON kantin_orders(buyer_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_kantin_orders_seller ON kantin_orders(seller_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_kantin_chats_order   ON kantin_chats(order_id, created_at);
