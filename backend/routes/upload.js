@@ -22,6 +22,8 @@ const CATEGORIES = {
     website: path.join(UPLOAD_DIR, 'website'),
     cbt:     path.join(UPLOAD_DIR, 'cbt'),
     kantin:  path.join(UPLOAD_DIR, 'kantin'),
+    forum:   path.join(UPLOAD_DIR, 'forum'),
+    kantin_chat: path.join(UPLOAD_DIR, 'kantin-chat'),
     general: path.join(UPLOAD_DIR, 'general'),
 };
 Object.values(CATEGORIES).forEach(dir => {
@@ -33,10 +35,12 @@ const ALLOWED_TYPES = {
     tugas:  ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','image/jpeg','image/png','application/zip'],
     profil: ['image/jpeg','image/png','image/webp'],
     ppdb:   ['application/pdf','image/jpeg','image/png'],
-    materi: ['application/pdf','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','video/mp4','image/jpeg','image/png'],
+    materi: ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain','video/mp4','video/webm','video/quicktime','image/jpeg','image/png','image/webp','image/gif'],
     website:['image/jpeg','image/png','image/webp'],
     cbt:    ['image/jpeg','image/png','image/webp','audio/mpeg','audio/wav','audio/ogg','video/mp4','video/webm'],
     kantin: ['image/jpeg','image/png','image/webp'],
+    forum:  ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain','image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm','video/quicktime','audio/mpeg','audio/wav','audio/ogg','audio/webm'],
+    kantin_chat:['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain','image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm','video/quicktime','audio/mpeg','audio/wav','audio/ogg','audio/webm'],
     general:['application/pdf','image/jpeg','image/png'],
 };
 
@@ -48,6 +52,8 @@ const MAX_SIZE = {
     website: 5 * 1024 * 1024,  //  5MB
     cbt:    80 * 1024 * 1024,  // 80MB
     kantin:  5 * 1024 * 1024,  //  5MB
+    forum:  50 * 1024 * 1024,  // 50MB
+    kantin_chat: 50 * 1024 * 1024, // 50MB
     general: 5 * 1024 * 1024,  //  5MB
 };
 
@@ -294,6 +300,37 @@ router.post('/kantin',
     }
 );
 
+function uploadStudentAttachment(category, entityType) {
+    return [
+        authenticate,
+        createUploader(category).single('file'),
+        (req, res) => {
+            if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada file yang di-upload.' });
+            try {
+                const db = getDB();
+                const record = saveFileRecord(db, {
+                    uploaderId:   req.user.sub,
+                    originalName: req.file.originalname,
+                    fileName:     req.file.filename,
+                    category,
+                    mimeType:     req.file.mimetype,
+                    size:         req.file.size,
+                    entityType:   req.body.entity_type || entityType,
+                    entityId:     req.body.entity_id || null,
+                });
+                return res.status(201).json({ success: true, message: 'Lampiran berhasil di-upload.', data: { ...record, mimeType:req.file.mimetype, originalName:req.file.originalname } });
+            } catch (err) {
+                fs.unlink(req.file.path, () => {});
+                console.error(`[Upload ${category}]`, err.message);
+                return res.status(500).json({ success: false, message: 'Gagal menyimpan lampiran.' });
+            }
+        }
+    ];
+}
+
+router.post('/forum', ...uploadStudentAttachment('forum', 'forum_posts'));
+router.post('/kantin-chat', ...uploadStudentAttachment('kantin_chat', 'kantin_chats'));
+
 // ── ROUTE: Upload media soal CBT (guru/staff) ─────────────────────
 router.post('/cbt',
     authenticate,
@@ -335,7 +372,7 @@ router.post('/cbt',
 router.get('/list/:category', authenticate, (req, res) => {
     const db       = getDB();
     const category = req.params.category;
-    const valid    = ['tugas','profil','ppdb','materi','website','cbt','kantin','general'];
+    const valid    = ['tugas','profil','ppdb','materi','website','cbt','kantin','forum','kantin_chat','general'];
     if (!valid.includes(category)) {
         return res.status(400).json({ success: false, message: 'Kategori tidak valid.' });
     }

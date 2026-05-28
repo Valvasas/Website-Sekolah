@@ -325,6 +325,17 @@
         .admin-fold summary span{font-size:.72rem;color:var(--muted);font-weight:700;}
         .admin-fold[open] summary{border-bottom:1px solid var(--border);background:#f8fafc;}
         .admin-fold-body{padding:14px;display:grid;gap:12px;}
+        .admin-compact-fold{overflow:hidden;}
+        .admin-compact-fold summary{
+            cursor:pointer;list-style:none;padding:16px 18px;display:grid;
+            grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;
+        }
+        .admin-compact-fold summary::-webkit-details-marker{display:none;}
+        .admin-compact-fold summary div{display:flex;align-items:center;gap:9px;color:var(--navy);font-weight:900;}
+        .admin-compact-fold summary span{color:var(--muted);font-size:.74rem;font-weight:700;}
+        .admin-compact-fold[open] summary{border-bottom:1px solid var(--border);background:#f8fafc;}
+        .admin-compact-fold:not([open]){box-shadow:0 10px 26px rgba(15,23,42,.04);}
+        .admin-compact-fold:not([open]) summary:hover{background:#f8fafc;}
         .bank-material-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px;}
         .bank-material-btn{border:1.5px solid var(--border);background:#fff;border-radius:10px;padding:10px;text-align:left;cursor:pointer;color:var(--navy);font-weight:800;display:grid;gap:4px;transition:var(--trans);}
         .bank-material-btn span{font-size:.68rem;color:var(--muted);font-weight:700;}
@@ -422,6 +433,8 @@
             .topbar{padding:12px 14px;}
             .content{padding:18px 14px;}
             .toolbar,.cbt-live-toolbar,.cbt-builder-actions{align-items:stretch;display:grid;grid-template-columns:1fr;}
+            .admin-compact-fold summary{grid-template-columns:1fr;}
+            .admin-compact-fold summary .btn-act,.admin-compact-fold summary .btn-primary{width:100%;}
             .toolbar .search-input,.toolbar .filter-select,.toolbar button,
             .cbt-live-toolbar .search-input,.cbt-live-toolbar .filter-select,
             .cbt-builder-actions button{width:100%;min-width:0!important;}
@@ -664,11 +677,12 @@
     <!-- ══ PAGE: KONTEN WEBSITE ══ -->
     <div class="content page" id="page-content">
         <div class="content-manager-grid">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title"><i class="fas fa-pen-to-square"></i> Form Konten Website</div>
-                    <button class="btn-act" onclick="resetWebsiteContentForm()"><i class="fas fa-plus"></i> Baru</button>
-                </div>
+            <details class="card admin-compact-fold" id="websiteContentFold">
+                <summary>
+                    <div><i class="fas fa-pen-to-square"></i> Form Konten Website</div>
+                    <span>Tambah/edit konten hanya saat diperlukan</span>
+                    <button class="btn-act" type="button" onclick="event.preventDefault();resetWebsiteContentForm();document.getElementById('websiteContentFold')?.setAttribute('open','')"><i class="fas fa-plus"></i> Baru</button>
+                </summary>
                 <div class="card-body">
                     <form id="websiteContentForm" onsubmit="submitWebsiteContent(event)">
                         <input type="hidden" id="wcId">
@@ -787,7 +801,7 @@
                     </form>
                     <div class="cbt-quick-note"><strong>Catatan:</strong> konten aktif akan tersedia melalui API website. Galeri dan PPDB info otomatis bisa dipakai frontend tanpa ubah database manual.</div>
                 </div>
-            </div>
+            </details>
 
             <div class="card">
                 <div class="card-header">
@@ -833,11 +847,12 @@
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title"><i class="fas fa-laptop-code"></i> Builder Sesi CBT</div>
-                <button class="btn-primary" onclick="createCbtExam()"><i class="fas fa-save"></i> Simpan Draft</button>
-            </div>
+        <details class="card admin-compact-fold" id="cbtBuilderFold">
+            <summary>
+                <div><i class="fas fa-laptop-code"></i> Builder Sesi CBT</div>
+                <span>Disembunyikan default agar admin fokus ke daftar sesi dan monitoring</span>
+                <button class="btn-primary" type="button" onclick="event.preventDefault();document.getElementById('cbtBuilderFold')?.setAttribute('open','');createCbtExam()"><i class="fas fa-save"></i> Simpan Draft</button>
+            </summary>
             <div class="card-body">
                 <div class="cbt-builder">
                     <div class="cbt-builder-head">
@@ -863,7 +878,7 @@
                 </div>
                 <div class="cbt-quick-note"><strong>Alur baru:</strong> isi sesi seperti Google Form, tambah soal langsung di bawahnya, lalu simpan draft. Kalau draft belum punya soal, masih bisa dibuat dulu dan soal bisa dipasang nanti. Token akan otomatis tersalin ke clipboard saat dibuat.</div>
             </div>
-        </div>
+        </details>
 
         <details class="admin-fold" id="cbtBankFold">
             <summary>
@@ -1723,6 +1738,7 @@ async function submitWebsiteContent(event) {
         showToast(data.message || (data.success ? 'Konten tersimpan.' : 'Gagal menyimpan konten.'), data.success ? 'success' : 'error');
         if (data.success) {
             resetWebsiteContentForm();
+            document.getElementById('websiteContentFold')?.removeAttribute('open');
             await loadWebsiteContents();
         }
     } catch(e) {
@@ -1792,6 +1808,7 @@ async function loadWebsiteContents(page = websiteContentPage) {
 function editWebsiteContent(id) {
     const item = websiteContentRows.find(row => row.id === id);
     if (!item) return;
+    document.getElementById('websiteContentFold')?.setAttribute('open', '');
     document.getElementById('wcId').value = item.id;
     document.getElementById('wcType').value = item.type || 'berita';
     document.getElementById('wcPlacement').value = item.placement || '';
@@ -2455,6 +2472,7 @@ async function createCbtExam() {
         showToast(data.message, 'success');
         document.getElementById('cbtTitle').value = '';
         resetCbtBuilder();
+        document.getElementById('cbtBuilderFold')?.removeAttribute('open');
         selectedCbtExam = data.data?.id || selectedCbtExam;
         await loadCbtExams();
         if (selectedCbtExam) await selectCbtExam(selectedCbtExam);

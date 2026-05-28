@@ -259,6 +259,9 @@ function setup() {
             konten TEXT NOT NULL,
             parent_id TEXT,
             likes INTEGER NOT NULL DEFAULT 0,
+            attachment_url TEXT,
+            attachment_name TEXT,
+            attachment_type TEXT,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         );
@@ -318,7 +321,22 @@ function setup() {
             sender_id TEXT NOT NULL,
             receiver_id TEXT NOT NULL,
             message TEXT NOT NULL,
+            attachment_url TEXT,
+            attachment_name TEXT,
+            attachment_type TEXT,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
+        CREATE TABLE IF NOT EXISTS kantin_reviews (
+            id TEXT PRIMARY KEY,
+            product_id TEXT NOT NULL,
+            seller_id TEXT NOT NULL,
+            reviewer_id TEXT NOT NULL,
+            reviewer_nisn TEXT,
+            rating INTEGER NOT NULL,
+            comment TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            UNIQUE(product_id, reviewer_id)
         );
         CREATE TABLE IF NOT EXISTS notifikasi (
             id TEXT PRIMARY KEY,
@@ -371,6 +389,16 @@ function setup() {
     if (!kantinProductCols.includes('category')) db.exec('ALTER TABLE kantin_products ADD COLUMN category TEXT');
     if (!kantinProductCols.includes('tags')) db.exec('ALTER TABLE kantin_products ADD COLUMN tags TEXT');
 
+    const forumCols = db.pragma('table_info(forum_posts)').map(c => c.name);
+    if (!forumCols.includes('attachment_url')) db.exec('ALTER TABLE forum_posts ADD COLUMN attachment_url TEXT');
+    if (!forumCols.includes('attachment_name')) db.exec('ALTER TABLE forum_posts ADD COLUMN attachment_name TEXT');
+    if (!forumCols.includes('attachment_type')) db.exec('ALTER TABLE forum_posts ADD COLUMN attachment_type TEXT');
+
+    const kantinChatCols = db.pragma('table_info(kantin_chats)').map(c => c.name);
+    if (!kantinChatCols.includes('attachment_url')) db.exec('ALTER TABLE kantin_chats ADD COLUMN attachment_url TEXT');
+    if (!kantinChatCols.includes('attachment_name')) db.exec('ALTER TABLE kantin_chats ADD COLUMN attachment_name TEXT');
+    if (!kantinChatCols.includes('attachment_type')) db.exec('ALTER TABLE kantin_chats ADD COLUMN attachment_type TEXT');
+
     const answerCols = db.pragma('table_info(cbt_answers)').map(c => c.name);
     if (!answerCols.includes('answer_type')) db.exec("ALTER TABLE cbt_answers ADD COLUMN answer_type TEXT DEFAULT 'multiple_choice'");
     if (!answerCols.includes('keyword_hits')) db.exec('ALTER TABLE cbt_answers ADD COLUMN keyword_hits TEXT');
@@ -402,6 +430,8 @@ function setup() {
         CREATE INDEX IF NOT EXISTS idx_kantin_orders_buyer  ON kantin_orders(buyer_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_kantin_orders_seller ON kantin_orders(seller_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_kantin_chats_order   ON kantin_chats(order_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_kantin_reviews_prod  ON kantin_reviews(product_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_kantin_reviews_seller ON kantin_reviews(seller_id, rating DESC);
     `);
 
     console.log('✅ Database indexes created');

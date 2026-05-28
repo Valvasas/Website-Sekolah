@@ -56,6 +56,50 @@ const lmsState = {
     staffFetchTimer: null,
 };
 
+const ATTACHMENT_TYPES = {
+    image: {
+        label: 'Foto',
+        hint: 'JPG, JPEG, PNG, WEBP, GIF',
+        icon: 'fa-image',
+        accept: '.jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif',
+        mimes: ['image/jpeg','image/png','image/webp','image/gif'],
+        max: 15 * 1024 * 1024,
+    },
+    document: {
+        label: 'Dokumen',
+        hint: 'PDF, DOC, PPT, XLS, TXT',
+        icon: 'fa-file-lines',
+        accept: '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain',
+        mimes: ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain'],
+        max: 25 * 1024 * 1024,
+    },
+    video: {
+        label: 'Video',
+        hint: 'MP4, WEBM, MOV',
+        icon: 'fa-video',
+        accept: '.mp4,.webm,.mov,video/mp4,video/webm,video/quicktime',
+        mimes: ['video/mp4','video/webm','video/quicktime'],
+        max: 50 * 1024 * 1024,
+    },
+    audio: {
+        label: 'Audio',
+        hint: 'MP3, WAV, OGG',
+        icon: 'fa-microphone',
+        accept: '.mp3,.wav,.ogg,.webm,audio/mpeg,audio/wav,audio/ogg,audio/webm',
+        mimes: ['audio/mpeg','audio/wav','audio/ogg','audio/webm'],
+        max: 25 * 1024 * 1024,
+    },
+};
+
+const ATTACHMENT_EXTENSIONS = {
+    image: ['.jpg','.jpeg','.png','.webp','.gif'],
+    document: ['.pdf','.doc','.docx','.ppt','.pptx','.xls','.xlsx','.txt'],
+    video: ['.mp4','.webm','.mov'],
+    audio: ['.mp3','.wav','.ogg','.webm'],
+};
+
+const attachmentPreviewUrls = { forum: null, kantinChat: null, staffMateri: null, tugas: null };
+
 /* ── Utils ──────────────────────────────────────────────────── */
 function showLmsScreen(id) {
     document.querySelectorAll('.lms-screen').forEach(s => {
@@ -589,10 +633,31 @@ async function uploadStaffMateri() {
         const json = await res.json();
         showToast(json.message || (json.success ? 'Materi diupload.' : 'Upload gagal.'), json.success ? 'green' : 'red');
         if (json.success) {
-            document.getElementById('staff-materi-file').value = '';
+            clearStaffMateriAttachment();
             await fetchMateri();
         }
     } catch(e) { showToast('Upload materi gagal.', 'red'); }
+}
+
+function chooseStaffMateriAttachment(kind) {
+    chooseAttachmentFile('staff-materi-file', kind);
+}
+
+function previewStaffMateriAttachment() {
+    const input = document.getElementById('staff-materi-file');
+    const preview = document.getElementById('staff-materi-preview');
+    const file = input?.files?.[0];
+    if (!file) return clearStaffMateriAttachment();
+    if (!validateStudentAttachment(file)) return clearStaffMateriAttachment();
+    if (preview) preview.innerHTML = renderSelectedAttachmentPreview(file, 'staffMateri');
+}
+
+function clearStaffMateriAttachment() {
+    revokeAttachmentPreview('staffMateri');
+    const input = document.getElementById('staff-materi-file');
+    const preview = document.getElementById('staff-materi-preview');
+    if (input) input.value = '';
+    if (preview) preview.innerHTML = '';
 }
 
 async function saveStaffGrade() {
@@ -795,7 +860,7 @@ function bukaSubmitTugas(id) {
     const t = lmsState.tugasData.find(x => x.id === id);
     if (t) document.getElementById('modal-tugas-title').textContent = `Kumpulkan: ${t.judul}`;
     document.getElementById('modal-tugas-text').value = '';
-    document.getElementById('file-preview').textContent = '';
+    clearTugasAttachment();
     openModal('modal-tugas');
 }
 
@@ -836,6 +901,7 @@ async function submitTugas() {
         });
 
         if (res.success) {
+            clearTugasAttachment();
             closeModal('modal-tugas');
             showToast('Tugas berhasil dikumpulkan! ✓', 'green');
             await fetchTugas(); // Refresh list
@@ -925,10 +991,12 @@ function renderForum() {
                 ${p.mapel ? `<span class="fp-tag">${escHtml(p.mapel)}</span>` : ''}
             </div>
             <p class="fp-body">${escHtml(p.konten)}</p>
+            ${renderForumAttachment(p)}
             ${replies.length ? `<div class="forum-replies">${replies.map(r => `
                 <div class="forum-reply ${['super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'].includes(r.role) ? 'admin-reply' : ''}">
                     <strong>${escHtml(r.nama_lengkap || 'User')}</strong>
                     <span>${escHtml(r.konten)}</span>
+                    ${renderForumAttachment(r)}
                 </div>
             `).join('')}</div>` : ''}
             <div class="fp-actions">
@@ -941,6 +1009,182 @@ function renderForum() {
             </div>
         </div>
     `; }).join('');
+}
+
+function getAttachmentKind(type = '', name = '') {
+    const mime = String(type || '').toLowerCase();
+    const lowerName = String(name || '').toLowerCase();
+    if (mime.startsWith('image/') || ATTACHMENT_EXTENSIONS.image.some(ext => lowerName.endsWith(ext))) return 'image';
+    if (mime.startsWith('video/') || ATTACHMENT_EXTENSIONS.video.some(ext => lowerName.endsWith(ext))) return 'video';
+    if (mime.startsWith('audio/') || ATTACHMENT_EXTENSIONS.audio.some(ext => lowerName.endsWith(ext))) return 'audio';
+    return 'document';
+}
+
+function getAttachmentConfig(kind) {
+    return ATTACHMENT_TYPES[kind] || ATTACHMENT_TYPES.document;
+}
+
+function formatFileSize(bytes = 0) {
+    const value = Number(bytes || 0);
+    if (!value) return '';
+    if (value < 1024 * 1024) return `${Math.max(1, Math.round(value / 1024))} KB`;
+    return `${(value / 1024 / 1024).toFixed(value >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
+}
+
+function chooseAttachmentFile(inputId, kind) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const config = getAttachmentConfig(kind);
+    input.accept = config.accept;
+    input.dataset.kind = kind;
+    input.value = '';
+    input.click();
+}
+
+function chooseForumAttachment(kind) {
+    chooseAttachmentFile('forum-file', kind);
+}
+
+function chooseKantinChatAttachment(kind) {
+    chooseAttachmentFile('kantin-chat-file', kind);
+    document.getElementById('kantin-attachment-tray')?.classList.remove('open');
+}
+
+function toggleKantinAttachmentTray() {
+    document.getElementById('kantin-attachment-tray')?.classList.toggle('open');
+}
+
+function revokeAttachmentPreview(scope) {
+    const url = attachmentPreviewUrls[scope];
+    if (url) URL.revokeObjectURL(url);
+    attachmentPreviewUrls[scope] = null;
+}
+
+function getPdfPreviewUrl(url) {
+    return String(url || '').includes('#') ? String(url || '') : `${url}#toolbar=0&navpanes=0`;
+}
+
+function renderAttachmentPreview(item = {}, options = {}) {
+    const url = item.attachment_url || item.url;
+    if (!url) return '';
+    const name = item.attachment_name || item.name || 'Lampiran';
+    const type = item.attachment_type || item.type || '';
+    const kind = getAttachmentKind(type, name);
+    const config = getAttachmentConfig(kind);
+    const size = item.size ? formatFileSize(item.size) : '';
+    const compact = options.compact ? ' compact' : '';
+    const title = escAttr(name);
+    const meta = [config.label, size].filter(Boolean).join(' · ');
+
+    if (kind === 'image') {
+        return `<a class="attachment-preview-card attachment-image${compact}" href="${escAttr(url)}" target="_blank" rel="noopener" title="${title}">
+            <img src="${escAttr(url)}" alt="${title}" loading="lazy">
+            <span><i class="fas ${config.icon}"></i>${escHtml(name)}</span>
+        </a>`;
+    }
+    if (kind === 'video') {
+        return `<div class="attachment-preview-card attachment-video${compact}">
+            <video controls preload="metadata" src="${escAttr(url)}"></video>
+            <a href="${escAttr(url)}" target="_blank" rel="noopener"><i class="fas ${config.icon}"></i>${escHtml(name)}</a>
+        </div>`;
+    }
+    if (kind === 'audio') {
+        return `<div class="attachment-preview-card attachment-audio${compact}">
+            <div class="attachment-doc-icon"><i class="fas ${config.icon}"></i></div>
+            <div class="attachment-doc-meta"><strong>${escHtml(name)}</strong><small>${escHtml(meta)}</small><audio controls preload="metadata" src="${escAttr(url)}"></audio></div>
+        </div>`;
+    }
+    if (String(type).includes('pdf') || /\.pdf($|\?)/i.test(name) || /\.pdf($|\?)/i.test(url)) {
+        return `<div class="attachment-preview-card attachment-pdf${compact}">
+            <iframe src="${escAttr(getPdfPreviewUrl(url))}" title="Preview ${title}" loading="lazy"></iframe>
+            <a href="${escAttr(url)}" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i>${escHtml(name)}</a>
+        </div>`;
+    }
+    return `<a class="attachment-preview-card attachment-doc${compact}" href="${escAttr(url)}" target="_blank" rel="noopener" title="${title}">
+        <div class="attachment-doc-icon"><i class="fas ${config.icon}"></i></div>
+        <div class="attachment-doc-meta"><strong>${escHtml(name)}</strong><small>${escHtml(meta || config.hint)}</small></div>
+    </a>`;
+}
+
+function renderSelectedAttachmentPreview(file, scope) {
+    revokeAttachmentPreview(scope);
+    attachmentPreviewUrls[scope] = URL.createObjectURL(file);
+    const kind = getAttachmentKind(file.type, file.name);
+    const config = getAttachmentConfig(kind);
+    const clearAction = {
+        forum: 'clearForumAttachment()',
+        kantinChat: 'clearKantinChatAttachment()',
+        staffMateri: 'clearStaffMateriAttachment()',
+        tugas: 'clearTugasAttachment()',
+    }[scope] || '';
+    return `<div class="selected-attachment-head">
+        <span><i class="fas ${config.icon}"></i> ${escHtml(config.label)} siap dikirim</span>
+        <button type="button" onclick="${clearAction}" aria-label="Hapus lampiran"><i class="fas fa-times"></i></button>
+    </div>
+    ${renderAttachmentPreview({ url: attachmentPreviewUrls[scope], name: file.name, type: file.type, size: file.size }, { compact: scope !== 'forum' })}`;
+}
+
+function renderForumAttachment(item = {}) {
+    return renderAttachmentPreview(item, { compact: false });
+}
+
+function validateStudentAttachment(file) {
+    if (!file) return null;
+    const kind = getAttachmentKind(file.type, file.name);
+    const config = getAttachmentConfig(kind);
+    const allowedMimes = Object.values(ATTACHMENT_TYPES).flatMap(cfg => cfg.mimes);
+    const allowedExts = Object.values(ATTACHMENT_EXTENSIONS).flat();
+    const fileName = String(file.name || '').toLowerCase();
+    const isAllowed = allowedMimes.includes(file.type) || allowedExts.some(ext => fileName.endsWith(ext));
+    if (!isAllowed) {
+        showToast('Format file belum didukung. Pakai foto, PDF/dokumen, video, atau audio.', 'orange');
+        return null;
+    }
+    if (file.size > config.max) {
+        showToast(`${config.label} maksimal ${formatFileSize(config.max)}.`, 'orange');
+        return null;
+    }
+    return file;
+}
+
+function previewForumAttachment() {
+    const file = document.getElementById('forum-file')?.files?.[0];
+    const target = document.getElementById('forum-file-preview');
+    if (!target) return;
+    if (!file) {
+        clearForumAttachment();
+        return;
+    }
+    if (!validateStudentAttachment(file)) {
+        clearForumAttachment();
+        return;
+    }
+    target.innerHTML = renderSelectedAttachmentPreview(file, 'forum');
+}
+
+function clearForumAttachment() {
+    revokeAttachmentPreview('forum');
+    const input = document.getElementById('forum-file');
+    const target = document.getElementById('forum-file-preview');
+    if (input) input.value = '';
+    if (target) target.innerHTML = '';
+}
+
+async function uploadForumAttachment() {
+    const input = document.getElementById('forum-file');
+    const file = validateStudentAttachment(input?.files?.[0]);
+    if (!file) return null;
+    const form = new FormData();
+    form.append('file', file);
+    form.append('entity_type', 'forum_posts');
+    const res = await fetch(`${API}/upload/forum`, {
+        method: 'POST',
+        headers: { Authorization:`Bearer ${getToken()}` },
+        body: form
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Upload lampiran gagal.');
+    return data.data;
 }
 
 async function toggleLike(id) {
@@ -961,15 +1205,24 @@ async function toggleLike(id) {
 async function postForum() {
     const text  = document.getElementById('forum-input').value.trim();
     const mapel = document.getElementById('forum-mapel').value;
-    if (!text) return showToast('Tulis konten dulu ya!', 'orange');
+    const hasFile = !!document.getElementById('forum-file')?.files?.[0];
+    if (!text && !hasFile) return showToast('Tulis konten atau lampirkan file dulu ya!', 'orange');
 
     try {
+        const attachment = hasFile ? await uploadForumAttachment() : null;
         const data = await apiFetch('/lms/forum', {
             method: 'POST',
-            body: JSON.stringify({ konten: text, mapel: mapel.split('—')[0].trim() }),
+            body: JSON.stringify({
+                konten: text,
+                mapel: mapel.split('—')[0].trim(),
+                attachment_url: attachment?.fileUrl || null,
+                attachment_name: attachment?.originalName || attachment?.fileName || null,
+                attachment_type: attachment?.mimeType || null
+            }),
         });
         if (data.success) {
             document.getElementById('forum-input').value = '';
+            clearForumAttachment();
             showToast('Postingan berhasil dikirim!', 'green');
             await fetchForum();
         } else {
@@ -1184,9 +1437,13 @@ function debounce(fn, wait = 300) {
         timer = setTimeout(() => fn(...args), wait);
     };
 }
+const debouncedFetchKantinProductsHandler = debounce(() => fetchKantinProducts().catch(() => {}), 350);
+function debouncedFetchKantinProducts() {
+    debouncedFetchKantinProductsHandler();
+}
 
 /* ── Kantin ku ─────────────────────────────────────────────── */
-const kantinState = { profile: null, seller: null, products: [] };
+const kantinState = { profile: null, seller: null, products: [], orders: [], currentChatOrder: null, currentChat: null, pendingChatAttachment: null, currentProductDetail: null };
 
 function switchKantinTab(tab) {
     document.querySelectorAll('[data-kantin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.kantinTab === tab));
@@ -1218,14 +1475,16 @@ async function fetchKantinProducts() {
             return;
         }
         el.innerHTML = products.map(p => `
-            <article class="kantin-card">
-                <button class="kantin-photo" type="button" onclick="previewKantinProduct('${escAttr(p.id)}')" style="${p.image_url ? `background-image:url('${escAttr(p.image_url)}')` : ''}">
+            <article class="kantin-card" role="button" tabindex="0" onclick="openKantinProductDetail('${escAttr(p.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openKantinProductDetail('${escAttr(p.id)}')}">
+                ${renderKantinBadges(p)}
+                <button class="kantin-photo" type="button" onclick="event.stopPropagation();openKantinProductDetail('${escAttr(p.id)}')" style="${p.image_url ? `background-image:url('${escAttr(p.image_url)}')` : ''}">
                     ${p.image_url ? '' : '<i class="fas fa-bowl-food"></i>'}
                 </button>
                 <div class="kantin-info">
                     <strong>${escHtml(p.name)}</strong>
                     <span>${escHtml(p.description || 'Tanpa deskripsi')}</span>
                     <small>${escHtml(p.category || 'produk')} ${p.tags ? `· ${escHtml(p.tags)}` : ''}</small>
+                    <small class="rating-line">${renderStars(p.avg_rating || 0)} <b>${Number(p.avg_rating || 0).toFixed(1)}</b> (${Number(p.review_count || 0)} review)</small>
                     <small>Penjual: ${escHtml(p.seller_name || 'Siswa')} ${p.seller_class ? `· ${escHtml(p.seller_class)}` : ''}</small>
                     ${p.preference_score ? '<small><i class="fas fa-wand-magic-sparkles"></i> Cocok dengan minatmu</small>' : ''}
                 </div>
@@ -1234,8 +1493,8 @@ async function fetchKantinProducts() {
                     <span>Stok ${Number(p.stock || 0)}</span>
                 </div>
                 <div class="kantin-actions">
-                    ${p.chat_contact ? `<a class="small-action" href="https://wa.me/${encodeURIComponent(normalizePhone(p.chat_contact))}" target="_blank" rel="noopener"><i class="fas fa-comment"></i> Chat</a>` : ''}
-                    <button class="small-action primary" onclick="orderKantinProduct('${escAttr(p.id)}')"><i class="fas fa-cart-shopping"></i> Pesan</button>
+                    <button class="small-action" onclick="event.stopPropagation();openKantinProductDetail('${escAttr(p.id)}')"><i class="fas fa-circle-info"></i> Detail</button>
+                    <button class="small-action primary" onclick="event.stopPropagation();openKantinProductDetail('${escAttr(p.id)}', true)"><i class="fas fa-cart-shopping"></i> Pesan</button>
                 </div>
                 <p class="kantin-pay">${escHtml(p.emoney_provider || 'e-money')}: ${escHtml(p.emoney_account || 'konfirmasi via chat')}</p>
             </article>
@@ -1284,13 +1543,21 @@ async function fetchKantinSellerDashboard() {
         const dashboard = data.success ? data.data : { products:[], orders:[], stats:{} };
         kantinState.seller = dashboard;
         const s = dashboard.stats || {};
+        const avgOrder = s.total_orders ? Number(s.gross_profit || 0) / Number(s.total_orders || 1) : 0;
+        const completed = (dashboard.orders || []).filter(o => ['completed','selesai','paid'].includes(String(o.status || '').toLowerCase())).length;
         if (statsEl) statsEl.innerHTML = [
-            ['Postingan', s.total_products || 0],
-            ['Produk Aktif', s.active_products || 0],
-            ['Pesanan', s.total_orders || 0],
-            ['Pending', s.pending_orders || 0],
-            ['Omzet', formatRupiah(s.gross_profit || 0)]
-        ].map(([label, value]) => `<div class="kantin-stat"><b>${escHtml(value)}</b><span>${escHtml(label)}</span></div>`).join('');
+            ['Omzet', formatRupiah(s.gross_profit || 0), 'fa-wallet', 'green'],
+            ['Pesanan', s.total_orders || 0, 'fa-receipt', 'blue'],
+            ['Pending', s.pending_orders || 0, 'fa-hourglass-half', 'orange'],
+            ['Produk Aktif', s.active_products || 0, 'fa-box-open', 'purple'],
+            ['Rata-rata Order', formatRupiah(avgOrder), 'fa-chart-line', 'cyan'],
+            ['Selesai', completed, 'fa-circle-check', 'green']
+        ].map(([label, value, icon, tone]) => `<div class="kantin-stat seller-kpi ${tone}">
+            <i class="fas ${icon}"></i>
+            <b>${escHtml(value)}</b>
+            <span>${escHtml(label)}</span>
+        </div>`).join('');
+        renderKantinSellerCharts(dashboard);
         if (!dashboard.products?.length) {
             if (listEl) listEl.innerHTML = '<div class="staff-empty">Belum ada postingan jualan.</div>';
             return;
@@ -1312,12 +1579,100 @@ async function fetchKantinSellerDashboard() {
     }
 }
 
+function renderKantinSellerCharts(dashboard = {}) {
+    const orders = dashboard.orders || [];
+    renderKantinSalesChart(orders);
+    renderKantinStatusDonut(orders);
+    renderKantinBuyerInsights(orders);
+}
+
+function renderKantinSalesChart(orders = []) {
+    const el = document.getElementById('kantin-sales-chart');
+    if (!el) return;
+    const days = Array.from({ length: 7 }, (_, offset) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - offset));
+        const key = date.toISOString().slice(0, 10);
+        return { key, label: date.toLocaleDateString('id-ID', { weekday:'short' }), sales:0, count:0 };
+    });
+    orders.forEach(order => {
+        const key = String(order.created_at || '').slice(0, 10);
+        const row = days.find(day => day.key === key);
+        if (!row) return;
+        row.sales += Number(order.total_price || 0);
+        row.count += 1;
+    });
+    const maxSales = Math.max(...days.map(day => day.sales), 1);
+    el.innerHTML = days.map(day => {
+        const height = Math.max(8, Math.round((day.sales / maxSales) * 100));
+        return `<div class="seller-bar-item" title="${escAttr(formatRupiah(day.sales))} dari ${day.count} pesanan">
+            <div class="seller-bar-track"><span style="height:${height}%"></span></div>
+            <strong>${escHtml(day.label)}</strong>
+            <small>${day.count}</small>
+        </div>`;
+    }).join('');
+}
+
+function renderKantinStatusDonut(orders = []) {
+    const donut = document.getElementById('kantin-status-donut');
+    const legend = document.getElementById('kantin-status-legend');
+    if (!donut || !legend) return;
+    const colors = { pending:'#f59e0b', paid:'#2563eb', completed:'#16a34a', cancelled:'#dc2626', other:'#64748b' };
+    const labels = { pending:'Pending', paid:'Dibayar', completed:'Selesai', cancelled:'Batal', other:'Lainnya' };
+    const counts = { pending:0, paid:0, completed:0, cancelled:0, other:0 };
+    orders.forEach(order => {
+        const status = String(order.status || 'other').toLowerCase();
+        counts[counts[status] === undefined ? 'other' : status] += 1;
+    });
+    const total = Math.max(orders.length, 1);
+    let cursor = 0;
+    const segments = Object.entries(counts).filter(([, count]) => count > 0).map(([key, count]) => {
+        const start = cursor;
+        const end = cursor + (count / total) * 100;
+        cursor = end;
+        return `${colors[key]} ${start}% ${end}%`;
+    });
+    donut.style.background = segments.length ? `conic-gradient(${segments.join(',')})` : '#e2e8f0';
+    donut.innerHTML = `<b>${orders.length}</b><span>Order</span>`;
+    legend.innerHTML = Object.entries(counts).map(([key, count]) => `<div>
+        <i style="background:${colors[key]}"></i>
+        <span>${labels[key]}</span>
+        <strong>${count}</strong>
+    </div>`).join('');
+}
+
+function renderKantinBuyerInsights(orders = []) {
+    const el = document.getElementById('kantin-buyer-insights');
+    if (!el) return;
+    if (!orders.length) {
+        el.innerHTML = '<div class="staff-empty">Belum ada histori pembeli.</div>';
+        return;
+    }
+    const classes = {};
+    const buyers = {};
+    orders.forEach(order => {
+        const kelas = order.buyer_class || 'Belum ada kelas';
+        classes[kelas] = (classes[kelas] || 0) + 1;
+        const name = order.buyer_name || 'Pembeli';
+        buyers[name] = (buyers[name] || 0) + Number(order.total_price || 0);
+    });
+    const classRows = Object.entries(classes).sort((a, b) => b[1] - a[1]).slice(0, 4);
+    const buyerRows = Object.entries(buyers).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    el.innerHTML = `
+        <div class="buyer-section-title">Asal pembeli teratas</div>
+        ${classRows.map(([kelas, count]) => `<div class="buyer-insight-row"><span>${escHtml(kelas)}</span><b>${count}x</b></div>`).join('')}
+        <div class="buyer-section-title">Pembeli bernilai tinggi</div>
+        ${buyerRows.map(([name, total]) => `<div class="buyer-insight-row"><span>${escHtml(name)}</span><b>${formatRupiah(total)}</b></div>`).join('')}
+    `;
+}
+
 async function fetchKantinOrders() {
     const el = document.getElementById('kantin-orders');
     if (!el) return;
     try {
         const data = await apiFetch('/kantin/orders');
         const orders = data.success ? (data.data || []) : [];
+        kantinState.orders = orders;
         if (!orders.length) {
             el.innerHTML = '<div class="staff-empty">Belum ada pesanan.</div>';
             return;
@@ -1330,11 +1685,11 @@ async function fetchKantinOrders() {
                 ${(o.chats || []).length ? `
                     <div class="kantin-chat-preview">
                         ${(o.chats || []).map(chat => `
-                            <p><b>${escHtml(chat.sender_name || 'Pengguna')}</b> ${escHtml(chat.message || '')}</p>
+                            <p><b>${escHtml(chat.sender_name || 'Pengguna')}</b> ${escHtml(chat.message || '')}${chat.attachment_url ? ' · mengirim lampiran' : ''}</p>
                         `).join('')}
                     </div>
                 ` : ''}
-                <button class="small-action" onclick="chatKantinOrder('${escAttr(o.id)}')"><i class="fas fa-message"></i> Chat pesanan</button>
+                <button class="small-action" onclick="openKantinChat('${escAttr(o.id)}')"><i class="fas fa-message"></i> Buka room chat</button>
             </div>
         `).join('');
     } catch {
@@ -1374,6 +1729,7 @@ async function createKantinProduct(event) {
 function editKantinProduct(id) {
     const p = kantinState.seller?.products?.find(item => item.id === id);
     if (!p) return;
+    document.getElementById('kantinPostFold')?.setAttribute('open', '');
     document.getElementById('kantin-product-id').value = p.id;
     document.getElementById('kantin-name').value = p.name || '';
     document.getElementById('kantin-desc').value = p.description || '';
@@ -1403,32 +1759,57 @@ function resetKantinProductForm() {
     document.getElementById('kantin-form')?.reset();
     document.getElementById('kantin-product-id').value = '';
     document.getElementById('kantin-submit-btn').innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Terbitkan Produk';
+    const imageLabel = document.getElementById('kantin-image-file-label');
+    if (imageLabel) imageLabel.textContent = 'JPG, JPEG, PNG, WEBP - maks. 5MB';
     previewKantinImage();
 }
 
 async function uploadKantinImage() {
     const input = document.getElementById('kantin-image-file');
+    const label = document.getElementById('kantin-image-file-label');
     const file = input?.files?.[0];
     if (!file) return;
+    if (!validateKantinImageFile(file)) {
+        if (input) input.value = '';
+        return;
+    }
     const form = new FormData();
     form.append('image', file);
     form.append('entity_type', 'kantin_product');
+    if (label) label.textContent = `Mengupload ${file.name}...`;
     try {
         const res = await fetch(`${API}/upload/kantin`, {
             method:'POST',
-            headers:{ Authorization:`Bearer ${token}` },
+            headers:{ Authorization:`Bearer ${getToken()}` },
             body:form
         });
         const data = await res.json();
         if (!data.success) return showToast(data.message || 'Upload foto gagal.', 'red');
         document.getElementById('kantin-image').value = data.data.fileUrl;
         previewKantinImage();
+        if (label) label.textContent = file.name;
         showToast('Foto produk berhasil di-upload.', 'green');
     } catch {
         showToast('Upload foto gagal.', 'red');
+        if (label) label.textContent = 'JPG, JPEG, PNG, WEBP - maks. 5MB';
     } finally {
         if (input) input.value = '';
     }
+}
+
+function validateKantinImageFile(file) {
+    const allowed = ['image/jpeg','image/png','image/webp'];
+    const fileName = String(file.name || '').toLowerCase();
+    const ok = allowed.includes(file.type) || ['.jpg','.jpeg','.png','.webp'].some(ext => fileName.endsWith(ext));
+    if (!ok) {
+        showToast('Foto produk harus JPG, JPEG, PNG, atau WEBP.', 'orange');
+        return false;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Foto produk maksimal 5MB.', 'orange');
+        return false;
+    }
+    return true;
 }
 
 function previewKantinImage() {
@@ -1457,36 +1838,273 @@ function previewKantinProduct(id) {
     previewKantinPhoto(product.image_url, product.name || 'Foto produk');
 }
 
-async function orderKantinProduct(id) {
-    const quantity = Number(prompt('Jumlah yang dipesan:', '1') || 0);
-    if (!quantity) return;
-    const payment_reference = prompt('Referensi pembayaran e-money / catatan pembayaran:', '') || '';
+function renderStars(value = 0) {
+    const rating = Number(value || 0);
+    return `<span class="star-rating" aria-label="${rating.toFixed(1)} dari 5">${[1,2,3,4,5].map(i => `<i class="${rating >= i - .25 ? 'fas' : 'far'} fa-star"></i>`).join('')}</span>`;
+}
+
+function renderKantinBadges(product = {}) {
+    const badges = product.achievements || [];
+    if (!badges.length) return '';
+    return `<div class="kantin-achievement-stack">${badges.slice(0, 2).map(b => `<span><i class="fas ${escAttr(b.icon || 'fa-trophy')}"></i>${escHtml(b.label || 'Achievement')}</span>`).join('')}</div>`;
+}
+
+async function openKantinProductDetail(id, focusOrder = false) {
+    const body = document.getElementById('kantin-product-modal-body');
+    const title = document.getElementById('kantin-product-modal-title');
+    if (!body) return;
+    body.innerHTML = '<div class="staff-empty">Memuat detail produk...</div>';
+    openModal('modal-kantin-product');
+    try {
+        const data = await apiFetch(`/kantin/products/${encodeURIComponent(id)}`);
+        if (!data.success) {
+            body.innerHTML = `<div class="staff-empty">${escHtml(data.message || 'Produk tidak ditemukan.')}</div>`;
+            return;
+        }
+        kantinState.currentProductDetail = data.data;
+        if (title) title.textContent = data.data.product?.name || 'Detail Produk';
+        renderKantinProductDetail(focusOrder);
+    } catch {
+        body.innerHTML = '<div class="staff-empty">Gagal memuat detail produk.</div>';
+    }
+}
+
+function renderKantinProductDetail(focusOrder = false) {
+    const body = document.getElementById('kantin-product-modal-body');
+    const detail = kantinState.currentProductDetail;
+    if (!body || !detail) return;
+    const p = detail.product || {};
+    const seller = detail.seller || {};
+    body.innerHTML = `
+        <div class="product-detail-grid">
+            <div class="product-detail-media">
+                ${renderKantinBadges(p)}
+                ${p.image_url ? `<img src="${escAttr(p.image_url)}" alt="${escAttr(p.name || 'Produk')}">` : '<div class="product-empty-photo"><i class="fas fa-bowl-food"></i></div>'}
+            </div>
+            <div class="product-detail-info">
+                <div class="product-detail-head">
+                    <span>${escHtml(p.category || 'produk')}</span>
+                    <h3>${escHtml(p.name || 'Produk Kantin')}</h3>
+                    <div>${renderStars(p.avg_rating || 0)} <b>${Number(p.avg_rating || 0).toFixed(1)}</b> <small>${Number(p.review_count || 0)} review</small></div>
+                </div>
+                <p>${escHtml(p.description || 'Belum ada deskripsi produk.')}</p>
+                <div class="product-facts">
+                    <div><span>Harga</span><b>${formatRupiah(p.price)}</b></div>
+                    <div><span>Stok</span><b>${Number(p.stock || 0)}</b></div>
+                    <div><span>Pembayaran</span><b>${escHtml(p.emoney_provider || 'e-money')}</b></div>
+                </div>
+                <div class="seller-mini-card">
+                    <div><strong>${escHtml(seller.name || 'Pedagang')}</strong><span>${escHtml(seller.class || 'Siswa')} · ${Number(seller.achievement_count || 0)} review bagus terkumpul</span></div>
+                    <p>${escHtml(seller.selling_focus || 'Belum ada fokus jualan.')}</p>
+                    <small>Pasar utama: ${escHtml(seller.target_market || '-')} · Pembayaran: ${escHtml(seller.payment_methods || '-')}</small>
+                </div>
+                <form class="product-order-box" onsubmit="submitKantinOrder(event)">
+                    <h4>Pesan produk</h4>
+                    <div class="form-grid">
+                        <label>Jumlah<input id="detail-order-qty" type="number" min="1" max="${Number(p.stock || 1)}" value="1"></label>
+                        <label>Metode<select id="detail-order-payment"><option value="e-money">e-money</option><option value="DANA">DANA</option><option value="OVO">OVO</option><option value="GoPay">GoPay</option><option value="QRIS">QRIS</option><option value="Tunai">Tunai</option></select></label>
+                    </div>
+                    <label>Catatan pembayaran / pesanan<textarea id="detail-order-note" rows="2" maxlength="400" placeholder="Contoh: bayar QRIS saat istirahat, ambil di kelas X TKJ 1"></textarea></label>
+                    <button class="small-action primary" type="submit"><i class="fas fa-cart-shopping"></i> Buat Pesanan</button>
+                </form>
+            </div>
+        </div>
+        <div class="product-social-grid">
+            <section>
+                <h4>Produk lain dari pedagang ini</h4>
+                <div class="seller-products-mini">
+                    ${(detail.seller_products || []).map(item => `<button type="button" onclick="openKantinProductDetail('${escAttr(item.id)}')">
+                        ${item.image_url ? `<img src="${escAttr(item.image_url)}" alt="">` : '<i class="fas fa-bowl-food"></i>'}
+                        <span>${escHtml(item.name)}</span><small>${formatRupiah(item.price)} · ${renderStars(item.avg_rating || 0)}</small>
+                    </button>`).join('') || '<div class="staff-empty">Belum ada produk lain.</div>'}
+                </div>
+            </section>
+            <section>
+                <h4>Review dan komentar</h4>
+                <form class="review-form" onsubmit="submitKantinReview(event)">
+                    <select id="review-rating"><option value="5">★★★★★ - Sangat bagus</option><option value="4">★★★★ - Bagus</option><option value="3">★★★ - Cukup</option><option value="2">★★ - Kurang</option><option value="1">★ - Buruk</option></select>
+                    <textarea id="review-comment" rows="2" maxlength="500" placeholder="${detail.can_review ? 'Tulis komentar singkat setelah membeli...' : 'Kamu perlu memesan produk ini dulu untuk review.'}" ${detail.can_review ? '' : 'disabled'}></textarea>
+                    <button class="small-action" type="submit" ${detail.can_review ? '' : 'disabled'}><i class="fas fa-star"></i> Kirim Review</button>
+                </form>
+                <div class="review-list">
+                    ${(detail.reviews || []).map(r => `<div class="review-item"><div>${renderStars(r.rating)} <strong>${escHtml(r.reviewer_name || 'Siswa')}</strong><small>${escHtml(r.reviewer_class || '')}</small></div><p>${escHtml(r.comment || 'Tanpa komentar.')}</p></div>`).join('') || '<div class="staff-empty">Belum ada review.</div>'}
+                </div>
+            </section>
+        </div>
+    `;
+    if (focusOrder) body.querySelector('.product-order-box')?.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+async function submitKantinOrder(event) {
+    event.preventDefault();
+    const detail = kantinState.currentProductDetail;
+    const id = detail?.product?.id;
+    if (!id) return;
+    const quantity = Math.max(1, Number(document.getElementById('detail-order-qty')?.value || 1));
+    const payment_method = document.getElementById('detail-order-payment')?.value || 'e-money';
+    const payment_reference = document.getElementById('detail-order-note')?.value || '';
     try {
         const data = await apiFetch(`/kantin/products/${encodeURIComponent(id)}/order`, {
             method: 'POST',
-            body: JSON.stringify({ quantity, payment_reference, payment_method: 'e-money' }),
+            body: JSON.stringify({ quantity, payment_reference, note: payment_reference, payment_method }),
         });
         showToast(data.message || 'Pesanan diproses.', data.success ? 'green' : 'red');
         if (data.success) {
             await fetchKantinProducts();
             await fetchKantinOrders();
+            await openKantinProductDetail(id);
         }
     } catch {
         showToast('Gagal membuat pesanan.', 'red');
     }
 }
 
-async function chatKantinOrder(id) {
-    const message = prompt('Tulis pesan ke lawan transaksi:');
-    if (!message || !message.trim()) return;
+async function orderKantinProduct(id) {
+    return openKantinProductDetail(id, true);
+}
+
+async function submitKantinReview(event) {
+    event.preventDefault();
+    const detail = kantinState.currentProductDetail;
+    const id = detail?.product?.id;
+    if (!id) return;
     try {
+        const data = await apiFetch(`/kantin/products/${encodeURIComponent(id)}/reviews`, {
+            method:'POST',
+            body:JSON.stringify({
+                rating: document.getElementById('review-rating')?.value || 5,
+                comment: document.getElementById('review-comment')?.value || ''
+            })
+        });
+        showToast(data.message || 'Review diproses.', data.success ? 'green' : 'red');
+        if (data.success) {
+            await fetchKantinProducts();
+            await openKantinProductDetail(id);
+        }
+    } catch {
+        showToast('Gagal mengirim review.', 'red');
+    }
+}
+
+async function openKantinChat(id) {
+    kantinState.currentChatOrder = id;
+    document.getElementById('kantin-chat-title').textContent = 'Room Chat Kantin';
+    document.getElementById('kantin-chat-room').innerHTML = '<div class="staff-empty">Memuat chat...</div>';
+    document.getElementById('kantin-chat-message').value = '';
+    clearKantinChatAttachment();
+    document.getElementById('kantin-attachment-tray')?.classList.remove('open');
+    kantinState.pendingChatAttachment = null;
+    openModal('modal-kantin-chat');
+    await loadKantinChatRoom(id);
+}
+
+async function loadKantinChatRoom(id = kantinState.currentChatOrder) {
+    if (!id) return;
+    try {
+        const data = await apiFetch(`/kantin/orders/${encodeURIComponent(id)}/chat`);
+        if (!data.success) return showToast(data.message || 'Gagal memuat room chat.', 'red');
+        kantinState.currentChat = data.data;
+        renderKantinChatRoom(data.data);
+    } catch {
+        showToast('Gagal memuat room chat.', 'red');
+    }
+}
+
+function renderKantinChatRoom(data) {
+    const room = document.getElementById('kantin-chat-room');
+    if (!room) return;
+    const order = data.order || {};
+    document.getElementById('kantin-chat-title').textContent = `${order.product_name || 'Pesanan Kantin'} · ${formatRupiah(order.total_price || 0)}`;
+    const chats = data.chats || [];
+    if (!chats.length) {
+        room.innerHTML = '<div class="staff-empty">Belum ada chat. Mulai komunikasi dengan pembeli/penjual di sini.</div>';
+        return;
+    }
+    room.innerHTML = chats.map(chat => {
+        const mine = chat.sender_id === data.current_user_id;
+        return `
+            <div class="chat-bubble ${mine ? 'mine' : ''}">
+                <b>${mine ? 'Saya' : escHtml(chat.sender_name || 'Pengguna')}</b>
+                ${chat.message ? `<p>${escHtml(chat.message)}</p>` : ''}
+                ${renderChatAttachment(chat)}
+                <small>${formatRelativeTime(chat.created_at)}</small>
+            </div>
+        `;
+    }).join('');
+    room.scrollTop = room.scrollHeight;
+}
+
+function renderChatAttachment(chat = {}) {
+    return renderAttachmentPreview(chat, { compact: true });
+}
+
+function previewKantinChatAttachment() {
+    const input = document.getElementById('kantin-chat-file');
+    const preview = document.getElementById('kantin-chat-file-preview');
+    const file = input?.files?.[0];
+    kantinState.pendingChatAttachment = null;
+    if (!file) {
+        clearKantinChatAttachment();
+        return;
+    }
+    if (!validateStudentAttachment(file)) {
+        clearKantinChatAttachment();
+        return;
+    }
+    if (preview) preview.innerHTML = renderSelectedAttachmentPreview(file, 'kantinChat');
+}
+
+function clearKantinChatAttachment() {
+    revokeAttachmentPreview('kantinChat');
+    const input = document.getElementById('kantin-chat-file');
+    const preview = document.getElementById('kantin-chat-file-preview');
+    if (input) input.value = '';
+    if (preview) preview.innerHTML = '';
+}
+
+async function uploadKantinChatAttachment() {
+    const input = document.getElementById('kantin-chat-file');
+    const file = validateStudentAttachment(input?.files?.[0]);
+    if (!file) return null;
+    const form = new FormData();
+    form.append('file', file);
+    form.append('entity_type', 'kantin_chats');
+    const res = await fetch(`${API}/upload/kantin-chat`, {
+        method: 'POST',
+        headers: { Authorization:`Bearer ${getToken()}` },
+        body: form
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Upload lampiran gagal.');
+    return data.data;
+}
+
+async function sendKantinChatMessage() {
+    const id = kantinState.currentChatOrder;
+    const input = document.getElementById('kantin-chat-message');
+    const message = input?.value.trim() || '';
+    const hasFile = !!document.getElementById('kantin-chat-file')?.files?.[0];
+    if (!id || (!message && !hasFile)) return showToast('Tulis pesan atau pilih lampiran dulu.', 'orange');
+    try {
+        const attachment = hasFile ? await uploadKantinChatAttachment() : null;
         const data = await apiFetch(`/kantin/orders/${encodeURIComponent(id)}/chat`, {
-            method: 'POST',
-            body: JSON.stringify({ message: message.trim() }),
+            method:'POST',
+            body:JSON.stringify({
+                message,
+                attachment_url: attachment?.fileUrl || null,
+                attachment_name: attachment?.originalName || attachment?.fileName || null,
+                attachment_type: attachment?.mimeType || null
+            })
         });
         showToast(data.message || 'Pesan diproses.', data.success ? 'green' : 'red');
-    } catch {
-        showToast('Gagal mengirim chat.', 'red');
+        if (data.success) {
+            input.value = '';
+            clearKantinChatAttachment();
+            await loadKantinChatRoom(id);
+            await fetchKantinOrders();
+        }
+    } catch(e) {
+        showToast(e.message || 'Gagal mengirim chat.', 'red');
     }
 }
 
@@ -1703,10 +2321,36 @@ function getFileColor(tipe) {
 
 function handleFileUpload(input) {
     const f = input.files[0];
-    if (f) {
-        document.getElementById('file-preview').innerHTML =
-            `<span><i class="fas fa-paperclip"></i> ${escHtml(f.name)} (${(f.size/1024).toFixed(1)} KB)</span>`;
+    if (!f) return clearTugasAttachment();
+    if (!validateTugasAttachment(f)) return clearTugasAttachment();
+    const preview = document.getElementById('file-preview');
+    if (preview) {
+        preview.innerHTML = renderSelectedAttachmentPreview(f, 'tugas');
     }
+}
+
+function validateTugasAttachment(file) {
+    const allowedMimes = ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','image/jpeg','image/png','application/zip','application/x-zip-compressed'];
+    const allowedExts = ['.pdf','.doc','.docx','.jpg','.jpeg','.png','.zip'];
+    const fileName = String(file.name || '').toLowerCase();
+    const isAllowed = allowedMimes.includes(file.type) || allowedExts.some(ext => fileName.endsWith(ext));
+    if (!isAllowed) {
+        showToast('Lampiran tugas harus PDF, DOC/DOCX, JPG/JPEG, PNG, atau ZIP.', 'orange');
+        return false;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        showToast('Lampiran tugas maksimal 10MB.', 'orange');
+        return false;
+    }
+    return true;
+}
+
+function clearTugasAttachment() {
+    revokeAttachmentPreview('tugas');
+    const input = document.getElementById('file-input');
+    const preview = document.getElementById('file-preview');
+    if (input) input.value = '';
+    if (preview) preview.innerHTML = '';
 }
 
 /* ── Init ───────────────────────────────────────────────────── */
@@ -1731,14 +2375,13 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault(); drop.style.borderColor = '';
             const f = e.dataTransfer.files[0];
             if (f) {
-                document.getElementById('file-preview').innerHTML =
-                    `<span><i class="fas fa-paperclip"></i> ${escHtml(f.name)} (${(f.size/1024).toFixed(1)} KB)</span>`;
-                // Inject ke input
+                if (!validateTugasAttachment(f)) return clearTugasAttachment();
                 const inp = document.getElementById('file-input');
                 if (inp) {
                     const dt = new DataTransfer();
                     dt.items.add(f);
                     inp.files = dt.files;
+                    handleFileUpload(inp);
                 }
             }
         });

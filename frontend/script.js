@@ -1,4 +1,4 @@
-﻿/* ================= START OF FILE: script.js ================= */
+/* ================= START OF FILE: script.js ================= */
 (function() {
     const hidePageLoader = () => {
         const loader = document.getElementById('page-loader');
@@ -20,6 +20,12 @@
 
     window.setTimeout(hidePageLoader, 2500);
 })();
+
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+        window.closeNewsArticle?.();
+    }
+});
 
 
 /* ── Fetch ticker bar dari API backend ── */
@@ -73,6 +79,35 @@
 /* ── Konten dinamis dari dashboard admin ── */
 (function hydrateWebsiteContent() {
     const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+    const fallbackHomeNews = [
+        {
+            id: 'fallback-ppdb',
+            title: 'PPDB dan Layanan Digital Sekolah',
+            category: 'Pengumuman',
+            excerpt: 'Informasi pendaftaran, layanan siswa, dan pembaruan agenda sekolah tersedia melalui portal digital.',
+            body: 'Admin dapat mengganti feed ini dari Panel Admin melalui Konten Website dengan tipe Berita Sekolah dan placement home.',
+            image_url: 'asset/Galeri.jpg',
+            link_url: 'ppdb.html'
+        },
+        {
+            id: 'fallback-lms',
+            title: 'LMS Terintegrasi untuk Siswa',
+            category: 'Akademik',
+            excerpt: 'Materi, tugas, nilai, forum, dan layanan siswa dirapikan dalam satu dashboard.',
+            body: 'LMS membantu siswa mengakses materi dan tugas tanpa perlu berpindah platform terlalu banyak.',
+            image_url: 'asset/siswa akademik.jpg',
+            link_url: 'LMS.html'
+        },
+        {
+            id: 'fallback-prestasi',
+            title: 'Ruang Prestasi dan Kegiatan Sekolah',
+            category: 'Kesiswaan',
+            excerpt: 'Berita prestasi, kegiatan jurusan, dan agenda sekolah bisa tampil sebagai feed artikel.',
+            body: 'Gunakan konten dinamis admin untuk menambah banyak informasi tanpa membuat halaman beranda menumpuk.',
+            image_url: 'asset/prestasi.jpg',
+            link_url: 'kesiswaan.html'
+        }
+    ];
 
     function escapeSiteHtml(value) {
         return String(value || '').replace(/[&<>"']/g, c => ({
@@ -85,6 +120,12 @@
         if (!url) return fallback;
         if (/^(https?:\/\/|\/uploads\/|uploads\/|asset\/)/i.test(url)) return url;
         return fallback;
+    }
+
+    function safeLinkUrl(value) {
+        const url = String(value || '').trim();
+        if (/^(https?:\/\/|\/|[a-z0-9\-]+\.html)/i.test(url)) return url;
+        return '';
     }
 
     async function getWebsiteContent(params) {
@@ -135,9 +176,12 @@
     }
 
     function renderHomeNews(items) {
-        if (!items.length || document.getElementById('berita-sekolah')) return;
-        const anchor = document.getElementById('kontak') || document.querySelector('footer');
+        const rows = Array.isArray(items) && items.length ? items : fallbackHomeNews;
+        if (document.getElementById('berita-sekolah')) return;
+        const portal = document.getElementById('portal-layanan');
+        const anchor = portal?.nextSibling || document.getElementById('kontak') || document.querySelector('footer');
         if (!anchor) return;
+        window.__schoolNewsItems = rows.slice(0, 12);
         const section = document.createElement('section');
         section.className = 'section bg-light school-news-section';
         section.id = 'berita-sekolah';
@@ -148,10 +192,12 @@
                     <h2>Informasi Terbaru</h2>
                     <div class="line"></div>
                 </div>
-                <div class="news-grid">
-                    ${items.slice(0, 3).map(item => {
+                <div class="news-slider-shell">
+                    <button class="news-slide-btn prev" type="button" aria-label="Berita sebelumnya" onclick="slideHomeNews(-1)"><i class="fas fa-chevron-left"></i></button>
+                    <div class="news-slider" id="home-news-slider">
+                    ${window.__schoolNewsItems.map((item, index) => {
                         const image = escapeSiteHtml(safeImageUrl(item.image_url, 'asset/Galeri.jpg'));
-                        const link = String(item.link_url || '').trim();
+                        const link = safeLinkUrl(item.link_url);
                         return `
                             <article class="news-card">
                                 <img src="${image}" alt="${escapeSiteHtml(item.title)}" loading="lazy">
@@ -159,16 +205,74 @@
                                     <span>${escapeSiteHtml(item.category || 'Informasi')}</span>
                                     <h3>${escapeSiteHtml(item.title)}</h3>
                                     <p>${escapeSiteHtml(item.excerpt || item.body || '')}</p>
-                                    ${link ? `<a href="${escapeSiteHtml(link)}" class="news-link">Selengkapnya <i class="fas fa-arrow-right"></i></a>` : ''}
+                                    <div class="news-actions">
+                                        <button class="news-link news-open" type="button" onclick="openNewsArticle(${index})">Baca artikel <i class="fas fa-arrow-right"></i></button>
+                                        ${link ? `<a href="${escapeSiteHtml(link)}" class="news-link">Buka halaman</a>` : ''}
+                                    </div>
                                 </div>
                             </article>
                         `;
                     }).join('')}
+                    </div>
+                    <button class="news-slide-btn next" type="button" aria-label="Berita berikutnya" onclick="slideHomeNews(1)"><i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
         `;
-        anchor.parentNode.insertBefore(section, anchor);
+        if (portal?.parentNode) portal.parentNode.insertBefore(section, portal.nextSibling);
+        else anchor.parentNode.insertBefore(section, anchor);
     }
+
+    window.slideHomeNews = function(direction) {
+        const slider = document.getElementById('home-news-slider');
+        if (!slider) return;
+        const card = slider.querySelector('.news-card');
+        const step = card ? card.getBoundingClientRect().width + 18 : 320;
+        slider.scrollBy({ left: direction * step, behavior: 'smooth' });
+    };
+
+    window.openNewsArticle = function(index) {
+        const item = (window.__schoolNewsItems || [])[index];
+        if (!item) return;
+        let modal = document.getElementById('newsArticleModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'newsArticleModal';
+            modal.className = 'news-article-modal';
+            modal.innerHTML = `
+                <div class="news-article-box" role="dialog" aria-modal="true" aria-labelledby="newsArticleTitle">
+                    <button class="news-article-close" type="button" aria-label="Tutup artikel" onclick="closeNewsArticle()"><i class="fas fa-times"></i></button>
+                    <img id="newsArticleImage" alt="">
+                    <div class="news-article-content">
+                        <span id="newsArticleCategory"></span>
+                        <h3 id="newsArticleTitle"></h3>
+                        <p id="newsArticleBody"></p>
+                        <a id="newsArticleLink" class="news-link" target="_blank" rel="noopener">Buka halaman terkait <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            `;
+            modal.addEventListener('click', event => {
+                if (event.target === modal) window.closeNewsArticle();
+            });
+            document.body.appendChild(modal);
+        }
+        const image = modal.querySelector('#newsArticleImage');
+        image.src = safeImageUrl(item.image_url, 'asset/Galeri.jpg');
+        image.alt = item.title || 'Berita sekolah';
+        modal.querySelector('#newsArticleCategory').textContent = item.category || 'Informasi';
+        modal.querySelector('#newsArticleTitle').textContent = item.title || 'Berita sekolah';
+        modal.querySelector('#newsArticleBody').textContent = item.body || item.excerpt || 'Belum ada isi detail.';
+        const link = modal.querySelector('#newsArticleLink');
+        const href = safeLinkUrl(item.link_url);
+        link.style.display = href ? 'inline-flex' : 'none';
+        if (href) link.href = href;
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closeNewsArticle = function() {
+        document.getElementById('newsArticleModal')?.classList.remove('open');
+        document.body.style.overflow = '';
+    };
 
     document.addEventListener('DOMContentLoaded', async () => {
         try {
@@ -180,11 +284,11 @@
                 jobs.push(getWebsiteContent({ type:'ppdb_info', placement:'hero_ppdb', limit:4 }).then(renderPpdbInfo));
             }
             if (document.getElementById('home')) {
-                jobs.push(getWebsiteContent({ type:'berita', placement:'home', limit:3 }).then(renderHomeNews));
+                jobs.push(getWebsiteContent({ type:'berita', placement:'home', limit:12 }).then(renderHomeNews));
             }
             await Promise.all(jobs);
         } catch (error) {
-            /* Konten statis tetap dipakai kalau backend belum aktif. */
+            if (document.getElementById('home')) renderHomeNews(fallbackHomeNews);
         }
     });
 })();
@@ -203,11 +307,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (mobileMenu && navMenu) {
+        mobileMenu.setAttribute('aria-expanded', 'false');
+        mobileMenu.setAttribute('aria-controls', 'primary-navigation');
+        navMenu.id = navMenu.id || 'primary-navigation';
         mobileMenu.addEventListener('click', () => {
             navMenu.classList.toggle('active');
             mobileMenu.classList.toggle('is-active');
             mobileMenu.classList.toggle('active');
             document.body.classList.toggle('nav-open', navMenu.classList.contains('active'));
+            mobileMenu.setAttribute('aria-expanded', navMenu.classList.contains('active') ? 'true' : 'false');
             
             // Prevent body scroll when menu is open
             document.body.style.overflow = navMenu.classList.contains('active') ? 'hidden' : '';
@@ -223,11 +331,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 bars[2].style.transform = 'none';
             }
         });
+        mobileMenu.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                mobileMenu.click();
+            }
+        });
 
         navMenu.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', () => {
                 navMenu.classList.remove('active');
                 mobileMenu.classList.remove('is-active', 'active');
+                mobileMenu.setAttribute('aria-expanded', 'false');
                 document.body.classList.remove('nav-open');
                 document.body.style.overflow = '';
                 mobileMenu.querySelectorAll('.bar').forEach(bar => {
@@ -249,6 +364,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentTheme === 'dark') {
             bodyTheme.classList.add('dark-theme');
             iconTheme.classList.replace('fa-moon', 'fa-sun'); // Ganti icon jadi matahari
+            darkModeToggle.setAttribute('aria-pressed', 'true');
+        } else {
+            darkModeToggle.setAttribute('aria-pressed', 'false');
         }
 
         // 2. Beri event pada tombol saat diklik
@@ -259,10 +377,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (bodyTheme.classList.contains('dark-theme')) {
                 localStorage.setItem('theme', 'dark'); // Simpan ke storage
                 iconTheme.classList.replace('fa-moon', 'fa-sun');
+                darkModeToggle.setAttribute('aria-pressed', 'true');
             } else {
                 // Jika mode terang aktif
                 localStorage.setItem('theme', 'light'); // Simpan ke storage
                 iconTheme.classList.replace('fa-sun', 'fa-moon');
+                darkModeToggle.setAttribute('aria-pressed', 'false');
             }
         });
     }
@@ -510,7 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
         btn.disabled = true;
         setTimeout(() => {
-            btn.innerHTML = '<i class="fas fa-check-circle"></i> Data Ditemukan â€” Mengunduh...';
+            btn.innerHTML = '<i class="fas fa-check-circle"></i> Data ditemukan - mengunduh...';
             btn.style.background = '#059669';
             btn.style.color = '#fff';
             // Simulasi selesai setelah 2 detik
@@ -560,20 +680,20 @@ document.addEventListener('DOMContentLoaded', () => {
    ============================================================ */
 
 /* =============================================
-   DATA STAFF LENGKAP â€” 50 ORANG
+   DATA STAFF LENGKAP - 50 ORANG
    40 Guru + 10 Staf TU
    Tambahkan properti foto di data orang jika ingin memakai file asli:
    foto: 'asset/foto/agung-hendra.jpg'
    ============================================= */
 const ORG_DATA = {
 
-  /* â”€â”€ PIMPINAN INTI â”€â”€ */
+  /* -- PIMPINAN INTI -- */
   pimpinan: [
     {
       id: 'P01',
       nama: 'Agung Hendra Adiwiguna, S.Kom., M.M.',
       jabatan: 'Kepala Sekolah',
-      mapel: 'â€”',
+      mapel: '-',
       tipe: 'pimpinan',
       icon: 'fa-crown',
       tier: 1,
@@ -676,7 +796,7 @@ const ORG_DATA = {
     },
   ],
 
-  /* â”€â”€ KOORDINATOR JURUSAN â”€â”€ */
+  /* -- KOORDINATOR JURUSAN -- */
   koordinator: [
     {
       id: 'K01',
@@ -764,19 +884,19 @@ const ORG_DATA = {
     },
   ],
 
-  /* â”€â”€ GURU (40 orang) â”€â”€ */
+  /* -- GURU (40 orang) -- */
   guru: [
-    { id:'G01', nama:'Ratna Sari, S.Pd.',           jabatan:'Guru Matematika',          mapel:'Matematika',                    tipe:'guru', icon:'fa-square-root-alt',    tier:3, nip:'19900101 201401 2 010', pendidikan:'S1 Pend. Matematika',         tugas:['Mengajar Matematika kelas Xâ€“XII','Menyusun kisi-kisi soal ulangan harian dan PAS','Wali kelas XI TKJ 1','Pembina Olimpiade Matematika'], atasan:'P02', bawahan:[] },
-    { id:'G02', nama:'Intan Permata, M.Pd.',        jabatan:'Guru Bahasa Indonesia',     mapel:'Bahasa Indonesia',              tipe:'guru', icon:'fa-book',               tier:3, nip:'19880214 201201 2 011', pendidikan:'S2 Pend. Bahasa Indonesia',   tugas:['Mengajar Bahasa Indonesia kelas Xâ€“XII','Koordinator Program Literasi Sekolah','Wali kelas X ATPH 1'], atasan:'P02', bawahan:[] },
-    { id:'G03', nama:'Maya Sari, S.Pd.',            jabatan:'Guru Bahasa Inggris',       mapel:'Bahasa Inggris',                tipe:'guru', icon:'fa-language',           tier:3, nip:'19910505 201501 2 012', pendidikan:'S1 Pend. Bahasa Inggris',     tugas:['Mengajar Bahasa Inggris kelas Xâ€“XII','Koordinator English Club','Wali kelas XI AKL 1'], atasan:'P02', bawahan:[] },
-    { id:'G04', nama:'Asep Hidayat, S.Pd.',         jabatan:'Guru PKn & PPKN',           mapel:'PKn & Pendidikan Pancasila',    tipe:'guru', icon:'fa-flag',               tier:3, nip:'19870808 201301 1 013', pendidikan:'S1 PKn',                      tugas:['Mengajar PKn kelas Xâ€“XII','Pembina Upacara Bendera','Koordinator Program P5'], atasan:'P02', bawahan:[] },
-    { id:'G05', nama:'Usep Mulyadi, S.Ag.',         jabatan:'Guru PAI',                  mapel:'Pendidikan Agama Islam',        tipe:'guru', icon:'fa-mosque',             tier:3, nip:'19860912 201201 1 014', pendidikan:'S1 Pendidikan Agama Islam',   tugas:['Mengajar PAI kelas Xâ€“XII','Koordinator Rohani Islam (Rohis)','Pembina Pramuka'], atasan:'P02', bawahan:[] },
-    { id:'G06', nama:'Rini Lestari, S.Pd.',         jabatan:'Guru Sejarah / BK',         mapel:'Sejarah & Bimbingan Konseling', tipe:'guru', icon:'fa-history',            tier:3, nip:'19920115 201601 2 015', pendidikan:'S1 Pend. Sejarah',           tugas:['Mengajar Sejarah Indonesia kelas Xâ€“XII','Koordinator BK Kesiswaan','Pembina OSIS'], atasan:'P03', bawahan:[] },
-    { id:'G07', nama:'Joko Purnomo, S.Pd.',         jabatan:'Guru PJOK',                 mapel:'Pendidikan Jasmani & Olahraga', tipe:'guru', icon:'fa-running',            tier:3, nip:'19890320 201301 1 016', pendidikan:'S1 PJOK',                    tugas:['Mengajar PJOK kelas Xâ€“XII','Pembina kegiatan olahraga sekolah','Koordinator Paskibra'], atasan:'P03', bawahan:[] },
-    { id:'G08', nama:'Dewi Anggraini, S.Pd.',       jabatan:'Guru Seni Budaya',          mapel:'Seni Budaya & Prakarya',        tipe:'guru', icon:'fa-palette',            tier:3, nip:'19930625 201701 2 017', pendidikan:'S1 Seni Rupa',               tugas:['Mengajar Seni Budaya kelas Xâ€“XII','Koordinator Ekskul Tari Tradisional','Pembina Mading Sekolah'], atasan:'P03', bawahan:[] },
-    { id:'G09', nama:'Andi Prasetyo, S.Pd.',        jabatan:'Guru PKK / BKK',            mapel:'Produk Kreatif & KWU',          tipe:'guru', icon:'fa-lightbulb',          tier:3, nip:'19910718 201501 1 018', pendidikan:'S1 Ekonomi',                 tugas:['Mengajar PKK kelas XIâ€“XII','Koordinator BKK Sekolah','Mengelola program magang siswa'], atasan:'P05', bawahan:[] },
+    { id:'G01', nama:'Ratna Sari, S.Pd.',           jabatan:'Guru Matematika',          mapel:'Matematika',                    tipe:'guru', icon:'fa-square-root-alt',    tier:3, nip:'19900101 201401 2 010', pendidikan:'S1 Pend. Matematika',         tugas:['Mengajar Matematika kelas X-XII','Menyusun kisi-kisi soal ulangan harian dan PAS','Wali kelas XI TKJ 1','Pembina Olimpiade Matematika'], atasan:'P02', bawahan:[] },
+    { id:'G02', nama:'Intan Permata, M.Pd.',        jabatan:'Guru Bahasa Indonesia',     mapel:'Bahasa Indonesia',              tipe:'guru', icon:'fa-book',               tier:3, nip:'19880214 201201 2 011', pendidikan:'S2 Pend. Bahasa Indonesia',   tugas:['Mengajar Bahasa Indonesia kelas X-XII','Koordinator Program Literasi Sekolah','Wali kelas X ATPH 1'], atasan:'P02', bawahan:[] },
+    { id:'G03', nama:'Maya Sari, S.Pd.',            jabatan:'Guru Bahasa Inggris',       mapel:'Bahasa Inggris',                tipe:'guru', icon:'fa-language',           tier:3, nip:'19910505 201501 2 012', pendidikan:'S1 Pend. Bahasa Inggris',     tugas:['Mengajar Bahasa Inggris kelas X-XII','Koordinator English Club','Wali kelas XI AKL 1'], atasan:'P02', bawahan:[] },
+    { id:'G04', nama:'Asep Hidayat, S.Pd.',         jabatan:'Guru PKn & PPKN',           mapel:'PKn & Pendidikan Pancasila',    tipe:'guru', icon:'fa-flag',               tier:3, nip:'19870808 201301 1 013', pendidikan:'S1 PKn',                      tugas:['Mengajar PKn kelas X-XII','Pembina Upacara Bendera','Koordinator Program P5'], atasan:'P02', bawahan:[] },
+    { id:'G05', nama:'Usep Mulyadi, S.Ag.',         jabatan:'Guru PAI',                  mapel:'Pendidikan Agama Islam',        tipe:'guru', icon:'fa-mosque',             tier:3, nip:'19860912 201201 1 014', pendidikan:'S1 Pendidikan Agama Islam',   tugas:['Mengajar PAI kelas X-XII','Koordinator Rohani Islam (Rohis)','Pembina Pramuka'], atasan:'P02', bawahan:[] },
+    { id:'G06', nama:'Rini Lestari, S.Pd.',         jabatan:'Guru Sejarah / BK',         mapel:'Sejarah & Bimbingan Konseling', tipe:'guru', icon:'fa-history',            tier:3, nip:'19920115 201601 2 015', pendidikan:'S1 Pend. Sejarah',           tugas:['Mengajar Sejarah Indonesia kelas X-XII','Koordinator BK Kesiswaan','Pembina OSIS'], atasan:'P03', bawahan:[] },
+    { id:'G07', nama:'Joko Purnomo, S.Pd.',         jabatan:'Guru PJOK',                 mapel:'Pendidikan Jasmani & Olahraga', tipe:'guru', icon:'fa-running',            tier:3, nip:'19890320 201301 1 016', pendidikan:'S1 PJOK',                    tugas:['Mengajar PJOK kelas X-XII','Pembina kegiatan olahraga sekolah','Koordinator Paskibra'], atasan:'P03', bawahan:[] },
+    { id:'G08', nama:'Dewi Anggraini, S.Pd.',       jabatan:'Guru Seni Budaya',          mapel:'Seni Budaya & Prakarya',        tipe:'guru', icon:'fa-palette',            tier:3, nip:'19930625 201701 2 017', pendidikan:'S1 Seni Rupa',               tugas:['Mengajar Seni Budaya kelas X-XII','Koordinator Ekskul Tari Tradisional','Pembina Mading Sekolah'], atasan:'P03', bawahan:[] },
+    { id:'G09', nama:'Andi Prasetyo, S.Pd.',        jabatan:'Guru PKK / BKK',            mapel:'Produk Kreatif & KWU',          tipe:'guru', icon:'fa-lightbulb',          tier:3, nip:'19910718 201501 1 018', pendidikan:'S1 Ekonomi',                 tugas:['Mengajar PKK kelas XI-XII','Koordinator BKK Sekolah','Mengelola program magang siswa'], atasan:'P05', bawahan:[] },
     { id:'G10', nama:'Nurul Hidayah, S.E.',         jabatan:'Guru Ekonomi Bisnis',       mapel:'Ekonomi Bisnis',                tipe:'guru', icon:'fa-chart-line',         tier:3, nip:'19940202 201801 2 019', pendidikan:'S1 Manajemen',               tugas:['Mengajar Ekonomi Bisnis kelas X','Koordinator TEFA Sekolah','Pembina Koperasi Siswa'], atasan:'P05', bawahan:[] },
-    { id:'G11', nama:'Ahmad Fauzi, S.Kom.',         jabatan:'Guru Produktif TKJ',        mapel:'Keamanan Jaringan',             tipe:'guru', icon:'fa-shield-alt',         tier:3, nip:'19920514 201601 1 020', pendidikan:'S1 Teknik Informatika',      tugas:['Mengajar Keamanan Jaringan kelas XIâ€“XII','Pengelola Lab TKJ 1','Pembina IT Club'], atasan:'K01', bawahan:[] },
+    { id:'G11', nama:'Ahmad Fauzi, S.Kom.',         jabatan:'Guru Produktif TKJ',        mapel:'Keamanan Jaringan',             tipe:'guru', icon:'fa-shield-alt',         tier:3, nip:'19920514 201601 1 020', pendidikan:'S1 Teknik Informatika',      tugas:['Mengajar Keamanan Jaringan kelas XI-XII','Pengelola Lab TKJ 1','Pembina IT Club'], atasan:'K01', bawahan:[] },
     { id:'G12', nama:'Rizki Maulana, S.T.',         jabatan:'Guru Produktif TKJ',        mapel:'Administrasi Server',           tipe:'guru', icon:'fa-server',             tier:3, nip:'19930810 201701 1 021', pendidikan:'S1 Teknik Informatika',      tugas:['Mengajar Administrasi Server Linux & Windows','Pengelola Lab TKJ 2','Wali kelas XII TKJ 2'], atasan:'K01', bawahan:[] },
     { id:'G13', nama:'Siti Rahayu, S.Kom.',         jabatan:'Guru Produktif TKJ',        mapel:'Desain Grafis & Web',           tipe:'guru', icon:'fa-code',               tier:3, nip:'19950112 201901 2 022', pendidikan:'S1 Ilmu Komputer',           tugas:['Mengajar Pemrograman Web & Desain Grafis','Wali kelas X TKJ 2','Koordinator Web Sekolah'], atasan:'K01', bawahan:[] },
     { id:'G14', nama:'Budi Santoso, A.Md.',         jabatan:'Guru Produktif TKJ',        mapel:'Instalasi Jaringan',            tipe:'guru', icon:'fa-ethernet',           tier:3, nip:'19961201 202001 1 023', pendidikan:'D3 Teknik Jaringan',         tugas:['Mengajar Instalasi LAN & Fiber Optik','Teknisi Lab Komputer sekolah','Wali kelas X TKJ 1'], atasan:'K01', bawahan:[] },
@@ -789,7 +909,7 @@ const ORG_DATA = {
     { id:'G21', nama:'Mira Susanti, S.E.',          jabatan:'Guru Produktif AKL',        mapel:'Komputer Akuntansi',            tipe:'guru', icon:'fa-laptop-code',        tier:3, nip:'19910628 201501 2 030', pendidikan:'S1 Akuntansi',               tugas:['Mengajar MYOB & Accurate','Mengajar Spreadsheet Akuntansi','Wali kelas XI AKL 1'], atasan:'K04', bawahan:[] },
     { id:'G22', nama:'Farida Hanum, S.Ak.',         jabatan:'Guru Produktif AKL',        mapel:'Perpajakan',                    tipe:'guru', icon:'fa-file-invoice-dollar', tier:3, nip:'19930314 201701 2 031', pendidikan:'S1 Akuntansi Perpajakan',    tugas:['Mengajar Perpajakan & e-Faktur','Mengajar Administrasi Keuangan','Wali kelas XII AKL 1'], atasan:'K04', bawahan:[] },
     { id:'G23', nama:'Dian Purnama, S.E.',          jabatan:'Guru Produktif AKL',        mapel:'Perbankan Syariah',             tipe:'guru', icon:'fa-university',         tier:3, nip:'19950720 201901 2 032', pendidikan:'S1 Ekonomi Syariah',         tugas:['Mengajar Perbankan & Bank Mini','Pengelola Koperasi Siswa','Wali kelas X AKL 1'], atasan:'K04', bawahan:[] },
-    { id:'G24', nama:'Eko Prasetyo, S.Pd.',         jabatan:'Guru Matematika',           mapel:'Matematika',                    tipe:'guru', icon:'fa-square-root-alt',    tier:3, nip:'19941201 201801 1 033', pendidikan:'S1 Pend. Matematika',        tugas:['Mengajar Matematika kelas Xâ€“XII','Pembina Olimpiade Matematika Tingkat Kabupaten','Wali kelas X AKL 2'], atasan:'P02', bawahan:[] },
+    { id:'G24', nama:'Eko Prasetyo, S.Pd.',         jabatan:'Guru Matematika',           mapel:'Matematika',                    tipe:'guru', icon:'fa-square-root-alt',    tier:3, nip:'19941201 201801 1 033', pendidikan:'S1 Pend. Matematika',        tugas:['Mengajar Matematika kelas X-XII','Pembina Olimpiade Matematika Tingkat Kabupaten','Wali kelas X AKL 2'], atasan:'P02', bawahan:[] },
     { id:'G25', nama:'Nina Kusuma, S.Pd.',          jabatan:'Guru Bahasa Indonesia',     mapel:'Bahasa Indonesia',              tipe:'guru', icon:'fa-book',               tier:3, nip:'19930808 201701 2 034', pendidikan:'S1 Pend. Bahasa Indonesia',  tugas:['Mengajar Bahasa Indonesia','Koordinator Perpustakaan Sekolah','Wali kelas XII AKL 2'], atasan:'P02', bawahan:[] },
     { id:'G26', nama:'Rudi Hartono, S.Pd.',         jabatan:'Guru Bahasa Inggris',       mapel:'Bahasa Inggris',                tipe:'guru', icon:'fa-language',           tier:3, nip:'19910225 201501 1 035', pendidikan:'S1 Sastra Inggris',          tugas:['Mengajar Bahasa Inggris','Pembina English Club','Wali kelas XI TBSM 2'], atasan:'P02', bawahan:[] },
     { id:'G27', nama:'Tuti Rahayu, S.Pd.',          jabatan:'Guru IPA Terapan',          mapel:'IPA Terapan',                   tipe:'guru', icon:'fa-flask',              tier:3, nip:'19900612 201401 2 036', pendidikan:'S1 Pend. IPA',               tugas:['Mengajar IPA Terapan kelas X','Pengelola Laboratorium IPA','Wali kelas X TBSM 1'], atasan:'P02', bawahan:[] },
@@ -797,7 +917,7 @@ const ORG_DATA = {
     { id:'G29', nama:'Hartini, S.Pd.',              jabatan:'Guru Kimia Terapan',        mapel:'Kimia Terapan',                 tipe:'guru', icon:'fa-vial',               tier:3, nip:'19920903 201601 2 038', pendidikan:'S1 Pend. Kimia',             tugas:['Mengajar Kimia Terapan','Pengelola Lab Kimia','Wali kelas XI ATPH 2'], atasan:'P02', bawahan:[] },
     { id:'G30', nama:'Supriyadi, S.Pd.',            jabatan:'Guru Geografi & Lingkungan',mapel:'Geografi & Lingkungan',         tipe:'guru', icon:'fa-globe-asia',         tier:3, nip:'19870115 201201 1 039', pendidikan:'S1 Geografi',                tugas:['Mengajar Geografi & Lingkungan Hidup','Koordinator Program Adiwiyata','Wali kelas X ATPH 1'], atasan:'P02', bawahan:[] },
     { id:'G31', nama:'Dwi Cahyani, S.Pd.',          jabatan:'Guru BK',                   mapel:'Bimbingan Konseling',           tipe:'guru', icon:'fa-heart',              tier:3, nip:'19940516 201801 2 040', pendidikan:'S1 Bimbingan Konseling',     tugas:['Konseling siswa bermasalah akademik & sosial','Koordinator Siswa Berprestasi','Mengelola data absensi BK'], atasan:'P03', bawahan:[] },
-    { id:'G32', nama:'Yusuf Aryanto, S.Pd.',        jabatan:'Guru PJOK',                 mapel:'PJOK',                          tipe:'guru', icon:'fa-futbol',             tier:3, nip:'19911204 201501 1 041', pendidikan:'S1 PJOK',                    tugas:['Mengajar PJOK kelas Xâ€“XII','Pelatih Tim Futsal Sekolah','Wali kelas X TBSM 2'], atasan:'P03', bawahan:[] },
+    { id:'G32', nama:'Yusuf Aryanto, S.Pd.',        jabatan:'Guru PJOK',                 mapel:'PJOK',                          tipe:'guru', icon:'fa-futbol',             tier:3, nip:'19911204 201501 1 041', pendidikan:'S1 PJOK',                    tugas:['Mengajar PJOK kelas X-XII','Pelatih Tim Futsal Sekolah','Wali kelas X TBSM 2'], atasan:'P03', bawahan:[] },
     { id:'G33', nama:'Mulyadi, S.T.',               jabatan:'Guru Produktif TKJ',        mapel:'Cloud Computing & IoT',         tipe:'guru', icon:'fa-cloud',              tier:3, nip:'19960330 202101 1 042', pendidikan:'S1 Informatika',             tugas:['Mengajar Cloud Computing','Mengajar IoT Dasar','Wali kelas XII TKJ 1'], atasan:'K01', bawahan:[] },
     { id:'G34', nama:'Irawati, S.Kom.',             jabatan:'Guru Produktif TKJ',        mapel:'Cybersecurity',                 tipe:'guru', icon:'fa-lock',               tier:3, nip:'19970714 202201 2 043', pendidikan:'S1 Ilmu Komputer',           tugas:['Mengajar Cybersecurity','Mengajar Forensik Digital','Wali kelas XI TKJ 2'], atasan:'K01', bawahan:[] },
     { id:'G35', nama:'Panji Wicaksono, S.T.',       jabatan:'Guru Produktif TBSM',       mapel:'Chassis & Sistem Rem',          tipe:'guru', icon:'fa-car-crash',          tier:3, nip:'19950822 201901 1 044', pendidikan:'S1 Teknik Mesin',            tugas:['Mengajar Sistem Rem & Suspensi','Mengajar Tune Up Motor','Wali kelas X TBSM 1'], atasan:'K02', bawahan:[] },
@@ -808,13 +928,13 @@ const ORG_DATA = {
     { id:'G40', nama:'Faisal Akbar, S.T.',          jabatan:'Guru Produktif TKJ',        mapel:'Mikrotik & Cisco Networking',   tipe:'guru', icon:'fa-router',             tier:3, nip:'19981214 202201 1 049', pendidikan:'S1 Teknik Jaringan',         tugas:['Mengajar Routing & Switching','Mengajar Konfigurasi MikroTik','Pembina IT Competition'], atasan:'K01', bawahan:[] },
   ],
 
-  /* â”€â”€ STAF TU (10 orang) â”€â”€ */
+  /* -- STAF TU (10 orang) -- */
   tu: [
     {
       id: 'T01',
       nama: 'Slamet Riyadi, S.E.',
       jabatan: 'Kepala Tata Usaha',
-      mapel: 'â€”',
+      mapel: '-',
       tipe: 'tu',
       icon: 'fa-briefcase',
       tier: 2,
@@ -832,45 +952,45 @@ const ORG_DATA = {
       bawahan: ['T02','T03','T04','T05','T06','T07','T08','T09','T10'],
     },
     {
-      id: 'T02', nama: 'Yanti Kurniasih',       jabatan: 'Staf Administrasi Akademik', mapel:'â€”', tipe:'tu', icon:'fa-folder-open',   tier:3, nip:'19850910 200701 2 002', pendidikan:'D3 Administrasi',
+      id: 'T02', nama: 'Yanti Kurniasih',       jabatan: 'Staf Administrasi Akademik', mapel:'-', tipe:'tu', icon:'fa-folder-open',   tier:3, nip:'19850910 200701 2 002', pendidikan:'D3 Administrasi',
       tugas: ['Mengelola data nilai dan rapor siswa','Mengurus legalisir dokumen akademik','Mencetak dan mendistribusikan jadwal pelajaran','Mengelola sistem informasi akademik sekolah'], atasan:'T01', bawahan:[],
     },
     {
-      id: 'T03', nama: 'Gunawan Saputra',       jabatan: 'Staf Keuangan & Bendahara',  mapel:'â€”', tipe:'tu', icon:'fa-coins',         tier:3, nip:'19820601 200601 1 003', pendidikan:'S1 Akuntansi',
+      id: 'T03', nama: 'Gunawan Saputra',       jabatan: 'Staf Keuangan & Bendahara',  mapel:'-', tipe:'tu', icon:'fa-coins',         tier:3, nip:'19820601 200601 1 003', pendidikan:'S1 Akuntansi',
       tugas: ['Mengelola keuangan operasional sekolah','Membuat laporan keuangan bulanan','Mengelola BOS (Bantuan Operasional Sekolah)','Membayar gaji dan tunjangan seluruh staf'], atasan:'T01', bawahan:[],
     },
     {
-      id: 'T04', nama: 'Neni Suryani',          jabatan: 'Staf Kepegawaian',           mapel:'â€”', tipe:'tu', icon:'fa-users-cog',     tier:3, nip:'19900715 201201 2 004', pendidikan:'S1 Manajemen SDM',
+      id: 'T04', nama: 'Neni Suryani',          jabatan: 'Staf Kepegawaian',           mapel:'-', tipe:'tu', icon:'fa-users-cog',     tier:3, nip:'19900715 201201 2 004', pendidikan:'S1 Manajemen SDM',
       tugas: ['Mengelola data kepegawaian guru dan staf','Mengurus kenaikan pangkat dan gaji berkala','Mengelola absensi pegawai harian','Membuat SK dan surat tugas pegawai'], atasan:'T01', bawahan:[],
     },
     {
-      id: 'T05', nama: 'Dadan Rusmana',         jabatan: 'Staf Humas & Publikasi',     mapel:'â€”', tipe:'tu', icon:'fa-bullhorn',      tier:3, nip:'19930212 201601 1 005', pendidikan:'S1 Komunikasi',
+      id: 'T05', nama: 'Dadan Rusmana',         jabatan: 'Staf Humas & Publikasi',     mapel:'-', tipe:'tu', icon:'fa-bullhorn',      tier:3, nip:'19930212 201601 1 005', pendidikan:'S1 Komunikasi',
       tugas: ['Mengelola media sosial resmi sekolah','Membuat press release dan publikasi kegiatan','Mengelola website dan konten digital sekolah','Mendokumentasikan seluruh kegiatan sekolah'], atasan:'T01', bawahan:[],
     },
     {
-      id: 'T06', nama: 'Agus Priyatno',         jabatan: 'Staf Sarana & Pemeliharaan', mapel:'â€”', tipe:'tu', icon:'fa-hammer',        tier:3, nip:'19851118 200801 1 006', pendidikan:'SMK Teknik',
+      id: 'T06', nama: 'Agus Priyatno',         jabatan: 'Staf Sarana & Pemeliharaan', mapel:'-', tipe:'tu', icon:'fa-hammer',        tier:3, nip:'19851118 200801 1 006', pendidikan:'SMK Teknik',
       tugas: ['Merawat gedung dan fasilitas sekolah','Mengelola inventaris perlengkapan sekolah','Mengawasi kebersihan lingkungan sekolah','Mengurus perbaikan kerusakan fasilitas'], atasan:'T01', bawahan:[],
     },
     {
-      id: 'T07', nama: 'Wiji Lestari',          jabatan: 'Staf Perpustakaan',          mapel:'â€”', tipe:'tu', icon:'fa-book-reader',   tier:3, nip:'19920425 201601 2 007', pendidikan:'S1 Ilmu Perpustakaan',
+      id: 'T07', nama: 'Wiji Lestari',          jabatan: 'Staf Perpustakaan',          mapel:'-', tipe:'tu', icon:'fa-book-reader',   tier:3, nip:'19920425 201601 2 007', pendidikan:'S1 Ilmu Perpustakaan',
       tugas: ['Mengelola koleksi buku perpustakaan','Melayani peminjaman dan pengembalian buku','Mengembangkan program literasi sekolah','Mengelola e-library digital sekolah'], atasan:'T01', bawahan:[],
     },
     {
-      id: 'T08', nama: 'Rian Nurdin',           jabatan: 'Staf IT & Teknisi',          mapel:'â€”', tipe:'tu', icon:'fa-laptop-code',   tier:3, nip:'19960830 202001 1 008', pendidikan:'D3 Teknik Informatika',
+      id: 'T08', nama: 'Rian Nurdin',           jabatan: 'Staf IT & Teknisi',          mapel:'-', tipe:'tu', icon:'fa-laptop-code',   tier:3, nip:'19960830 202001 1 008', pendidikan:'D3 Teknik Informatika',
       tugas: ['Memelihara infrastruktur jaringan sekolah','Mengelola server dan sistem CCTV','Mendukung kegiatan CBT Online sekolah','Troubleshooting komputer dan perangkat sekolah'], atasan:'T01', bawahan:[],
     },
     {
-      id: 'T09', nama: 'Suminah',               jabatan: 'Staf Administrasi Kesiswaan',mapel:'â€”', tipe:'tu', icon:'fa-user-graduate',  tier:3, nip:'19880305 201001 2 009', pendidikan:'D3 Administrasi',
+      id: 'T09', nama: 'Suminah',               jabatan: 'Staf Administrasi Kesiswaan',mapel:'-', tipe:'tu', icon:'fa-user-graduate',  tier:3, nip:'19880305 201001 2 009', pendidikan:'D3 Administrasi',
       tugas: ['Mengelola data biodata siswa','Mengurus PPDB dan mutasi siswa','Menerbitkan surat keterangan aktif siswa','Mengelola arsip ijazah dan dokumen resmi siswa'], atasan:'T01', bawahan:[],
     },
     {
-      id: 'T10', nama: 'Parto Widodo',          jabatan: 'Petugas Keamanan & Kebersihan', mapel:'â€”', tipe:'tu', icon:'fa-shield-alt', tier:3, nip:'19800718 200501 1 010', pendidikan:'SMA',
+      id: 'T10', nama: 'Parto Widodo',          jabatan: 'Petugas Keamanan & Kebersihan', mapel:'-', tipe:'tu', icon:'fa-shield-alt', tier:3, nip:'19800718 200501 1 010', pendidikan:'SMA',
       tugas: ['Menjaga keamanan lingkungan sekolah 24 jam','Mengontrol keluar masuk tamu sekolah','Memastikan kebersihan area sekolah','Mengurus kebutuhan kebersihan harian'], atasan:'T01', bawahan:[],
     },
   ],
 };
 
-/* â”€â”€ Gabungkan semua staff â”€â”€ */
+/* -- Gabungkan semua staff -- */
 const ORG_ALL_STAFF = [
   ...ORG_DATA.pimpinan,
   ...ORG_DATA.koordinator,
@@ -878,7 +998,7 @@ const ORG_ALL_STAFF = [
   ...ORG_DATA.tu,
 ];
 
-/* â”€â”€ Cari staff by ID â”€â”€ */
+/* -- Cari staff by ID -- */
 function orgFindById(id) {
   return ORG_ALL_STAFF.find(s => s.id === id);
 }
@@ -916,11 +1036,11 @@ function orgBuildTree() {
   root.innerHTML = '';
   root.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:0;';
 
-  /* Level 0 â€” Kepala Sekolah */
+  /* Level 0 - Kepala Sekolah */
   root.appendChild(orgBuildNode(orgFindById('P01'), 0));
   root.appendChild(orgConnV(40));
 
-  /* Level 1 â€” Wakasek & Ka TU */
+  /* Level 1 - Wakasek & Ka TU */
   const row1 = document.createElement('div');
   row1.className = 'org-tree-row';
   ['P02','P03','P04','P05','T01'].forEach(id => {
@@ -930,7 +1050,7 @@ function orgBuildTree() {
   root.appendChild(row1);
   root.appendChild(orgConnV(30));
 
-  /* Level 2 â€” Kaprodi */
+  /* Level 2 - Kaprodi */
   const row2 = document.createElement('div');
   row2.className = 'org-tree-row';
   ['K01','K02','K03','K04'].forEach(id => {
@@ -940,7 +1060,7 @@ function orgBuildTree() {
   root.appendChild(row2);
   root.appendChild(orgConnV(28));
 
-  /* Level 3 â€” Sample guru per prodi */
+  /* Level 3 - Sample guru per prodi */
   const groups = {
     TKJ  : ['G11','G12','G40'],
     TBSM : ['G15','G16'],
@@ -979,7 +1099,7 @@ function orgBuildNode(staff, level) {
   card.className = 'org-node-card';
   card.setAttribute('data-tier', staff.tier);
   card.setAttribute('data-id', staff.id);
-  card.title = `${staff.nama} â€” ${staff.jabatan}`;
+  card.title = `${staff.nama} - ${staff.jabatan}`;
 
   card.innerHTML = `
     ${orgAvatarHtml(staff, 'org-node-avatar', true)}
@@ -1103,7 +1223,7 @@ function orgBuildDept() {
       <div class="org-dept-members">
         ${membersHtml}
         ${moreCount > 0 ? `<div class="org-dept-more" onclick="orgSwitchView('list', document.querySelector('[data-view=list]'))">
-          +${moreCount} lainnya â€” Lihat semua
+          +${moreCount} lainnya - Lihat semua
         </div>` : ''}
       </div>
     `;
@@ -1278,7 +1398,7 @@ function orgShowToast(msg) {
 }
 
 /* =============================================
-   INIT â€” jalankan hanya jika elemen ada
+   INIT - jalankan hanya jika elemen ada
    ============================================= */
 document.addEventListener('DOMContentLoaded', function () {
   if (!document.getElementById('org-tree-root')) return; /* hanya di profil.html */

@@ -10,6 +10,16 @@ const getDB    = require('../config/database');
 
 const nowISO = () => new Date().toISOString();
 const STAFF  = ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'];
+const cleanText = (value, max = 500) => (
+    value === undefined || value === null
+        ? null
+        : String(value).replace(/[<>]/g, '').trim().slice(0, max) || null
+);
+const cleanUrl = value => {
+    const text = cleanText(value, 500);
+    if (!text) return null;
+    return /^(https?:\/\/|\/uploads\/|uploads\/|asset\/|\/asset\/)/i.test(text) ? text : null;
+};
 
 /* ══════════════════════════════════════════════
    TUGAS
@@ -225,7 +235,7 @@ router.get('/forum', authenticate, (req, res) => {
         if (mapel) { conds.push('fp.mapel = ?'); params.push(mapel); }
 
         const posts = db.prepare(`
-            SELECT fp.id, fp.konten, fp.mapel, fp.likes, fp.created_at,
+            SELECT fp.id, fp.konten, fp.mapel, fp.likes, fp.attachment_url, fp.attachment_name, fp.attachment_type, fp.created_at,
                    u.id as user_id, u.nama_lengkap, u.role,
                    (SELECT COUNT(*) FROM forum_posts r WHERE r.parent_id = fp.id) as total_balasan,
                    EXISTS(SELECT 1 FROM forum_likes fl WHERE fl.post_id = fp.id AND fl.user_id = ?) as sudah_like
@@ -237,7 +247,7 @@ router.get('/forum', authenticate, (req, res) => {
         `).all(req.user.sub, ...params, parseInt(limit), offset);
 
         const repliesStmt = db.prepare(`
-            SELECT fp.id, fp.parent_id, fp.konten, fp.created_at,
+            SELECT fp.id, fp.parent_id, fp.konten, fp.attachment_url, fp.attachment_name, fp.attachment_type, fp.created_at,
                    u.nama_lengkap, u.role
             FROM forum_posts fp
             JOIN users u ON fp.user_id = u.id
@@ -255,16 +265,28 @@ router.get('/forum', authenticate, (req, res) => {
 // POST /api/lms/forum — buat post baru
 router.post('/forum', authenticate, (req, res) => {
     const db = getDB();
-    const { konten, mapel, parent_id } = req.body;
-    if (!konten?.trim()) return res.status(400).json({ success: false, message: 'Konten tidak boleh kosong.' });
+    const { konten, mapel, parent_id, attachment_url, attachment_name, attachment_type } = req.body;
+    if (!konten?.trim() && !attachment_url) return res.status(400).json({ success: false, message: 'Konten atau lampiran wajib diisi.' });
 
     try {
         const id  = uuidv4();
         const now = nowISO();
         db.prepare(`
-            INSERT INTO forum_posts (id,user_id,mapel,konten,parent_id,likes,created_at,updated_at)
-            VALUES (?,?,?,?,?,0,?,?)
-        `).run(id, req.user.sub, mapel || null, konten.trim(), parent_id || null, now, now);
+            INSERT INTO forum_posts
+            (id,user_id,mapel,konten,parent_id,likes,attachment_url,attachment_name,attachment_type,created_at,updated_at)
+            VALUES (?,?,?,?,?,0,?,?,?,?,?)
+        `).run(
+            id,
+            req.user.sub,
+            mapel || null,
+            konten?.trim() || '',
+            parent_id || null,
+            cleanUrl(attachment_url),
+            cleanText(attachment_name, 180),
+            cleanText(attachment_type, 80),
+            now,
+            now
+        );
 
         return res.status(201).json({ success: true, message: 'Post berhasil dikirim.', data: { id } });
     } catch (err) {
