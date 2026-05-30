@@ -5,6 +5,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { authenticate } = require('../middleware/auth');
 const getDB = require('../config/database');
+const { log } = require('../middleware/auditLog');
 
 const router = express.Router();
 const STUDENT_ROLES = ['siswa', 'wali_murid'];
@@ -407,7 +408,9 @@ router.get('/seller/dashboard', authenticate, (req, res) => {
             total_products: products.length,
             active_products: products.filter(p => p.status === 'active').length,
             total_orders: orders.length,
-            gross_profit: orders.reduce((sum, row) => sum + Number(row.total_price || 0), 0),
+            gross_profit: orders
+                .filter(row => String(row.status || '').toLowerCase() !== 'cancelled')
+                .reduce((sum, row) => sum + Number(row.total_price || 0), 0),
             pending_orders: orders.filter(row => row.status === 'pending').length
         };
         return res.json({ success: true, data: { products, orders, stats } });
@@ -489,6 +492,84 @@ router.get('/orders', authenticate, (req, res) => {
         });
     } catch (err) {
         return res.status(500).json({ success: false, message: 'Gagal memuat pesanan.' });
+    }
+});
+
+router.patch('/orders/:id/status', authenticate, (req, res) => {
+    if (!ensureStudent(req, res)) return;
+    const db = getDB();
+    const status = String(req.body.status || '').toLowerCase();
+    if (!['completed', 'cancelled'].includes(status)) {
+        return res.status(400).json({ success: false, message: 'Status pesanan tidak valid.' });
+    }
+
+    try {
+        const order = db.prepare(`
+            SELECT o.*, p.name as product_name
+            FROM kantin_orders o
+            JOIN kantin_products p ON p.id = o.product_id
+            WHERE o.id = ?
+        `).get(req.params.id);
+        if (!order || order.seller_id !== req.user.sub) {
+            return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan di dashboard pedagangmu.' });
+        }
+        if (['completed', 'cancelled'].includes(String(order.status || '').toLowerCase())) {
+            return res.status(409).json({ success: false, message: 'Pesanan ini sudah final dan tidak bisa diubah lagi.' });
+        }
+
+        const tx = db.transaction(() => {
+            db.prepare('UPDATE kantin_orders SET status = ?, updated_at = ? WHERE id = ?')
+                .run(status, nowISO(), order.id);
+            if (status === 'cancelled') {
+                db.prepare('UPDATE kantin_products SET stock = stock + ?, updated_at = ? WHERE id = ?')
+                    .run(order.quantity || 1, nowISO(), order.product_id);
+            }
+
+            const notifTitle = status === 'completed' ? 'Pesanan Kantin selesai' : 'Pesanan Kantin dibatalkan';
+            const notifMsg = status === 'completed'
+                ? `Pesanan ${order.product_name} sudah ditandai selesai oleh penjual.`
+                : `Pesanan ${order.product_name} dibatalkan oleh penjual. Stok dikembalikan.`;
+            db.prepare(`
+                INSERT INTO notifikasi (id,user_id,judul,pesan,tipe,is_read,link,created_at)
+                VALUES (?,?,?,?,?,0,?,?)
+            `).run(uuidv4(), order.buyer_id, notifTitle, notifMsg, status === 'completed' ? 'success' : 'warning', '/LMS.html#kantin', nowISO());
+
+            db.prepare(`
+                INSERT INTO kantin_chats
+                (id,order_id,product_id,sender_id,receiver_id,message,attachment_url,attachment_name,attachment_type,created_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?)
+            `).run(
+                uuidv4(),
+                order.id,
+                order.product_id,
+                req.user.sub,
+                order.buyer_id,
+                notifMsg,
+                null,
+                null,
+                null,
+                nowISO()
+            );
+        });
+        tx();
+
+        log(
+            req.user.sub,
+            status === 'completed' ? 'KANTIN_ORDER_COMPLETED' : 'KANTIN_ORDER_CANCELLED',
+            'kantin_orders',
+            order.id,
+            { product_id: order.product_id, product_name: order.product_name, buyer_id: order.buyer_id, quantity: order.quantity, total_price: order.total_price },
+            req.ip
+        );
+
+        return res.json({
+            success: true,
+            message: status === 'completed' ? 'Pesanan ditandai selesai.' : 'Pesanan dibatalkan dan stok dikembalikan.',
+            data: { id: order.id, status }
+        });
+    } catch (err) {
+        console.error('[Kantin order status PATCH]', err.message);
+        return res.status(500).json({ success: false, message: 'Gagal memperbarui status pesanan.' });
     }
 });
 

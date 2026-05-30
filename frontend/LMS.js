@@ -41,7 +41,15 @@ const lmsState = {
     currentTugasId: null,
     allMateri:      [],
     forumPosts:     [],
+    forumScope:     'school',
+    forumUserClass: null,
+    forumRecorder:  null,
+    forumAudioChunks: [],
+    privateContacts: [],
+    activePrivateUserId: null,
+    privateMessages: [],
     tugasData:      [],
+    taskProgress:   [],
     nilaiData:      [],
     jadwalData:     {},
     profileData:    null,
@@ -229,6 +237,7 @@ async function initDashboard() {
         fetchTugas(),
         fetchMateri(),
         fetchForum(),
+        fetchPrivateContacts(),
         fetchNilai(),
         fetchJadwal(),
         fetchNotifikasi(),
@@ -236,6 +245,7 @@ async function initDashboard() {
         fetchProfil(),
         loadSchoolClasses(),
         fetchStaffStudents(),
+        fetchTaskProgress(),
     ]);
 
     await fetchKelas();
@@ -277,13 +287,13 @@ async function loadSchoolClasses() {
             select.innerHTML = '<option value="">Pilih kelas</option>' + options;
             if (lmsState.profileData?.profil?.kelas) select.value = lmsState.profileData.profil.kelas;
         }
-        ['staff-class-filter','staff-task-kelas','staff-materi-kelas'].forEach(id => {
+        ['staff-class-filter','staff-task-kelas','staff-task-classes','staff-materi-kelas','forum-kelas'].forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
             const label = id === 'staff-class-filter' ? 'Semua kelas' : 'Pilih kelas';
             const current = el.value;
-            el.innerHTML = `<option value="">${label}</option>${options}`;
-            if (current) el.value = current;
+            el.innerHTML = id === 'staff-task-classes' ? options : `<option value="">${label}</option>${options}`;
+            if (current && id !== 'staff-task-classes') el.value = current;
         });
     } catch(e) { console.warn('[Classes]', e.message); }
 }
@@ -314,6 +324,7 @@ function configureDashboardForRole() {
         const span = document.querySelector(`[data-page="${page}"] span`);
         if (span) span.textContent = label;
     });
+    document.getElementById('forum-kelas')?.classList.toggle('hidden', !(staff && lmsState.forumScope === 'class'));
 }
 
 async function fetchProfil(nisn = '') {
@@ -599,22 +610,85 @@ function renderStaffStudentDetail(data) {
 }
 
 async function createStaffTask() {
+    const selectedClasses = Array.from(document.getElementById('staff-task-classes')?.selectedOptions || [])
+        .map(opt => opt.value)
+        .filter(Boolean);
+    const legacyClass = document.getElementById('staff-task-kelas')?.value;
+    const mapelList = String(document.getElementById('staff-task-mapel')?.value || '')
+        .split(/[,;\n]/)
+        .map(v => v.trim())
+        .filter(Boolean);
     const payload = {
         judul: document.getElementById('staff-task-title')?.value.trim(),
-        mapel: document.getElementById('staff-task-mapel')?.value.trim(),
-        kelas: document.getElementById('staff-task-kelas')?.value,
+        mapel_list: mapelList,
+        kelas_list: selectedClasses.length ? selectedClasses : (legacyClass ? [legacyClass] : []),
         deadline: document.getElementById('staff-task-deadline')?.value || null,
         deskripsi: document.getElementById('staff-task-desc')?.value.trim() || null,
     };
-    if (!payload.judul || !payload.mapel || !payload.kelas) return showToast('Judul, mapel, dan kelas wajib diisi.', 'red');
+    if (!payload.judul || !payload.mapel_list.length || !payload.kelas_list.length) {
+        return showToast('Judul, minimal 1 mapel, dan minimal 1 kelas wajib diisi.', 'red');
+    }
     try {
         const res = await apiFetch('/lms/tugas', { method:'POST', body:JSON.stringify(payload) });
         showToast(res.message || (res.success ? 'Tugas diterbitkan.' : 'Gagal membuat tugas.'), res.success ? 'green' : 'red');
         if (res.success) {
             ['staff-task-title','staff-task-mapel','staff-task-deadline','staff-task-desc'].forEach(id => setVal(id, ''));
+            Array.from(document.getElementById('staff-task-classes')?.options || []).forEach(opt => { opt.selected = false; });
             await fetchTugas();
+            await fetchTaskProgress();
         }
     } catch(e) { showToast('Gagal membuat tugas.', 'red'); }
+}
+
+async function fetchTaskProgress() {
+    if (!canEditBiodata()) return;
+    const el = document.getElementById('task-progress-list');
+    if (el) el.innerHTML = '<p class="staff-empty"><i class="fas fa-spinner fa-spin"></i> Memuat progress tugas...</p>';
+    try {
+        const data = await apiFetch('/lms/tugas/progress');
+        if (!data.success) {
+            if (el) el.innerHTML = `<p class="staff-empty">${escHtml(data.message || 'Gagal memuat progress tugas.')}</p>`;
+            return;
+        }
+        lmsState.taskProgress = data.data || [];
+        renderTaskProgress();
+    } catch(e) {
+        if (el) el.innerHTML = '<p class="staff-empty">Gagal memuat progress tugas.</p>';
+    }
+}
+
+function renderTaskProgress() {
+    const el = document.getElementById('task-progress-list');
+    if (!el) return;
+    if (!lmsState.taskProgress.length) {
+        el.innerHTML = '<p class="staff-empty">Belum ada tugas aktif dari akun guru ini.</p>';
+        return;
+    }
+    el.innerHTML = lmsState.taskProgress.map(t => {
+        const total = Number(t.total_siswa || 0);
+        const done = Number(t.total_selesai || 0);
+        const pct = total ? Math.round((done / total) * 100) : 0;
+        const belum = Array.isArray(t.belum) ? t.belum : [];
+        return `
+            <article class="task-progress-card">
+                <div class="task-progress-head">
+                    <div>
+                        <strong>${escHtml(t.judul)}</strong>
+                        <span>${escHtml(t.kelas)} · ${escHtml(t.mapel)}</span>
+                    </div>
+                    <b>${done}/${total}</b>
+                </div>
+                <div class="task-progress-bar" aria-label="${pct}% selesai">
+                    <span style="width:${pct}%"></span>
+                </div>
+                <div class="task-progress-meta">
+                    <span>${pct}% selesai</span>
+                    <span>${t.deadline ? 'DL ' + new Date(t.deadline).toLocaleDateString('id-ID') : 'Tanpa deadline'}</span>
+                </div>
+                ${belum.length ? `<details class="task-missing"><summary>Belum mengumpulkan (${Math.max(0, total - done)})</summary><p>${belum.map(escHtml).join('<br>')}</p></details>` : '<p class="task-complete">Semua siswa aktif sudah mengumpulkan.</p>'}
+            </article>
+        `;
+    }).join('');
 }
 
 async function uploadStaffMateri() {
@@ -705,7 +779,9 @@ async function fetchTugas() {
         renderTugas('semua');
         renderMiniTugas();
         // Update badge
-        const belum = lmsState.tugasData.filter(t => !t.submission_id).length;
+        const belum = canEditBiodata()
+            ? lmsState.tugasData.length
+            : lmsState.tugasData.filter(t => !t.submission_id).length;
         document.querySelectorAll('.snav-badge.red').forEach(b => { b.textContent = belum; });
     } catch(e) { console.warn('[Fetch tugas]', e.message); }
 }
@@ -724,9 +800,13 @@ function renderTugas(filter) {
     }
 
     el.innerHTML = list.map(t => {
+        const staffView = canEditBiodata();
         const isDone     = !!t.submission_id;
         const isLate     = t.deadline && new Date(t.deadline) < new Date() && !isDone;
         const prioritas  = isLate ? 'red' : isDone ? 'green' : 'orange';
+        const totalSiswa = Number(t.total_siswa || 0);
+        const totalSelesai = Number(t.total_selesai || 0);
+        const progressPct = totalSiswa ? Math.round((totalSelesai / totalSiswa) * 100) : 0;
         const deadlineFmt = t.deadline
             ? new Date(t.deadline).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })
             : 'Tidak ada deadline';
@@ -738,11 +818,12 @@ function renderTugas(filter) {
             </div>
             <div class="ti-info">
                 <h4>${escHtml(t.judul)}</h4>
-                <p>${escHtml(t.mapel)} · Deadline: ${deadlineFmt}</p>
+                <p>${escHtml(t.mapel)} · ${escHtml(t.kelas || '')} · Deadline: ${deadlineFmt}</p>
                 ${t.submission_nilai ? `<p style="color:#10b981;font-size:.75rem;font-weight:700;">Nilai: ${t.submission_nilai}</p>` : ''}
+                ${staffView ? `<p class="task-inline-progress">${totalSelesai}/${totalSiswa} siswa selesai · ${progressPct}%</p>` : ''}
             </div>
-            <span class="ti-deadline ${prioritas}">${isDone ? '✓ Selesai' : isLate ? 'Terlambat' : deadlineFmt}</span>
-            ${!isDone ? `<button onclick="bukaSubmitTugas('${t.id}')"
+            <span class="ti-deadline ${staffView ? 'green' : prioritas}">${staffView ? `${progressPct}%` : isDone ? '✓ Selesai' : isLate ? 'Terlambat' : deadlineFmt}</span>
+            ${!staffView && !isDone ? `<button onclick="bukaSubmitTugas('${t.id}')"
                 style="padding:8px 16px;background:var(--navy);color:white;border:none;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;"
                 onmouseover="this.style.background='var(--gold)';this.style.color='var(--navy)'"
                 onmouseout="this.style.background='var(--navy)';this.style.color='white'">
@@ -961,11 +1042,25 @@ function downloadMateri(url, nama) {
 /* ── Fetch & Render: Forum ──────────────────────────────────── */
 async function fetchForum() {
     try {
-        const data = await apiFetch('/lms/forum');
+        const scope = lmsState.forumScope || 'school';
+        const data = await apiFetch(`/lms/forum?scope=${encodeURIComponent(scope)}`);
         if (!data.success) return;
         lmsState.forumPosts = data.data || [];
+        lmsState.forumUserClass = data.user_class || null;
         renderForum();
     } catch(e) { console.warn('[Fetch forum]', e.message); }
+}
+
+function setForumScope(scope) {
+    lmsState.forumScope = scope === 'class' ? 'class' : 'school';
+    document.querySelectorAll('[data-forum-scope]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.forumScope === lmsState.forumScope);
+    });
+    const composeScope = document.getElementById('forum-scope');
+    if (composeScope) composeScope.value = lmsState.forumScope;
+    const classSelect = document.getElementById('forum-kelas');
+    if (classSelect) classSelect.classList.toggle('hidden', !(canEditBiodata() && lmsState.forumScope === 'class'));
+    fetchForum();
 }
 
 function renderForum() {
@@ -977,18 +1072,19 @@ function renderForum() {
     }
     el.innerHTML = lmsState.forumPosts.map(p => {
         const isAdmin = ['super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'].includes(p.role);
+        const canPin = canEditBiodata();
         const replies = Array.isArray(p.replies) ? p.replies : [];
         return `
-        <div class="forum-post ${isAdmin ? 'admin-post' : ''}" id="fp-${p.id}">
+        <div class="forum-post ${isAdmin ? 'admin-post' : ''} ${p.is_pinned ? 'pinned' : ''}" id="fp-${p.id}">
             <div class="fp-header">
                 <div class="fp-avatar" style="background:var(--navy);color:var(--gold);">
                     ${(p.nama_lengkap || 'U').charAt(0)}
                 </div>
                 <div class="fp-meta">
-                    <h4>${escHtml(p.nama_lengkap || 'Unknown')} ${isAdmin ? '<span class="admin-chip">Administrator</span>' : ''}</h4>
+                    <h4>${escHtml(p.nama_lengkap || 'Unknown')} ${isAdmin ? '<span class="admin-chip">Administrator</span>' : ''} ${p.is_pinned ? '<span class="pin-chip"><i class="fas fa-thumbtack"></i> Dipin</span>' : ''}</h4>
                     <p>${escHtml(formatRoleLabel(p.role))} · ${formatRelativeTime(p.created_at)}</p>
                 </div>
-                ${p.mapel ? `<span class="fp-tag">${escHtml(p.mapel)}</span>` : ''}
+                ${p.visibility === 'class' ? `<span class="fp-tag class"><i class="fas fa-users"></i> ${escHtml(p.kelas || 'Kelas')}</span>` : (p.mapel ? `<span class="fp-tag">${escHtml(p.mapel)}</span>` : '')}
             </div>
             <p class="fp-body">${escHtml(p.konten)}</p>
             ${renderForumAttachment(p)}
@@ -1006,6 +1102,9 @@ function renderForum() {
                 <button class="fp-btn" onclick="replyForum('${p.id}')">
                     <i class="far fa-comment"></i> ${p.total_balasan || 0} Balasan
                 </button>
+                ${canPin ? `<button class="fp-btn ${p.is_pinned ? 'liked' : ''}" onclick="toggleForumPin('${p.id}', ${p.is_pinned ? 'false' : 'true'})">
+                    <i class="fas fa-thumbtack"></i> ${p.is_pinned ? 'Lepas Pin' : 'Pin'}
+                </button>` : ''}
             </div>
         </div>
     `; }).join('');
@@ -1170,6 +1269,52 @@ function clearForumAttachment() {
     if (target) target.innerHTML = '';
 }
 
+async function toggleForumVoiceNote() {
+    if (lmsState.forumRecorder?.state === 'recording') return stopForumVoiceNote();
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+        showToast('Browser belum mendukung rekam VN langsung.', 'orange');
+        return;
+    }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        lmsState.forumAudioChunks = [];
+        const recorder = new MediaRecorder(stream);
+        lmsState.forumRecorder = recorder;
+        recorder.ondataavailable = event => {
+            if (event.data?.size) lmsState.forumAudioChunks.push(event.data);
+        };
+        recorder.onstop = () => {
+            stream.getTracks().forEach(track => track.stop());
+            const blob = new Blob(lmsState.forumAudioChunks, { type: recorder.mimeType || 'audio/webm' });
+            if (!blob.size) return showToast('VN kosong, coba rekam ulang.', 'orange');
+            const file = new File([blob], `vn-${Date.now()}.webm`, { type: blob.type || 'audio/webm' });
+            attachForumVoiceFile(file);
+        };
+        recorder.start();
+        const btn = document.getElementById('forum-vn-btn');
+        if (btn) btn.classList.add('recording');
+        showToast('VN mulai direkam. Klik VN lagi untuk berhenti.', 'blue');
+    } catch(e) {
+        showToast('Izin mikrofon ditolak atau tidak tersedia.', 'red');
+    }
+}
+
+function stopForumVoiceNote() {
+    const recorder = lmsState.forumRecorder;
+    if (recorder?.state === 'recording') recorder.stop();
+    document.getElementById('forum-vn-btn')?.classList.remove('recording');
+}
+
+function attachForumVoiceFile(file) {
+    if (!validateStudentAttachment(file)) return;
+    const input = document.getElementById('forum-file');
+    if (!input) return;
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+    previewForumAttachment();
+}
+
 async function uploadForumAttachment() {
     const input = document.getElementById('forum-file');
     const file = validateStudentAttachment(input?.files?.[0]);
@@ -1202,11 +1347,27 @@ async function toggleLike(id) {
     } catch(e) { console.warn('[Like]', e.message); }
 }
 
+async function toggleForumPin(id, pinned) {
+    try {
+        const data = await apiFetch(`/lms/forum/${id}/pin`, {
+            method: 'PATCH',
+            body: JSON.stringify({ pinned: !!pinned }),
+        });
+        showToast(data.message || 'Pin diskusi diperbarui.', data.success ? 'green' : 'red');
+        if (data.success) await fetchForum();
+    } catch(e) {
+        showToast('Gagal mengubah pin diskusi.', 'red');
+    }
+}
+
 async function postForum() {
     const text  = document.getElementById('forum-input').value.trim();
     const mapel = document.getElementById('forum-mapel').value;
+    const visibility = document.getElementById('forum-scope')?.value || lmsState.forumScope || 'school';
+    const kelas = document.getElementById('forum-kelas')?.value || '';
     const hasFile = !!document.getElementById('forum-file')?.files?.[0];
     if (!text && !hasFile) return showToast('Tulis konten atau lampirkan file dulu ya!', 'orange');
+    if (canEditBiodata() && visibility === 'class' && !kelas) return showToast('Pilih kelas target diskusi dulu.', 'orange');
 
     try {
         const attachment = hasFile ? await uploadForumAttachment() : null;
@@ -1215,6 +1376,8 @@ async function postForum() {
             body: JSON.stringify({
                 konten: text,
                 mapel: mapel.split('—')[0].trim(),
+                visibility,
+                kelas,
                 attachment_url: attachment?.fileUrl || null,
                 attachment_name: attachment?.originalName || attachment?.fileName || null,
                 attachment_type: attachment?.mimeType || null
@@ -1229,6 +1392,94 @@ async function postForum() {
             showToast(data.message || 'Gagal posting.', 'red');
         }
     } catch(e) { showToast('Koneksi gagal.', 'red'); }
+}
+
+async function fetchPrivateContacts() {
+    const list = document.getElementById('private-contact-list');
+    if (list) list.innerHTML = '<div class="staff-empty">Memuat kontak...</div>';
+    try {
+        const data = await apiFetch('/lms/contacts');
+        if (!data.success) return;
+        lmsState.privateContacts = data.data || [];
+        renderPrivateContacts();
+    } catch(e) {
+        if (list) list.innerHTML = '<div class="staff-empty">Kontak chat belum bisa dimuat.</div>';
+    }
+}
+
+function renderPrivateContacts() {
+    const list = document.getElementById('private-contact-list');
+    if (!list) return;
+    const contacts = lmsState.privateContacts || [];
+    if (!contacts.length) {
+        list.innerHTML = '<div class="staff-empty">Belum ada kontak siswa di kelas kamu.</div>';
+        return;
+    }
+    list.innerHTML = contacts.map(c => `
+        <button type="button" class="private-contact ${lmsState.activePrivateUserId === c.id ? 'active' : ''}" onclick="openPrivateChat('${escAttr(c.id)}')">
+            <span class="private-contact-avatar">${escHtml((c.nama_lengkap || 'S').charAt(0).toUpperCase())}</span>
+            <span>
+                <strong>${escHtml(c.nama_lengkap || 'Siswa')}</strong>
+                <small>${escHtml(c.kelas || 'Kelas belum diisi')}</small>
+                ${Number(c.unread || 0) ? `<em>${Number(c.unread)}</em>` : ''}
+            </span>
+        </button>
+    `).join('');
+}
+
+async function openPrivateChat(userId) {
+    lmsState.activePrivateUserId = userId;
+    renderPrivateContacts();
+    const room = document.getElementById('private-chat-room');
+    if (room) room.innerHTML = '<div class="staff-empty">Memuat chat...</div>';
+    try {
+        const data = await apiFetch(`/lms/private-chat/${encodeURIComponent(userId)}`);
+        if (!data.success) return showToast(data.message || 'Gagal memuat chat.', 'red');
+        lmsState.privateMessages = data.data?.messages || [];
+        renderPrivateChat(data.data);
+        await fetchPrivateContacts();
+    } catch(e) {
+        if (room) room.innerHTML = '<div class="staff-empty">Gagal memuat chat.</div>';
+    }
+}
+
+function renderPrivateChat(data = {}) {
+    const room = document.getElementById('private-chat-room');
+    if (!room) return;
+    const messages = data.messages || lmsState.privateMessages || [];
+    const currentUserId = data.current_user_id || lmsState.user?.id;
+    if (!messages.length) {
+        room.innerHTML = '<div class="staff-empty">Belum ada pesan. Mulai obrolan dengan sopan.</div>';
+        return;
+    }
+    room.innerHTML = messages.map(msg => {
+        const mine = msg.sender_id === currentUserId;
+        return `<div class="chat-bubble ${mine ? 'mine' : ''}">
+            <b>${mine ? 'Saya' : escHtml(msg.sender_name || 'Siswa')}</b>
+            <p>${escHtml(msg.message || '')}</p>
+            <small>${formatRelativeTime(msg.created_at)}</small>
+        </div>`;
+    }).join('');
+    room.scrollTop = room.scrollHeight;
+}
+
+async function sendPrivateMessage(event) {
+    event.preventDefault();
+    if (!lmsState.activePrivateUserId) return showToast('Pilih kontak chat dulu.', 'orange');
+    const input = document.getElementById('private-chat-message');
+    const message = input?.value.trim();
+    if (!message) return;
+    try {
+        const data = await apiFetch(`/lms/private-chat/${encodeURIComponent(lmsState.activePrivateUserId)}`, {
+            method: 'POST',
+            body: JSON.stringify({ message }),
+        });
+        if (!data.success) return showToast(data.message || 'Gagal mengirim pesan.', 'red');
+        input.value = '';
+        await openPrivateChat(lmsState.activePrivateUserId);
+    } catch(e) {
+        showToast('Koneksi chat gagal.', 'red');
+    }
 }
 
 async function replyForum(parentId) {
@@ -1536,8 +1787,10 @@ async function saveKantinProfile(event) {
 async function fetchKantinSellerDashboard() {
     const statsEl = document.getElementById('kantin-seller-stats');
     const listEl = document.getElementById('kantin-my-products');
+    const orderEl = document.getElementById('kantin-seller-orders');
     if (statsEl) statsEl.innerHTML = '<div class="staff-empty">Memuat statistik...</div>';
     if (listEl) listEl.innerHTML = '<div class="staff-empty">Memuat postingan...</div>';
+    if (orderEl) orderEl.innerHTML = '<div class="staff-empty">Memuat pesanan masuk...</div>';
     try {
         const data = await apiFetch('/kantin/seller/dashboard');
         const dashboard = data.success ? data.data : { products:[], orders:[], stats:{} };
@@ -1558,6 +1811,7 @@ async function fetchKantinSellerDashboard() {
             <span>${escHtml(label)}</span>
         </div>`).join('');
         renderKantinSellerCharts(dashboard);
+        renderKantinSellerOrders(dashboard.orders || []);
         if (!dashboard.products?.length) {
             if (listEl) listEl.innerHTML = '<div class="staff-empty">Belum ada postingan jualan.</div>';
             return;
@@ -1576,7 +1830,35 @@ async function fetchKantinSellerDashboard() {
     } catch {
         if (statsEl) statsEl.innerHTML = '<div class="staff-empty">Gagal memuat dashboard pedagang.</div>';
         if (listEl) listEl.innerHTML = '<div class="staff-empty">Gagal memuat postingan.</div>';
+        if (orderEl) orderEl.innerHTML = '<div class="staff-empty">Gagal memuat pesanan masuk.</div>';
     }
+}
+
+function renderKantinSellerOrders(orders = []) {
+    const el = document.getElementById('kantin-seller-orders');
+    if (!el) return;
+    if (!orders.length) {
+        el.innerHTML = '<div class="staff-empty">Belum ada pesanan masuk.</div>';
+        return;
+    }
+    el.innerHTML = orders.slice(0, 30).map(order => {
+        const status = String(order.status || 'pending').toLowerCase();
+        const canFinalize = !['completed', 'cancelled'].includes(status);
+        return `
+            <div class="kantin-order seller-inbox-order">
+                <strong>${escHtml(order.product_name || 'Produk')}</strong>
+                <span>${Number(order.quantity || 1)} item · ${formatRupiah(order.total_price)} · ${escHtml(status)}</span>
+                <small>Pembeli: ${escHtml(order.buyer_name || '-')} ${order.buyer_class ? `· ${escHtml(order.buyer_class)}` : ''}</small>
+                <div class="seller-order-actions">
+                    <button class="small-action" onclick="openKantinChat('${escAttr(order.id)}')"><i class="fas fa-message"></i> Chat</button>
+                    ${canFinalize ? `
+                        <button class="small-action primary" onclick="updateKantinOrderStatus('${escAttr(order.id)}','completed')"><i class="fas fa-circle-check"></i> Pesanan selesai</button>
+                        <button class="small-action danger" onclick="updateKantinOrderStatus('${escAttr(order.id)}','cancelled')"><i class="fas fa-ban"></i> Pesanan batal</button>
+                    ` : '<span class="status-pill done">Status final</span>'}
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 function renderKantinSellerCharts(dashboard = {}) {
@@ -1694,6 +1976,25 @@ async function fetchKantinOrders() {
         `).join('');
     } catch {
         el.innerHTML = '<div class="staff-empty">Gagal memuat pesanan.</div>';
+    }
+}
+
+async function updateKantinOrderStatus(orderId, status) {
+    const label = status === 'completed' ? 'menyelesaikan' : 'membatalkan';
+    if (!confirm(`Yakin ${label} pesanan ini?`)) return;
+    try {
+        const data = await apiFetch(`/kantin/orders/${encodeURIComponent(orderId)}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status })
+        });
+        showToast(data.message || 'Status pesanan diperbarui.', data.success ? 'green' : 'red');
+        if (data.success) {
+            await fetchKantinSellerDashboard();
+            await fetchKantinOrders();
+            if (kantinState.currentChatOrder === orderId) await loadKantinChatRoom(orderId);
+        }
+    } catch (e) {
+        showToast(e.message || 'Gagal memperbarui status pesanan.', 'red');
     }
 }
 
@@ -2133,13 +2434,20 @@ function navigate(pageId, btn) {
     }[pageId] || 'Dashboard';
 
     if (pageId === 'profil') fetchProfil(lmsState.targetNisn || '').catch(() => {});
+    if (pageId === 'forum') {
+        fetchForum().catch(() => {});
+        fetchPrivateContacts().catch(() => {});
+    }
     if (pageId === 'kantin') {
         fetchKantinProducts().catch(() => {});
         fetchKantinProfile().catch(() => {});
         fetchKantinSellerDashboard().catch(() => {});
         fetchKantinOrders().catch(() => {});
     }
-    if (pageId === 'staff') fetchStaffStudents().catch(() => {});
+    if (pageId === 'staff') {
+        fetchStaffStudents().catch(() => {});
+        fetchTaskProgress().catch(() => {});
+    }
     closeSidebar();
     window.scrollTo(0, 0);
 }
@@ -2330,16 +2638,24 @@ function handleFileUpload(input) {
 }
 
 function validateTugasAttachment(file) {
-    const allowedMimes = ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','image/jpeg','image/png','application/zip','application/x-zip-compressed'];
-    const allowedExts = ['.pdf','.doc','.docx','.jpg','.jpeg','.png','.zip'];
+    const allowedMimes = [
+        'application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain',
+        'image/jpeg','image/png','image/webp','image/gif',
+        'video/mp4','video/webm','video/quicktime',
+        'audio/mpeg','audio/wav','audio/ogg','audio/webm',
+        'application/zip','application/x-zip-compressed'
+    ];
+    const allowedExts = ['.pdf','.doc','.docx','.ppt','.pptx','.xls','.xlsx','.txt','.jpg','.jpeg','.png','.webp','.gif','.mp4','.webm','.mov','.mp3','.wav','.ogg','.zip'];
     const fileName = String(file.name || '').toLowerCase();
     const isAllowed = allowedMimes.includes(file.type) || allowedExts.some(ext => fileName.endsWith(ext));
     if (!isAllowed) {
-        showToast('Lampiran tugas harus PDF, DOC/DOCX, JPG/JPEG, PNG, atau ZIP.', 'orange');
+        showToast('Lampiran tugas harus dokumen, foto, video, audio, atau ZIP.', 'orange');
         return false;
     }
-    if (file.size > 10 * 1024 * 1024) {
-        showToast('Lampiran tugas maksimal 10MB.', 'orange');
+    if (file.size > 50 * 1024 * 1024) {
+        showToast('Lampiran tugas maksimal 50MB.', 'orange');
         return false;
     }
     return true;

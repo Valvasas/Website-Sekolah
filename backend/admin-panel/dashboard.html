@@ -283,6 +283,19 @@
         .log-info strong{display:block;font-size:0.8rem;color:var(--navy);}
         .log-info span{font-size:0.73rem;color:var(--muted);}
         .log-time{margin-left:auto;font-size:0.7rem;color:var(--muted);white-space:nowrap;}
+        .activity-feed{display:grid;gap:10px;max-height:360px;overflow:auto;}
+        .activity-item{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff;}
+        .activity-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#eff6ff;color:#1e40af;}
+        .activity-icon.kantin_order,.activity-icon.kantin_chat{background:#ecfdf5;color:#047857;}
+        .activity-icon.private_message{background:#f5f3ff;color:#6d28d9;}
+        .activity-icon.forum{background:#fffbeb;color:#b45309;}
+        .activity-icon.cbt{background:#fef2f2;color:#b91c1c;}
+        .activity-main{min-width:0;display:grid;gap:4px;}
+        .activity-main strong{font-size:.8rem;color:var(--navy);overflow-wrap:anywhere;}
+        .activity-main p{margin:0;color:var(--muted);font-size:.72rem;line-height:1.45;overflow-wrap:anywhere;}
+        .activity-meta{display:flex;gap:6px;flex-wrap:wrap;}
+        .activity-meta span{font-size:.66rem;font-weight:800;color:#334155;background:#f1f5f9;border-radius:999px;padding:3px 7px;}
+        .activity-time{font-size:.68rem;color:var(--muted);white-space:nowrap;}
 
         /* Toast */
         .toast-wrap{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;}
@@ -356,11 +369,14 @@
         .live-meta{font-size:0.7rem;color:var(--muted);margin-top:2px;}
         .live-compact{display:grid;grid-template-columns:76px 1fr;gap:8px;align-items:center;}
         .live-thumb{width:76px;aspect-ratio:4/3;object-fit:cover;border-radius:8px;background:#e2e8f0;border:1px solid var(--border);}
+        .live-thumb.placeholder{display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted);font-size:.66rem;line-height:1.25;padding:6px;}
         .live-mini-facts{display:grid;gap:4px;font-size:.68rem;color:var(--muted);min-width:0;}
         .live-progress{height:7px;background:#e2e8f0;border-radius:99px;overflow:hidden;}
         .live-progress span{display:block;height:100%;background:var(--green);}
         .live-media{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
         .live-media img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:#e2e8f0;border:1px solid var(--border);}
+        .live-media-placeholder{min-height:160px;border:1.5px dashed var(--border);border-radius:8px;background:#f8fafc;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted);font-size:.78rem;padding:12px;}
+        .live-control-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
         .live-facts{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.68rem;color:var(--muted);}
         .live-facts span{background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:6px;}
         .live-facts span.wide{grid-column:1/-1;}
@@ -441,6 +457,8 @@
             .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
             .data-table{min-width:720px;}
             .content-manager-grid .card{min-width:0;}
+            .activity-item{grid-template-columns:30px minmax(0,1fr);}
+            .activity-time{grid-column:2;white-space:normal;}
             .live-media{grid-template-columns:1fr;}
             .live-student{min-width:0;}
         }
@@ -580,6 +598,18 @@
             </div>
             <div class="card-body" style="max-height:280px;overflow-y:auto;" id="recentLogs">
                 <div style="text-align:center;color:var(--muted);padding:20px;">Memuat...</div>
+            </div>
+        </div>
+
+        <div class="card" id="dashboardStudentActivityCard">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-wave-square"></i> History Aktivitas Siswa</div>
+                <button class="btn-act" onclick="loadStudentActivityFeed()"><i class="fas fa-sync"></i> Refresh</button>
+            </div>
+            <div class="card-body">
+                <div class="activity-feed" id="studentActivityFeed">
+                    <div style="text-align:center;color:var(--muted);padding:20px;">Memuat aktivitas siswa...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -976,13 +1006,13 @@
 
         <div class="card">
             <div class="card-header">
-                <div class="card-title"><i class="fas fa-key"></i> Token Sesi Terpilih</div>
+                <div class="card-title"><i class="fas fa-key"></i> Token Kelas Sesi Terpilih</div>
                 <button class="btn-export" onclick="exportCbtTokens()"><i class="fas fa-download"></i> Export Token</button>
             </div>
             <div class="table-wrap">
                 <table class="data-table">
                     <thead>
-                        <tr><th>Nama</th><th>NISN</th><th>Token</th><th>Status</th><th>Mulai</th><th>Selesai</th><th>Aksi</th></tr>
+                        <tr><th>Kelas</th><th>Token</th><th>Peserta</th><th>Progress</th><th>Status</th><th>Kadaluarsa</th><th>Aksi</th></tr>
                     </thead>
                     <tbody id="cbtTokensTbody">
                         <tr><td colspan="7" class="empty-cell">Pilih sesi untuk melihat token.</td></tr>
@@ -1360,9 +1390,12 @@ async function loadDashboard() {
         return loadRoleDashboard();
     }
     try {
-        const [statsRes, logsRes] = await Promise.all([
+        document.getElementById('dashboardRecentCard').style.display = '';
+        document.getElementById('dashboardStudentActivityCard').style.display = '';
+        const [statsRes, logsRes, activityRes] = await Promise.all([
             apiFetch('/users/stats'),
-            apiFetch('/users/audit-logs?limit=10')
+            apiFetch('/users/audit-logs?limit=10'),
+            apiFetch('/users/student-activity?limit=24')
         ]);
 
         if (statsRes.success) {
@@ -1406,6 +1439,9 @@ async function loadDashboard() {
         if (logsRes.success) {
             renderRecentLogs(logsRes.data.logs);
         }
+        if (activityRes.success) {
+            renderStudentActivityFeed(activityRes.data.activities || []);
+        }
 
     } catch (err) {
         console.error('Dashboard error:', err);
@@ -1414,9 +1450,10 @@ async function loadDashboard() {
 
 async function loadRoleDashboard() {
     try {
-        const [studentsRes, examsRes] = await Promise.all([
+        const [studentsRes, examsRes, activityRes] = await Promise.all([
             apiFetch('/siswa/staff/list?limit=1'),
-            apiFetch('/cbt/exams?limit=50')
+            apiFetch('/cbt/exams?limit=50'),
+            apiFetch('/users/student-activity?limit=24')
         ]);
         const totalStudents = studentsRes.data?.pagination?.total || 0;
         const exams = examsRes.data?.exams || [];
@@ -1441,8 +1478,22 @@ async function loadRoleDashboard() {
         `).join('') || '<div class="empty-cell">Belum ada sesi CBT di akun ini.</div>';
         document.querySelector('#dashboardRoleCard .card-title').innerHTML = '<i class="fas fa-laptop-code"></i> Ringkasan CBT Akun Ini';
         document.getElementById('dashboardRecentCard').style.display = 'none';
+        document.getElementById('dashboardStudentActivityCard').style.display = '';
+        if (activityRes.success) renderStudentActivityFeed(activityRes.data.activities || []);
     } catch (err) {
         console.error('Role dashboard error:', err);
+    }
+}
+
+async function loadStudentActivityFeed() {
+    const el = document.getElementById('studentActivityFeed');
+    if (!el) return;
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;">Memuat aktivitas siswa...</div>';
+    try {
+        const res = await apiFetch('/users/student-activity?limit=24');
+        renderStudentActivityFeed(res.success ? (res.data.activities || []) : []);
+    } catch (err) {
+        el.innerHTML = '<div class="empty-cell">Gagal memuat aktivitas siswa.</div>';
     }
 }
 
@@ -1461,6 +1512,45 @@ function renderRecentLogs(logs) {
             <div class="log-time">${formatTime(l.created_at)}</div>
         </div>
     `).join('');
+}
+
+function renderStudentActivityFeed(rows = []) {
+    const el = document.getElementById('studentActivityFeed');
+    if (!el) return;
+    if (!rows.length) {
+        el.innerHTML = '<div class="empty-cell">Belum ada aktivitas siswa yang tercatat.</div>';
+        return;
+    }
+    const icons = {
+        audit:'fa-right-to-bracket',
+        forum:'fa-comments',
+        private_message:'fa-message',
+        kantin_order:'fa-basket-shopping',
+        kantin_chat:'fa-comment-dots',
+        cbt:'fa-laptop-code'
+    };
+    el.innerHTML = rows.map(row => {
+        const amount = row.amount !== null && row.amount !== undefined && row.source === 'kantin_order'
+            ? ` · ${formatMoney(row.amount)}`
+            : '';
+        const target = row.target_name ? ` ke ${row.target_name}` : '';
+        const detail = [row.subject, row.detail].filter(Boolean).join(' · ');
+        return `
+            <article class="activity-item">
+                <div class="activity-icon ${escapeAttr(row.source || 'audit')}"><i class="fas ${icons[row.source] || 'fa-wave-square'}"></i></div>
+                <div class="activity-main">
+                    <strong>${escapeHtml(formatActivityType(row.type))}</strong>
+                    <p>${escapeHtml(row.actor_name || 'Siswa')}${target ? escapeHtml(target) : ''}${amount}</p>
+                    ${detail ? `<p>${escapeHtml(detail)}</p>` : ''}
+                    <div class="activity-meta">
+                        ${row.actor_class ? `<span>${escapeHtml(row.actor_class)}</span>` : ''}
+                        ${row.meta ? `<span>${escapeHtml(row.meta)}</span>` : ''}
+                    </div>
+                </div>
+                <div class="activity-time">${formatTime(row.created_at)}</div>
+            </article>
+        `;
+    }).join('');
 }
 
 /* ══════════════════════════════════════════
@@ -2496,7 +2586,7 @@ async function generateCbtTokens(examId) {
         const data = await apiFetch(`/cbt/exams/${examId}/tokens`, 'POST', {});
         showToast(data.message || (data.success ? 'Token dibuat.' : 'Gagal membuat token.'), data.success ? 'success' : 'error');
         if (data.success) {
-            await copyTextToClipboard(data.clipboard_text || (data.data || []).map(t => `${t.nama_lengkap} (${t.nisn}): ${t.token}`).join('\n'), 'Token sudah disalin ke clipboard.');
+            await copyTextToClipboard(data.clipboard_text || (data.data || []).map(t => `${t.kelas}: ${t.token}`).join('\n'), 'Token kelas sudah disalin ke clipboard.');
         }
         selectedCbtExam = examId;
         await loadCbtExams();
@@ -2543,17 +2633,17 @@ async function loadCbtTokens(examId) {
         const data = await apiFetch(`/cbt/exams/${examId}/tokens`);
         cbtTokenRows = data.data || [];
         if (!cbtTokenRows.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Belum ada token. Klik tombol kunci pada sesi.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Belum ada token kelas. Klik tombol kunci pada sesi.</td></tr>';
             return;
         }
         tbody.innerHTML = cbtTokenRows.map(t => `
             <tr>
-                <td>${escapeHtml(t.nama_lengkap || '-')}</td>
-                <td>${escapeHtml(t.nisn)}</td>
+                <td>${escapeHtml(t.kelas || '-')}</td>
                 <td><code>${escapeHtml(t.token)}</code> <button class="btn-act" onclick="copyTextToClipboard('${escapeAttr(t.token)}','Token disalin.')"><i class="fas fa-copy"></i></button></td>
-                <td>${t.used ? 'Selesai' : escapeHtml(t.status || 'issued')}</td>
-                <td>${t.start_time ? formatTime(t.start_time) : '-'}</td>
-                <td>${t.end_time ? formatTime(t.end_time) : '-'}</td>
+                <td>${Number(t.total_siswa || 0)} siswa</td>
+                <td>${Number(t.total_started || 0)} mulai · ${Number(t.total_finished || 0)} selesai</td>
+                <td>${t.used ? 'Nonaktif' : escapeHtml(t.status || 'issued')}</td>
+                <td>${t.expires_at ? formatTime(t.expires_at) : '-'}</td>
                 <td>
                     <button class="btn-act del" onclick="revokeCbtToken('${escapeAttr(t.token)}')" ${t.status === 'revoked' ? 'disabled' : ''}>
                         <i class="fas fa-ban"></i> Revoke
@@ -2681,6 +2771,7 @@ function renderCbtMonitorCard(s) {
         const answered = Number(s.progress_answered || 0);
         const total = Number(s.progress_total || 0);
         const pct = total ? Math.round((answered / total) * 100) : 0;
+        const monitored = s.proctor_stream_active;
         return `
             <article class="live-student" data-nisn="${escapeAttr(s.nisn)}">
                 <div class="live-top">
@@ -2691,7 +2782,7 @@ function renderCbtMonitorCard(s) {
                     <span class="badge ${online ? 'badge-active' : 'badge-inactive'}">${online ? 'Online' : 'Offline'}</span>
                 </div>
                 <div class="live-compact">
-                    ${s.last_camera_frame ? `<img class="live-thumb" src="${escapeAttr(s.last_camera_frame)}" alt="Snapshot kamera ${escapeAttr(s.nisn)}">` : '<div class="live-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.68rem;">No Cam</div>'}
+                    <div class="live-thumb placeholder">${monitored ? 'Live dipantau' : 'Standby lokal'}</div>
                     <div class="live-mini-facts">
                         <span>Progres <strong>${answered}/${total || '-'}</strong></span>
                         <span>Kamera <strong>${escapeHtml(s.camera_status || '-')}</strong></span>
@@ -2722,12 +2813,19 @@ function updateCbtLiveRow(msg) {
     if (msg.type === 'camera_frame') {
         row.camera_status = 'active';
         row.last_camera_frame = msg.frame;
+        row.proctor_stream_active = true;
+        updateCbtDetailFrame(row.nisn, 'camera', msg.frame);
     }
     if (msg.type === 'screen_frame') {
         row.screen_status = 'active';
         row.last_screen_frame = msg.frame;
+        row.proctor_stream_active = true;
+        updateCbtDetailFrame(row.nisn, 'screen', msg.frame);
     }
+    if (msg.type === 'camera_status') row.camera_status = msg.status;
     if (msg.type === 'screen_status') row.screen_status = msg.status;
+    if (msg.type === 'proctor_stream_started') row.proctor_stream_active = true;
+    if (msg.type === 'proctor_stream_stopped') row.proctor_stream_active = false;
     if (msg.type === 'device_info') row.device_info = msg.info;
     if (msg.type === 'browser_info') row.browser_info = msg.info;
     if (msg.type === 'violation') row.violation_count = Number(row.violation_count || 0) + 1;
@@ -2744,11 +2842,17 @@ function openCbtStudentDetail(nisn) {
     const answered = Number(row.progress_answered || 0);
     const total = Number(row.progress_total || 0);
     const pct = total ? Math.round((answered / total) * 100) : 0;
+    const safeId = cbtSafeDomId(row.nisn);
     document.getElementById('cbtDetailTitle').textContent = `${row.nama_lengkap || 'Siswa'} · ${row.nisn}`;
     document.getElementById('cbtDetailBody').innerHTML = `
+        <div class="live-control-row">
+            <button class="btn-act active" onclick="startCbtProctor('${escapeAttr(row.nisn)}')"><i class="fas fa-video"></i> Pantau live</button>
+            <button class="btn-act" onclick="stopCbtProctor('${escapeAttr(row.nisn)}')"><i class="fas fa-video-slash"></i> Stop pantau</button>
+            <span class="badge ${row.proctor_stream_active ? 'badge-active' : 'badge-unverified'}">${row.proctor_stream_active ? 'Live streaming aktif' : 'Standby, belum streaming ke panitia'}</span>
+        </div>
         <div class="live-media" style="margin-bottom:12px;">
-            ${row.last_camera_frame ? `<img src="${escapeAttr(row.last_camera_frame)}" alt="Snapshot kamera ${escapeAttr(row.nisn)}">` : '<div class="empty-cell">Kamera belum ada</div>'}
-            ${row.last_screen_frame ? `<img src="${escapeAttr(row.last_screen_frame)}" alt="Snapshot layar ${escapeAttr(row.nisn)}">` : '<div class="empty-cell">Layar belum ada</div>'}
+            ${row.last_camera_frame ? `<img id="cbt-live-camera-${safeId}" src="${escapeAttr(row.last_camera_frame)}" alt="Live kamera ${escapeAttr(row.nisn)}">` : `<div id="cbt-live-camera-${safeId}" class="live-media-placeholder">Kamera tidak dikirim sebelum dipantau live.</div>`}
+            ${row.last_screen_frame ? `<img id="cbt-live-screen-${safeId}" src="${escapeAttr(row.last_screen_frame)}" alt="Live layar ${escapeAttr(row.nisn)}">` : `<div id="cbt-live-screen-${safeId}" class="live-media-placeholder">Layar tidak dikirim sebelum dipantau live.</div>`}
         </div>
         <div class="live-progress" style="margin-bottom:12px;"><span style="width:${pct}%;"></span></div>
         <div class="live-facts">
@@ -2771,6 +2875,48 @@ function openCbtStudentDetail(nisn) {
         </div>
     `;
     openModal('cbtDetailModal');
+}
+
+function cbtSafeDomId(value) {
+    return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function updateCbtDetailFrame(nisn, kind, frame) {
+    const safeId = cbtSafeDomId(nisn);
+    const el = document.getElementById(`cbt-live-${kind}-${safeId}`);
+    if (!el || !frame) return;
+    if (el.tagName === 'IMG') {
+        el.src = frame;
+        return;
+    }
+    const img = document.createElement('img');
+    img.id = el.id;
+    img.alt = `${kind === 'camera' ? 'Live kamera' : 'Live layar'} ${nisn}`;
+    img.src = frame;
+    el.replaceWith(img);
+}
+
+function startCbtProctor(nisn, mode = 'both') {
+    if (!selectedCbtExam) return showToast('Pilih sesi CBT dulu.', 'warning');
+    if (!cbtMonitorSocket || cbtMonitorSocket.readyState !== WebSocket.OPEN) {
+        return showToast('WebSocket belum tersambung. Coba beberapa detik lagi.', 'warning');
+    }
+    cbtMonitorSocket.send(JSON.stringify({ type:'admin_proctor_start', examId:selectedCbtExam, targetNisn:nisn, mode }));
+    const row = cbtLiveRows.find(s => s.nisn === nisn);
+    if (row) row.proctor_stream_active = true;
+    showToast('Permintaan pantau live dikirim.', 'success');
+    renderCbtMonitor();
+}
+
+function stopCbtProctor(nisn, mode = 'both') {
+    if (!cbtMonitorSocket || cbtMonitorSocket.readyState !== WebSocket.OPEN) {
+        return showToast('WebSocket belum tersambung. Coba beberapa detik lagi.', 'warning');
+    }
+    cbtMonitorSocket.send(JSON.stringify({ type:'admin_proctor_stop', examId:selectedCbtExam, targetNisn:nisn, mode }));
+    const row = cbtLiveRows.find(s => s.nisn === nisn);
+    if (row) row.proctor_stream_active = false;
+    showToast('Live monitoring siswa dihentikan.', 'success');
+    renderCbtMonitor();
 }
 
 async function loadCbtMessages(examId) {
@@ -2918,6 +3064,10 @@ function connectCbtMonitorSocket() {
                 if (msg.type === 'student_help') showToast(`Chat darurat dari ${msg.nisn || 'siswa'}.`, 'warning');
                 return;
             }
+            if (msg.type === 'proctor_control_error') {
+                showToast(msg.message || 'Gagal mengatur live monitoring.', 'warning');
+                return;
+            }
             updateCbtLiveRow(msg);
         } catch(e) {}
     };
@@ -2959,8 +3109,8 @@ function formatLocationPlain(row) {
 function exportCbtTokens() {
     if (!cbtTokenRows.length) return showToast('Tidak ada token untuk diexport.', 'warning');
     downloadExcelTable([
-        ['Nama','NISN','Token','Status','Mulai','Selesai'],
-        ...cbtTokenRows.map(t => [t.nama_lengkap || '', t.nisn, t.token, t.used ? 'Selesai' : (t.status || ''), t.start_time || '', t.end_time || ''])
+        ['Kelas','Token','Total Siswa','Mulai','Selesai','Status','Kadaluarsa'],
+        ...cbtTokenRows.map(t => [t.kelas || '', t.token, t.total_siswa || 0, t.total_started || 0, t.total_finished || 0, t.used ? 'Nonaktif' : (t.status || ''), t.expires_at || ''])
     ], `cbt_tokens_${new Date().toISOString().slice(0,10)}.xls`, 'Token CBT');
 }
 
@@ -3385,6 +3535,26 @@ function formatAction(action) {
         GOOGLE_LOGIN:'Login Google', ACCOUNT_LOCKED:'Akun Dikunci'
     };
     return m[action] || action;
+}
+
+function formatActivityType(type) {
+    const m = {
+        USER_LOGIN:'Login siswa',
+        GOOGLE_LOGIN:'Login Google',
+        FORUM_POST:'Posting forum',
+        FORUM_REPLY:'Balas forum',
+        PRIVATE_MESSAGE:'Chat pribadi',
+        KANTIN_ORDER:'Pesanan Kantin Ku',
+        KANTIN_ORDER_COMPLETED:'Pesanan Kantin selesai',
+        KANTIN_ORDER_CANCELLED:'Pesanan Kantin batal',
+        KANTIN_CHAT:'Chat pesanan Kantin',
+        CBT_FINISHED:'Menyelesaikan CBT'
+    };
+    return m[type] || formatAction(type);
+}
+
+function formatMoney(value) {
+    return new Intl.NumberFormat('id-ID', { style:'currency', currency:'IDR', maximumFractionDigits:0 }).format(Number(value || 0));
 }
 
 function getLogClass(action) {

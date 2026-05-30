@@ -322,6 +322,10 @@
             <!-- Page: FORUM -->
             <div class="page-content" id="page-forum">
                 <h2 class="page-title">Forum Diskusi</h2>
+                <div class="forum-scope-tabs" role="tablist" aria-label="Filter forum diskusi">
+                    <button type="button" class="active" data-forum-scope="school" onclick="setForumScope('school')"><i class="fas fa-globe"></i> Semua Siswa</button>
+                    <button type="button" data-forum-scope="class" onclick="setForumScope('class')"><i class="fas fa-users"></i> Kelas Saya</button>
+                </div>
                 <div class="forum-compose">
                     <div class="fc-avatar" id="fc-avatar">S</div>
                     <div class="fc-input-wrap">
@@ -332,9 +336,17 @@
                             <button type="button" class="attach-chip document" onclick="chooseForumAttachment('document')"><i class="fas fa-file-lines"></i><span>Dokumen</span></button>
                             <button type="button" class="attach-chip video" onclick="chooseForumAttachment('video')"><i class="fas fa-video"></i><span>Video</span></button>
                             <button type="button" class="attach-chip audio" onclick="chooseForumAttachment('audio')"><i class="fas fa-microphone"></i><span>Audio</span></button>
+                            <button type="button" class="attach-chip audio" id="forum-vn-btn" onclick="toggleForumVoiceNote()"><i class="fas fa-microphone-lines"></i><span>VN</span></button>
                         </div>
                         <div id="forum-file-preview" class="attachment-preview-area" aria-live="polite"></div>
                         <div class="fc-actions">
+                            <select id="forum-scope" onchange="setForumScope(this.value)">
+                                <option value="school">Semua siswa</option>
+                                <option value="class">Kelas saya</option>
+                            </select>
+                            <select id="forum-kelas" class="staff-only hidden">
+                                <option value="">Pilih kelas</option>
+                            </select>
                             <select id="forum-mapel">
                                 <option>TKJ — Jaringan Komputer</option>
                                 <option>TBSM — Teknik Motor</option>
@@ -346,7 +358,28 @@
                         </div>
                     </div>
                 </div>
-                <div class="forum-list" id="forum-list"></div>
+                <div class="forum-social-layout">
+                    <section class="forum-list" id="forum-list"></section>
+                    <aside class="private-chat-card" aria-label="Chat pribadi siswa">
+                        <div class="private-chat-head">
+                            <div>
+                                <h3><i class="fas fa-comments"></i> Chat Siswa</h3>
+                                <p>Ngobrol pribadi dengan teman sekelas.</p>
+                            </div>
+                            <button type="button" class="small-action" onclick="fetchPrivateContacts()"><i class="fas fa-sync"></i></button>
+                        </div>
+                        <div class="private-contact-list" id="private-contact-list">
+                            <div class="staff-empty">Memuat kontak...</div>
+                        </div>
+                        <div class="private-chat-room" id="private-chat-room">
+                            <div class="staff-empty">Pilih kontak untuk mulai chat.</div>
+                        </div>
+                        <form class="private-chat-compose" onsubmit="sendPrivateMessage(event)">
+                            <input id="private-chat-message" type="text" maxlength="1000" placeholder="Tulis pesan pribadi..." autocomplete="off">
+                            <button type="submit" aria-label="Kirim pesan"><i class="fas fa-paper-plane"></i></button>
+                        </form>
+                    </aside>
+                </div>
             </div>
 
             <!-- Page: NILAI -->
@@ -403,6 +436,18 @@
                         </div>
 
                         <div class="kantin-stats seller-kpi-grid" id="kantin-seller-stats"></div>
+
+                        <div class="kantin-panel seller-chart-panel seller-order-panel">
+                            <div class="kantin-head compact">
+                                <div>
+                                    <h3>Pesanan Masuk</h3>
+                                    <p>Tandai selesai atau batal supaya pembeli dan admin langsung punya status yang jelas.</p>
+                                </div>
+                            </div>
+                            <div class="kantin-orders" id="kantin-seller-orders">
+                                <div class="staff-empty">Belum ada pesanan masuk.</div>
+                            </div>
+                        </div>
 
                         <div class="seller-insight-grid">
                             <div class="kantin-panel seller-chart-panel">
@@ -742,12 +787,23 @@
                         <div class="staff-form">
                             <input id="staff-task-title" type="text" placeholder="Judul tugas">
                             <div class="staff-form-grid">
-                                <input id="staff-task-mapel" type="text" placeholder="Mapel">
-                                <select id="staff-task-kelas"><option value="">Pilih kelas</option></select>
+                                <input id="staff-task-mapel" type="text" placeholder="Mapel, pisahkan koma jika banyak">
+                                <select id="staff-task-classes" multiple size="5" aria-label="Pilih kelas target"></select>
                             </div>
                             <input id="staff-task-deadline" type="datetime-local">
                             <textarea id="staff-task-desc" rows="3" placeholder="Instruksi tugas"></textarea>
+                            <small class="staff-form-hint">Tahan Ctrl untuk pilih banyak kelas. Contoh mapel: Matematika, Bahasa Indonesia.</small>
                             <button onclick="createStaffTask()"><i class="fas fa-paper-plane"></i> Terbitkan Tugas</button>
+                        </div>
+                    </section>
+
+                    <section class="staff-panel">
+                        <div class="staff-panel-head">
+                            <h3><i class="fas fa-clipboard-check"></i> Progress Tugas Kelas</h3>
+                            <button type="button" class="staff-mini-btn" onclick="fetchTaskProgress()"><i class="fas fa-rotate"></i> Refresh</button>
+                        </div>
+                        <div class="task-progress-list" id="task-progress-list">
+                            <p class="staff-empty">Progress tugas akan tampil setelah guru menerbitkan tugas.</p>
                         </div>
                     </section>
 
@@ -839,8 +895,8 @@
                         <div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()">
                             <i class="fas fa-cloud-upload-alt"></i>
                             <span>Klik untuk unggah atau drag & drop</span>
-                            <small>PDF, DOC, JPG — Maks. 10MB</small>
-                            <input type="file" id="file-input" style="display:none" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,application/zip" onchange="handleFileUpload(this)">
+                            <small>PDF, DOC, PPTX, XLS, foto, video, audio, ZIP — Maks. 50MB</small>
+                            <input type="file" id="file-input" style="display:none" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp,.gif,.mp4,.webm,.mov,.mp3,.wav,.ogg,.zip,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/wav,audio/ogg,audio/webm,application/zip" onchange="handleFileUpload(this)">
                         </div>
                         <div id="file-preview" class="attachment-preview-area compact"></div>
                     </div>

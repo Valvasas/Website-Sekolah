@@ -12,6 +12,7 @@ const helmet     = require('helmet');
 const path       = require('path');
 const morgan     = require('morgan');
 const fs         = require('fs');
+const crypto     = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 
 const { initDatabase }                   = require('./config/database');
@@ -134,6 +135,52 @@ function setupWebSocket() {
     const WS_MESSAGE_WINDOW_MS = 10_000;
     const WS_MESSAGE_LIMIT = 40;
 
+    function resolveCbtWsSession(db, nisn, token) {
+        const rawToken = String(token || '').trim();
+        if (!nisn || !rawToken) return null;
+
+        const direct = db.prepare(`
+            SELECT * FROM cbt_sessions
+            WHERE token = ? AND nisn = ? AND used = 0 AND token_scope != 'class'
+        `).get(rawToken.toLowerCase(), nisn);
+        if (direct && (!direct.expires_at || new Date(direct.expires_at).getTime() > Date.now())) return direct;
+
+        const publicToken = rawToken.toUpperCase();
+        if (!/^[A-Z0-9]{6,16}$/.test(publicToken)) return null;
+        const student = db.prepare(`
+            SELECT u.nisn, u.nama_lengkap, sp.kelas
+            FROM users u
+            LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
+            WHERE u.nisn = ? AND u.role = 'siswa' AND u.is_active = 1
+        `).get(nisn);
+        if (!student?.kelas) return null;
+
+        const classSession = db.prepare(`
+            SELECT * FROM cbt_sessions
+            WHERE UPPER(token) = ? AND token_scope = 'class' AND kelas = ? AND used = 0 AND status != 'revoked'
+            ORDER BY created_at DESC
+            LIMIT 1
+        `).get(publicToken, student.kelas);
+        if (!classSession || (classSession.expires_at && new Date(classSession.expires_at).getTime() <= Date.now())) return null;
+
+        const existing = db.prepare(`
+            SELECT * FROM cbt_sessions
+            WHERE exam_id = ? AND nisn = ? AND class_token_id = ? AND used = 0 AND status != 'revoked'
+            ORDER BY created_at DESC
+            LIMIT 1
+        `).get(classSession.exam_id, nisn, classSession.id);
+        if (existing && (!existing.expires_at || new Date(existing.expires_at).getTime() > Date.now())) return existing;
+
+        const sessionId = uuidv4();
+        const individualToken = crypto.randomBytes(16).toString('hex');
+        db.prepare(`
+            INSERT INTO cbt_sessions
+            (id, exam_id, nisn, mapel, token, used, status, token_scope, kelas, class_token_id, durasi_menit, expires_at, created_at)
+            VALUES (?, ?, ?, ?, ?, 0, 'issued', 'individual', ?, ?, ?, ?, ?)
+        `).run(sessionId, classSession.exam_id || null, nisn, classSession.mapel, individualToken, student.kelas, classSession.id, classSession.durasi_menit, classSession.expires_at, new Date().toISOString());
+        return db.prepare('SELECT * FROM cbt_sessions WHERE id = ?').get(sessionId);
+    }
+
     function isWsRateLimited(ws) {
         const now = Date.now();
         if (!ws.rateWindowStart || now - ws.rateWindowStart > WS_MESSAGE_WINDOW_MS) {
@@ -210,9 +257,7 @@ function setupWebSocket() {
                     }
                     try {
                         const db      = require('./config/database')();
-                        const session = db.prepare(
-                            `SELECT * FROM cbt_sessions WHERE token = ? AND nisn = ? AND used = 0 AND expires_at > datetime('now')`
-                        ).get(cbtToken, nisn);
+                        const session = resolveCbtWsSession(db, nisn, cbtToken);
 
                         if (!session) {
                             send(ws, { type: 'error', message: 'Token ujian tidak valid atau sudah kadaluarsa.' });
@@ -234,7 +279,7 @@ function setupWebSocket() {
                             cleanCoord(msg.lng),
                             msg.device ? JSON.stringify({ device: cleanText(msg.device, 80) }) : null,
                             msg.browser ? JSON.stringify({ browser: cleanText(msg.browser, 120) }) : null,
-                            cbtToken
+                            session.token
                         );
                         ws.nisn = nisn; ws.mapel = session.mapel; ws.sessionId = session.id; ws.examId = session.exam_id || null;
                         ws.role = 'student'; ws.isAuth = true;
@@ -248,7 +293,7 @@ function setupWebSocket() {
                 }
 
                 case 'device_info': case 'browser_info': case 'battery_update': case 'network_speed':
-                case 'location': case 'location_update': case 'camera_frame':
+                case 'location': case 'location_update': case 'camera_status': case 'camera_frame':
                 case 'screen_frame': case 'screen_status':
                 case 'answer_update': case 'violation':
                     saveProctorEvent(msg, ws);
@@ -287,6 +332,14 @@ function setupWebSocket() {
                 case 'admin_broadcast':
                     if (ws.role !== 'admin') return;
                     handleAdminBroadcast(msg, ws);
+                    break;
+                case 'admin_proctor_start':
+                    if (ws.role !== 'admin') return;
+                    handleAdminProctorControl(msg, ws, true);
+                    break;
+                case 'admin_proctor_stop':
+                    if (ws.role !== 'admin') return;
+                    handleAdminProctorControl(msg, ws, false);
                     break;
                 case 'admin_end_all':
                     if (ws.role !== 'admin') return;
@@ -335,7 +388,7 @@ function setupWebSocket() {
         }
         const now = Date.now();
         const key = `${msg.type}:${ws?.nisn || 'unknown'}`;
-        const minGap = msg.type === 'screen_frame' ? 30_000 : 20_000;
+        const minGap = msg.monitoring ? (msg.type === 'screen_frame' ? 1400 : 900) : (msg.type === 'screen_frame' ? 30_000 : 20_000);
         ws.lastForwardedFrameAt = ws.lastForwardedFrameAt || {};
         if (now - (ws.lastForwardedFrameAt[key] || 0) < minGap) return;
         ws.lastForwardedFrameAt[key] = now;
@@ -471,6 +524,29 @@ function setupWebSocket() {
         fwdAdminToExam({ ...payload, type: 'broadcast_ack' }, examId);
     }
 
+    function handleAdminProctorControl(msg, ws, active) {
+        const targetNisn = cleanText(msg.targetNisn, 30);
+        const target = clients.get(targetNisn);
+        const mode = ['camera', 'screen', 'both'].includes(msg.mode) ? msg.mode : 'both';
+        if (!target) {
+            send(ws, { type: 'proctor_control_error', targetNisn, message: 'Siswa sedang offline atau belum masuk sesi.' });
+            return;
+        }
+        const requestedExamId = cleanText(msg.examId, 80) || ws.examFilter || null;
+        if (requestedExamId && target.examId && String(target.examId) !== String(requestedExamId)) {
+            send(ws, { type: 'proctor_control_error', targetNisn, message: 'Siswa tidak berada pada sesi CBT yang sedang dipantau.' });
+            return;
+        }
+        send(target, { type: active ? 'start_proctor_stream' : 'stop_proctor_stream', mode });
+        fwdAdminToExam({
+            type: active ? 'proctor_stream_started' : 'proctor_stream_stopped',
+            nisn: targetNisn,
+            exam_id: target.examId || requestedExamId || null,
+            mode,
+            created_at: new Date().toISOString()
+        }, target.examId || requestedExamId || null);
+    }
+
     function saveProctorEvent(msg, ws) {
         if (!ws?.nisn) return;
         try {
@@ -509,6 +585,12 @@ function setupWebSocket() {
                         UPDATE cbt_sessions SET location_lat = @lat, location_lng = @lng, last_seen_at = @now
                         WHERE id = @sessionId
                     `).run({ ...base, lat: cleanCoord(msg.lat), lng: cleanCoord(msg.lng) });
+                    break;
+                case 'camera_status':
+                    db.prepare(`
+                        UPDATE cbt_sessions SET camera_status = @status, last_seen_at = @now
+                        WHERE id = @sessionId
+                    `).run({ ...base, status: cleanText(msg.status, 40) || 'unknown' });
                     break;
                 case 'camera_frame':
                     db.prepare(`

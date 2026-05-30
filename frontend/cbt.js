@@ -575,8 +575,7 @@ async function finishExam() {
 }
 
 function stopProctoring() {
-    clearInterval(cameraState.captureInterval);
-    clearInterval(screenState.captureInterval);
+    stopOnDemandProctorStream('both');
     if (gpsState.watchId && navigator.geolocation?.clearWatch) navigator.geolocation.clearWatch(gpsState.watchId);
     cameraState.stream?.getTracks().forEach(t => t.stop());
     screenState.stream?.getTracks().forEach(t => t.stop());
@@ -708,7 +707,7 @@ let adminSocket = null;
 const telemetryQueue = [];
 const MAX_TELEMETRY_QUEUE = 40;
 const FRAME_TYPES = new Set(['camera_frame', 'screen_frame']);
-const FRAME_SEND_INTERVAL_MS = { camera_frame: 30000, screen_frame: 45000 };
+const FRAME_SEND_INTERVAL_MS = { camera_frame: 1200, screen_frame: 1800 };
 const lastFrameSentAt = {};
 let lastLocationSentAt = 0;
 
@@ -834,6 +833,12 @@ function connectAdminSocket(studentData) {
                     case 'admin_reply':
                         addEmergencyMessage(msg.message, 'admin', msg.sender_name || 'Panitia CBT');
                         break;
+                    case 'start_proctor_stream':
+                        startOnDemandProctorStream(msg.mode || 'both');
+                        break;
+                    case 'stop_proctor_stream':
+                        stopOnDemandProctorStream(msg.mode || 'both');
+                        break;
                     case 'student_help_ack':
                         markLastEmergencyMessageSent();
                         break;
@@ -865,7 +870,7 @@ function connectAdminSocket(studentData) {
 
 function sendToAdmin(payload) {
     const normalized = { ...payload, nisn: payload.nisn || state.nisn, mapel: payload.mapel || state.mapel };
-    if (FRAME_TYPES.has(normalized.type)) {
+    if (FRAME_TYPES.has(normalized.type) && !normalized.force) {
         const now = Date.now();
         const minGap = FRAME_SEND_INTERVAL_MS[normalized.type] || 30000;
         if (now - (lastFrameSentAt[normalized.type] || 0) < minGap) return;
@@ -1255,8 +1260,8 @@ function requestLocation() {
 /* ──────────────────────────────────────────────────────────────
    4. KAMERA DEPAN (Proctoring)
    ────────────────────────────────────────────────────────────── */
-const cameraState = { stream: null, canvas: null, captureInterval: null };
-const screenState = { stream: null, video: null, canvas: null, captureInterval: null };
+const cameraState = { stream: null, canvas: null, captureInterval: null, monitoring: false };
+const screenState = { stream: null, video: null, canvas: null, captureInterval: null, monitoring: false };
 
 function sendOptimizedFrame(type, canvas, maxLength = 45000) {
     let quality = type === 'screen_frame' ? 0.35 : 0.45;
@@ -1265,7 +1270,62 @@ function sendOptimizedFrame(type, canvas, maxLength = 45000) {
         quality -= 0.07;
         imageData = canvas.toDataURL('image/jpeg', quality);
     }
-    if (imageData.length <= maxLength) sendToAdmin({ type, frame: imageData });
+    if (imageData.length <= maxLength) sendToAdmin({ type, frame: imageData, force: true, monitoring: true });
+}
+
+function captureCameraFrame() {
+    const video = document.getElementById('proctor-video');
+    if (!video || !cameraState.canvas || !cameraState.stream) return;
+    const ctx = cameraState.canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, cameraState.canvas.width, cameraState.canvas.height);
+    sendOptimizedFrame('camera_frame', cameraState.canvas);
+}
+
+function captureScreenFrame() {
+    if (!screenState.video || !screenState.canvas || !screenState.stream) return;
+    const ctx = screenState.canvas.getContext('2d');
+    ctx.drawImage(screenState.video, 0, 0, screenState.canvas.width, screenState.canvas.height);
+    sendOptimizedFrame('screen_frame', screenState.canvas);
+}
+
+function startOnDemandProctorStream(mode = 'both') {
+    const wantsCamera = ['both', 'camera'].includes(mode);
+    const wantsScreen = ['both', 'screen'].includes(mode);
+    if (wantsCamera && !cameraState.stream) {
+        sendToAdmin({ type: 'camera_status', status: 'unavailable' });
+    }
+    if (wantsCamera && cameraState.stream && !cameraState.captureInterval) {
+        cameraState.monitoring = true;
+        captureCameraFrame();
+        cameraState.captureInterval = setInterval(captureCameraFrame, 1400);
+        sendToAdmin({ type: 'camera_status', status: 'streaming' });
+    }
+    if (wantsScreen && !screenState.stream) {
+        sendToAdmin({ type: 'screen_status', status: 'unavailable' });
+    }
+    if (wantsScreen && screenState.stream && !screenState.captureInterval) {
+        screenState.monitoring = true;
+        captureScreenFrame();
+        screenState.captureInterval = setInterval(captureScreenFrame, 1800);
+        sendToAdmin({ type: 'screen_status', status: 'streaming' });
+    }
+}
+
+function stopOnDemandProctorStream(mode = 'both') {
+    const stopCamera = ['both', 'camera'].includes(mode);
+    const stopScreen = ['both', 'screen'].includes(mode);
+    if (stopCamera) {
+        clearInterval(cameraState.captureInterval);
+        cameraState.captureInterval = null;
+        cameraState.monitoring = false;
+        sendToAdmin({ type: 'camera_status', status: cameraState.stream ? 'active_local' : 'stopped' });
+    }
+    if (stopScreen) {
+        clearInterval(screenState.captureInterval);
+        screenState.captureInterval = null;
+        screenState.monitoring = false;
+        sendToAdmin({ type: 'screen_status', status: screenState.stream ? 'active_standby' : 'stopped' });
+    }
 }
 
 async function requestCamera() {
@@ -1293,18 +1353,11 @@ async function requestCamera() {
         if (statusEl) statusEl.innerHTML =
             `<i class="fas fa-check-circle" style="color:#10b981"></i> Kamera aktif`;
 
-        // Buat canvas untuk capture frame
+        // Canvas hanya dipakai saat panitia meminta pantauan live siswa tertentu.
         cameraState.canvas = document.createElement('canvas');
         cameraState.canvas.width  = 160;
         cameraState.canvas.height = 120;
-
-        // Kirim snapshot kecil. Ini bukan live video supaya ringan untuk siswa/admin/server.
-        cameraState.captureInterval = setInterval(() => {
-            if (!state.started) return;
-            const ctx = cameraState.canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, 160, 120);
-            sendOptimizedFrame('camera_frame', cameraState.canvas);
-        }, 30000);
+        sendToAdmin({ type: 'camera_status', status: 'active_local' });
 
         return Promise.resolve();
     } catch(err) {
@@ -1587,19 +1640,16 @@ async function requestScreenCapture() {
         screenState.canvas = document.createElement('canvas');
         screenState.canvas.width = 240;
         screenState.canvas.height = 135;
-        if (statusEl) statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:#10b981"></i> Rekam layar aktif';
-        sendToAdmin({ type: 'screen_status', status: 'active' });
+        if (statusEl) statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:#10b981"></i> Rekam layar standby';
+        sendToAdmin({ type: 'screen_status', status: 'active_standby' });
         stream.getVideoTracks()[0]?.addEventListener('ended', () => {
+            clearInterval(screenState.captureInterval);
+            screenState.captureInterval = null;
+            screenState.monitoring = false;
             sendToAdmin({ type: 'screen_status', status: 'stopped' });
             examLock._recordViolation('screen_stopped', 'Rekam layar dihentikan.');
         });
-        screenState.captureInterval = setInterval(() => {
-            if (!state.started || !screenState.video) return;
-            const ctx = screenState.canvas.getContext('2d');
-            ctx.drawImage(screenState.video, 0, 0, 240, 135);
-            sendOptimizedFrame('screen_frame', screenState.canvas);
-        }, 45000);
-        return { status: 'active' };
+        return { status: 'active_standby' };
     } catch (err) {
         if (statusEl) statusEl.textContent = 'Rekam layar ditolak.';
         sendToAdmin({ type: 'screen_status', status: 'denied' });

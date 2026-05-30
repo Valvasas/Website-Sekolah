@@ -490,6 +490,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const allBubbles = document.querySelectorAll('.bubble-item, .bubble-center');
 
     if (allBubbles.length > 0 && eskulCard) {
+        const canHoverEskul = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
         
         function updateEskulInfo(element) {
             const bg = element.getAttribute('data-bg');
@@ -509,6 +510,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (title && desc) {
                 eskulTitle.textContent = title;
                 eskulDesc.textContent = desc;
+                allBubbles.forEach(bubble => {
+                    bubble.classList.remove('active');
+                    bubble.setAttribute('aria-pressed', 'false');
+                });
+                element.classList.add('active');
+                element.setAttribute('aria-pressed', 'true');
                 
                 // Setel ulang class untuk reset animasi lalu tambahkan kelas posisinya
                 eskulCard.className = `eskul-info-card show ${positionClass}`;
@@ -520,20 +527,33 @@ document.addEventListener('DOMContentLoaded', () => {
         if (centerBubble) {
             const defaultBg = centerBubble.getAttribute('data-bg');
             if (defaultBg) eskulBg.style.backgroundImage = `url('${defaultBg}')`;
+            updateEskulInfo(centerBubble);
         }
 
         allBubbles.forEach(bubble => {
+            bubble.setAttribute('role', 'button');
+            bubble.setAttribute('tabindex', '0');
+            bubble.setAttribute('aria-pressed', bubble.classList.contains('active') ? 'true' : 'false');
+
             // MUNCULKAN Card & Ganti Gambar saat kursor masuk
             bubble.addEventListener('mouseenter', function() {
+                if (!canHoverEskul()) return;
                 updateEskulInfo(this);
             });
             
-            // HILANGKAN Card saat kursor pergi (Gambar tidak ikut hilang)
+            // Di desktop card boleh hilang setelah hover; di layar sentuh card harus persisten.
             bubble.addEventListener('mouseleave', function() {
+                if (!canHoverEskul()) return;
                 eskulCard.classList.remove('show');
             });
 
             bubble.addEventListener('click', function() {
+                updateEskulInfo(this);
+            });
+
+            bubble.addEventListener('keydown', function(event) {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
                 updateEskulInfo(this);
             });
         });
@@ -571,15 +591,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (jurusanCards.length > 0) {
         jurusanCards.forEach(card => {
-            card.addEventListener('click', () => {
+            card.addEventListener('click', (event) => {
                 if (!isMobile()) return;
+                if (event.target.closest('a, button')) return;
 
                 const isActive = card.classList.contains('active');
                 jurusanCards.forEach(otherCard => otherCard.classList.remove('active'));
-                
-                if (!isActive) {
-                    jurusanCards.forEach(otherCard => otherCard.classList.remove('active'));
-                }
 
                 if (!isActive) {
                     card.classList.add('active');
@@ -588,6 +605,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 100);
                 }
             });
+        });
+
+        if (isMobile()) jurusanCards[0].classList.add('active');
+
+        window.addEventListener('resize', () => {
+            if (!isMobile()) {
+                jurusanCards.forEach(card => card.classList.remove('active'));
+                return;
+            }
+
+            if (!document.querySelector('.j-card.active')) {
+                jurusanCards[0].classList.add('active');
+            }
         });
     }
 

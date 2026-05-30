@@ -120,6 +120,9 @@ function setup() {
             id TEXT PRIMARY KEY, exam_id TEXT, nisn TEXT NOT NULL, mapel TEXT NOT NULL,
             token TEXT NOT NULL UNIQUE, used INTEGER NOT NULL DEFAULT 0,
             status TEXT NOT NULL DEFAULT 'issued',
+            token_scope TEXT NOT NULL DEFAULT 'individual',
+            kelas TEXT,
+            class_token_id TEXT,
             start_time TEXT, end_time TEXT,
             last_seen_at TEXT, location_lat TEXT, location_lng TEXT,
             device_info TEXT, browser_info TEXT, network_mbps REAL,
@@ -204,6 +207,7 @@ function setup() {
             id TEXT PRIMARY KEY, judul TEXT NOT NULL,
             deskripsi TEXT, mapel TEXT NOT NULL,
             kelas TEXT NOT NULL, deadline TEXT,
+            assignment_group_id TEXT,
             created_by TEXT NOT NULL,
             is_active INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
@@ -256,12 +260,17 @@ function setup() {
             id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
             mapel TEXT,
+            visibility TEXT NOT NULL DEFAULT 'school',
+            kelas TEXT,
             konten TEXT NOT NULL,
             parent_id TEXT,
             likes INTEGER NOT NULL DEFAULT 0,
             attachment_url TEXT,
             attachment_name TEXT,
             attachment_type TEXT,
+            is_pinned INTEGER NOT NULL DEFAULT 0,
+            pinned_at TEXT,
+            pinned_by TEXT,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         );
@@ -269,6 +278,14 @@ function setup() {
             user_id TEXT NOT NULL,
             post_id TEXT NOT NULL,
             PRIMARY KEY(user_id, post_id)
+        );
+        CREATE TABLE IF NOT EXISTS lms_private_messages (
+            id TEXT PRIMARY KEY,
+            sender_id TEXT NOT NULL,
+            receiver_id TEXT NOT NULL,
+            message TEXT NOT NULL,
+            read_at TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         );
         CREATE TABLE IF NOT EXISTS kantin_products (
             id TEXT PRIMARY KEY,
@@ -369,6 +386,9 @@ function setup() {
     if (!sessionCols.includes('violation_count')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN violation_count INTEGER DEFAULT 0');
     if (!sessionCols.includes('last_camera_frame')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN last_camera_frame TEXT');
     if (!sessionCols.includes('last_screen_frame')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN last_screen_frame TEXT');
+    if (!sessionCols.includes('token_scope')) db.exec("ALTER TABLE cbt_sessions ADD COLUMN token_scope TEXT NOT NULL DEFAULT 'individual'");
+    if (!sessionCols.includes('kelas')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN kelas TEXT');
+    if (!sessionCols.includes('class_token_id')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN class_token_id TEXT');
 
     const resultCols = db.pragma('table_info(cbt_results)').map(c => c.name);
     if (!resultCols.includes('exam_id')) db.exec('ALTER TABLE cbt_results ADD COLUMN exam_id TEXT');
@@ -393,6 +413,14 @@ function setup() {
     if (!forumCols.includes('attachment_url')) db.exec('ALTER TABLE forum_posts ADD COLUMN attachment_url TEXT');
     if (!forumCols.includes('attachment_name')) db.exec('ALTER TABLE forum_posts ADD COLUMN attachment_name TEXT');
     if (!forumCols.includes('attachment_type')) db.exec('ALTER TABLE forum_posts ADD COLUMN attachment_type TEXT');
+    if (!forumCols.includes('visibility')) db.exec("ALTER TABLE forum_posts ADD COLUMN visibility TEXT NOT NULL DEFAULT 'school'");
+    if (!forumCols.includes('kelas')) db.exec('ALTER TABLE forum_posts ADD COLUMN kelas TEXT');
+    if (!forumCols.includes('is_pinned')) db.exec('ALTER TABLE forum_posts ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0');
+    if (!forumCols.includes('pinned_at')) db.exec('ALTER TABLE forum_posts ADD COLUMN pinned_at TEXT');
+    if (!forumCols.includes('pinned_by')) db.exec('ALTER TABLE forum_posts ADD COLUMN pinned_by TEXT');
+
+    const taskCols = db.pragma('table_info(tugas_kelas)').map(c => c.name);
+    if (!taskCols.includes('assignment_group_id')) db.exec('ALTER TABLE tugas_kelas ADD COLUMN assignment_group_id TEXT');
 
     const kantinChatCols = db.pragma('table_info(kantin_chats)').map(c => c.name);
     if (!kantinChatCols.includes('attachment_url')) db.exec('ALTER TABLE kantin_chats ADD COLUMN attachment_url TEXT');
@@ -423,6 +451,12 @@ function setup() {
         CREATE INDEX IF NOT EXISTS idx_nilai_nisn           ON nilai_siswa(nisn, semester);
         CREATE INDEX IF NOT EXISTS idx_notifikasi_user      ON notifikasi(user_id, is_read);
         CREATE INDEX IF NOT EXISTS idx_forum_user           ON forum_posts(user_id);
+        CREATE INDEX IF NOT EXISTS idx_forum_scope          ON forum_posts(visibility, kelas, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_forum_pinned         ON forum_posts(is_pinned, pinned_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_tugas_group          ON tugas_kelas(assignment_group_id, kelas, mapel);
+        CREATE INDEX IF NOT EXISTS idx_tugas_creator        ON tugas_kelas(created_by, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_lms_pm_pair          ON lms_private_messages(sender_id, receiver_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_lms_pm_receiver      ON lms_private_messages(receiver_id, read_at, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_submission_tugas     ON submission_tugas(tugas_id, nisn);
         CREATE INDEX IF NOT EXISTS idx_website_contents     ON website_contents(type, placement, is_active, sort_order);
         CREATE INDEX IF NOT EXISTS idx_kantin_products      ON kantin_products(status, created_at DESC);

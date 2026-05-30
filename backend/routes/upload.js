@@ -32,7 +32,7 @@ Object.values(CATEGORIES).forEach(dir => {
 
 // ── MIME type whitelist ────────────────────────────────────────────
 const ALLOWED_TYPES = {
-    tugas:  ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','image/jpeg','image/png','application/zip'],
+    tugas:  ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain','image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm','video/quicktime','audio/mpeg','audio/wav','audio/ogg','audio/webm','application/zip','application/x-zip-compressed'],
     profil: ['image/jpeg','image/png','image/webp'],
     ppdb:   ['application/pdf','image/jpeg','image/png'],
     materi: ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain','video/mp4','video/webm','video/quicktime','image/jpeg','image/png','image/webp','image/gif'],
@@ -45,7 +45,7 @@ const ALLOWED_TYPES = {
 };
 
 const MAX_SIZE = {
-    tugas:  10 * 1024 * 1024,  // 10MB
+    tugas:  50 * 1024 * 1024,  // 50MB
     profil:  2 * 1024 * 1024,  //  2MB
     ppdb:    5 * 1024 * 1024,  //  5MB
     materi: 50 * 1024 * 1024,  // 50MB

@@ -5468,3 +5468,364 @@ body.nav-open .navbar {
     font-size: 0.8rem;
   }
 }
+
+/* ============================================================
+   RESPONSIVE POLISH: JURUSAN, FASILITAS, EKSTRAKURIKULER
+   Desktop tetap ekspresif, tablet/mobile dibuat tap-friendly.
+   ============================================================ */
+.j-details > div {
+  flex-wrap: wrap;
+}
+
+.j-card:focus-within,
+.bubble-center:focus-visible,
+.bubble-item:focus-visible,
+.tab-btn:focus-visible {
+  outline: 3px solid rgba(212, 175, 55, 0.85);
+  outline-offset: 4px;
+}
+
+.bubble-item.active,
+.bubble-center.active {
+  background: var(--primary);
+  color: var(--secondary);
+  border-color: var(--secondary);
+  box-shadow: 0 0 30px rgba(212, 175, 55, 0.48);
+}
+
+.bubble-item.active i {
+  color: var(--secondary);
+}
+
+@media screen and (min-width: 993px) {
+  .j-card.active,
+  .j-card:focus-within {
+    flex: 3.5;
+  }
+
+  .j-card.active .j-overlay,
+  .j-card:focus-within .j-overlay {
+    background: linear-gradient(to top, rgba(0,25,50,0.95) 0%, rgba(0,34,68,0.8) 60%, rgba(0,0,0,0.3) 100%);
+  }
+
+  .j-card.active .j-content,
+  .j-card:focus-within .j-content {
+    align-items: flex-start;
+    text-align: left;
+    padding: 40px;
+  }
+
+  .j-card.active .j-icon,
+  .j-card:focus-within .j-icon {
+    background: var(--secondary);
+    color: var(--primary);
+    transform: translateY(0) scale(1.1);
+  }
+
+  .j-card.active .j-text h3,
+  .j-card:focus-within .j-text h3 {
+    white-space: normal;
+    color: var(--secondary);
+    transform: translateY(0);
+    overflow: visible;
+    margin-bottom: 10px;
+  }
+
+  .j-card.active .j-details,
+  .j-card:focus-within .j-details {
+    max-height: 250px;
+    opacity: 1;
+    margin-top: 10px;
+  }
+}
+
+@media screen and (max-width: 992px) {
+  .jurusan-gallery {
+    width: min(100%, 760px);
+    margin-inline: auto;
+    padding: 0 18px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    height: auto;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .j-card,
+  .j-card:hover {
+    flex: none;
+    min-height: 320px;
+    height: auto;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.12);
+    overflow: hidden;
+    box-shadow: 0 18px 42px rgba(0,0,0,0.24);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+
+  .j-card:hover {
+    transform: none;
+  }
+
+  .j-card.active {
+    border-color: rgba(212, 175, 55, 0.65);
+    box-shadow: 0 22px 48px rgba(0,0,0,0.32);
+  }
+
+  .j-content,
+  .j-card:hover .j-content {
+    position: absolute;
+    inset: auto 0 0;
+    min-height: 100%;
+    padding: 24px;
+    justify-content: flex-end;
+    align-items: flex-start;
+    text-align: left;
+    background: linear-gradient(to top, rgba(0, 22, 44, 0.98) 0%, rgba(0, 34, 68, 0.7) 52%, rgba(0, 0, 0, 0.12) 100%);
+  }
+
+  .j-icon,
+  .j-card:hover .j-icon {
+    width: 56px;
+    height: 56px;
+    transform: none;
+    margin-bottom: 14px;
+    background: rgba(212,175,55,0.18);
+    color: var(--secondary);
+  }
+
+  .j-card.active .j-icon {
+    background: var(--secondary);
+    color: var(--primary);
+  }
+
+  .j-text h3,
+  .j-card:hover .j-text h3 {
+    white-space: normal;
+    transform: none;
+    color: var(--secondary);
+    overflow: visible;
+    font-size: clamp(1.05rem, 2.6vw, 1.28rem);
+    line-height: 1.25;
+  }
+
+  .j-details,
+  .j-card:hover .j-details {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    margin-top: 0;
+    transition: max-height 0.35s ease, opacity 0.25s ease, margin 0.25s ease;
+  }
+
+  .j-card.active .j-details {
+    max-height: 360px;
+    opacity: 1;
+    margin-top: 12px;
+  }
+
+  .j-desc {
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  .j-details > div {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 10px !important;
+    margin-top: 14px !important;
+  }
+
+  .btn-j {
+    width: 100%;
+    min-height: 42px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px 16px;
+    border-radius: 12px;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .facilities-container {
+    border-radius: 14px;
+  }
+
+  .tab-buttons {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-btn {
+    min-width: max-content;
+    scroll-snap-align: start;
+  }
+
+  .tab-content-wrapper {
+    height: auto;
+    min-height: clamp(360px, 60vw, 460px);
+  }
+
+  .tab-content,
+  .tab-content.active {
+    min-height: clamp(360px, 60vw, 460px);
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .content-overlay,
+  .tab-content.active .content-overlay {
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    transform: none;
+    opacity: 1;
+    margin: 0;
+    padding: 24px;
+    border-radius: 0;
+    background: rgba(0, 34, 68, 0.93);
+    box-shadow: none;
+  }
+
+  .content-overlay h3 {
+    font-size: clamp(1.18rem, 3vw, 1.55rem);
+    line-height: 1.25;
+  }
+
+  .content-overlay p {
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
+  .eskul-section {
+    min-height: auto;
+    padding: 80px 0;
+  }
+
+  .bubble-container {
+    width: min(100%, 560px);
+    max-width: 560px;
+    height: auto;
+    margin-top: 32px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(88px, 1fr));
+    gap: 16px;
+    align-items: stretch;
+    overflow: visible;
+  }
+
+  .bubble-center,
+  .bubble-item,
+  .bubble-center:hover,
+  .bubble-item:hover,
+  .b1, .b2, .b3, .b4, .b5 {
+    position: relative;
+    inset: auto;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    transform: none;
+    margin: 0;
+  }
+
+  .bubble-center {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: 126px;
+    height: 126px;
+    order: 0;
+  }
+
+  .bubble-item {
+    width: 100%;
+    aspect-ratio: 1;
+    height: auto;
+    min-height: 92px;
+    padding: 10px;
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+
+  .bubble-item:hover,
+  .bubble-center:hover {
+    transform: translateY(-2px);
+  }
+
+  .eskul-info-card,
+  .eskul-info-card.b1,
+  .eskul-info-card.b2,
+  .eskul-info-card.b3,
+  .eskul-info-card.b4,
+  .eskul-info-card.b5,
+  .eskul-info-card.bubble-center {
+    grid-column: 1 / -1;
+    position: relative;
+    inset: auto;
+    width: 100%;
+    max-width: 100%;
+    margin-top: 10px;
+    padding: 22px;
+    text-align: center;
+    transform: none;
+    display: block;
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .jurusan-gallery {
+    grid-template-columns: 1fr;
+    padding-inline: 16px;
+  }
+
+  .j-card,
+  .j-card:hover {
+    min-height: 300px;
+  }
+
+  .tab-btn {
+    padding: 12px 16px;
+    font-size: 0.8rem;
+  }
+
+  .bubble-container {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    padding-inline: 6px;
+  }
+
+  .bubble-center {
+    width: 112px;
+    height: 112px;
+    font-size: 1.25rem;
+  }
+
+  .bubble-item {
+    min-height: 86px;
+    font-size: 0.7rem;
+  }
+
+  .bubble-item i {
+    font-size: 1.18rem;
+  }
+
+  .eskul-info-card h3 {
+    font-size: 1.35rem;
+  }
+
+  .eskul-info-card p {
+    font-size: 0.9rem;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .bubble-item:hover,
+  .bubble-center:hover,
+  .j-card:hover {
+    transform: none;
+  }
+}

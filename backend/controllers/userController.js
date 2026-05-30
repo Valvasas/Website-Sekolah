@@ -394,8 +394,167 @@ function getAuditLogs(req, res) {
     }
 }
 
+/* ── STUDENT ACTIVITY FEED ─────────────────────────────── */
+function getStudentActivity(req, res) {
+    const db = getDB();
+    const limitInt = Math.min(Math.max(parseInt(req.query.limit) || 30, 1), 100);
+
+    try {
+        const rows = db.prepare(`
+            SELECT *
+            FROM (
+                SELECT
+                    al.id,
+                    al.created_at,
+                    'audit' as source,
+                    al.action as type,
+                    COALESCE(u.nama_lengkap, 'System') as actor_name,
+                    u.role as actor_role,
+                    sp.kelas as actor_class,
+                    NULL as target_name,
+                    NULL as target_class,
+                    al.entity as subject,
+                    al.detail as detail,
+                    NULL as amount,
+                    al.ip_address as meta
+                FROM audit_logs al
+                LEFT JOIN users u ON u.id = al.user_id
+                LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
+                WHERE u.role = 'siswa'
+
+                UNION ALL
+
+                SELECT
+                    fp.id,
+                    fp.created_at,
+                    'forum' as source,
+                    CASE WHEN fp.parent_id IS NULL THEN 'FORUM_POST' ELSE 'FORUM_REPLY' END as type,
+                    u.nama_lengkap as actor_name,
+                    u.role as actor_role,
+                    COALESCE(fp.kelas, sp.kelas) as actor_class,
+                    NULL as target_name,
+                    NULL as target_class,
+                    fp.mapel as subject,
+                    substr(fp.konten, 1, 180) as detail,
+                    NULL as amount,
+                    fp.visibility as meta
+                FROM forum_posts fp
+                JOIN users u ON u.id = fp.user_id
+                LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
+                WHERE u.role = 'siswa'
+
+                UNION ALL
+
+                SELECT
+                    pm.id,
+                    pm.created_at,
+                    'private_message' as source,
+                    'PRIVATE_MESSAGE' as type,
+                    sender.nama_lengkap as actor_name,
+                    sender.role as actor_role,
+                    sender_sp.kelas as actor_class,
+                    receiver.nama_lengkap as target_name,
+                    receiver_sp.kelas as target_class,
+                    'Chat pribadi' as subject,
+                    substr(pm.message, 1, 160) as detail,
+                    NULL as amount,
+                    CASE WHEN pm.read_at IS NULL THEN 'unread' ELSE 'read' END as meta
+                FROM lms_private_messages pm
+                JOIN users sender ON sender.id = pm.sender_id
+                JOIN users receiver ON receiver.id = pm.receiver_id
+                LEFT JOIN siswa_profil sender_sp ON sender_sp.nisn = sender.nisn
+                LEFT JOIN siswa_profil receiver_sp ON receiver_sp.nisn = receiver.nisn
+                WHERE sender.role = 'siswa'
+
+                UNION ALL
+
+                SELECT
+                    ko.id,
+                    ko.updated_at as created_at,
+                    'kantin_order' as source,
+                    CASE
+                        WHEN ko.status = 'completed' THEN 'KANTIN_ORDER_COMPLETED'
+                        WHEN ko.status = 'cancelled' THEN 'KANTIN_ORDER_CANCELLED'
+                        ELSE 'KANTIN_ORDER'
+                    END as type,
+                    buyer.nama_lengkap as actor_name,
+                    buyer.role as actor_role,
+                    buyer_sp.kelas as actor_class,
+                    seller.nama_lengkap as target_name,
+                    seller_sp.kelas as target_class,
+                    kp.name as subject,
+                    ko.status || ' · ' || ko.quantity || ' item' as detail,
+                    ko.total_price as amount,
+                    ko.payment_method as meta
+                FROM kantin_orders ko
+                JOIN users buyer ON buyer.id = ko.buyer_id
+                JOIN users seller ON seller.id = ko.seller_id
+                JOIN kantin_products kp ON kp.id = ko.product_id
+                LEFT JOIN siswa_profil buyer_sp ON buyer_sp.nisn = buyer.nisn
+                LEFT JOIN siswa_profil seller_sp ON seller_sp.nisn = seller.nisn
+
+                UNION ALL
+
+                SELECT
+                    kc.id,
+                    kc.created_at,
+                    'kantin_chat' as source,
+                    'KANTIN_CHAT' as type,
+                    sender.nama_lengkap as actor_name,
+                    sender.role as actor_role,
+                    sp.kelas as actor_class,
+                    receiver.nama_lengkap as target_name,
+                    NULL as target_class,
+                    kp.name as subject,
+                    substr(kc.message, 1, 160) as detail,
+                    NULL as amount,
+                    CASE WHEN kc.attachment_url IS NULL THEN NULL ELSE 'attachment' END as meta
+                FROM kantin_chats kc
+                JOIN users sender ON sender.id = kc.sender_id
+                JOIN users receiver ON receiver.id = kc.receiver_id
+                LEFT JOIN kantin_products kp ON kp.id = kc.product_id
+                LEFT JOIN siswa_profil sp ON sp.nisn = sender.nisn
+                WHERE sender.role = 'siswa'
+
+                UNION ALL
+
+                SELECT
+                    cr.id,
+                    cr.selesai_at as created_at,
+                    'cbt' as source,
+                    'CBT_FINISHED' as type,
+                    u.nama_lengkap as actor_name,
+                    u.role as actor_role,
+                    sp.kelas as actor_class,
+                    NULL as target_name,
+                    NULL as target_class,
+                    cr.mapel as subject,
+                    'Nilai ' || cr.nilai || ' · benar ' || cr.benar || ', salah ' || cr.salah as detail,
+                    cr.nilai as amount,
+                    cr.exam_id as meta
+                FROM cbt_results cr
+                LEFT JOIN users u ON u.nisn = cr.nisn
+                LEFT JOIN siswa_profil sp ON sp.nisn = cr.nisn
+            )
+            WHERE created_at IS NOT NULL
+            ORDER BY created_at DESC
+            LIMIT ?
+        `).all(limitInt);
+
+        const summary = rows.reduce((acc, row) => {
+            acc[row.source] = (acc[row.source] || 0) + 1;
+            return acc;
+        }, {});
+
+        return res.status(200).json({ success: true, data: { activities: rows, summary } });
+    } catch (err) {
+        console.error('[GetStudentActivity]', err.message);
+        return res.status(500).json({ success: false, message: 'Gagal mengambil aktivitas siswa.' });
+    }
+}
+
 module.exports = {
     getAllUsers, getUserById, createUser,
     updateUser, deactivateUser, activateUser, getPendingStaff,
-    getUserStats, getAuditLogs
+    getUserStats, getAuditLogs, getStudentActivity
 };

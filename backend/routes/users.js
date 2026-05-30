@@ -13,6 +13,7 @@ router.use(authenticate);
 router.get('/',                  isStaff,       ctrl.getAllUsers);
 router.get('/stats',             isAdmin,       ctrl.getUserStats);
 router.get('/audit-logs',        isAdmin,       ctrl.getAuditLogs);
+router.get('/student-activity',  isStaff,       ctrl.getStudentActivity);
 router.get('/pending-staff',     isAdmin,       ctrl.getPendingStaff);
 router.get('/:id',               isSelfOrAdmin, ctrl.getUserById);
 router.post('/',                 isAdmin,       registerRules, handleValidation, ctrl.createUser);

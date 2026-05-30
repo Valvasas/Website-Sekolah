@@ -26,6 +26,10 @@ function generateCbtToken() {
     return crypto.randomBytes(16).toString('hex');
 }
 
+function generatePublicClassToken() {
+    return crypto.randomBytes(4).toString('hex').toUpperCase();
+}
+
 function getExpiry(minutes = 180) {
     return new Date(Date.now() + minutes * 60_000).toISOString();
 }
@@ -92,6 +96,16 @@ function getActiveStudentsByClass(db, kelas) {
         WHERE sp.kelas = ? AND u.role = 'siswa' AND u.is_active = 1 AND u.nisn IS NOT NULL
         ORDER BY u.nama_lengkap ASC
     `).all(kelas);
+}
+
+function getStudentByNisn(db, nisn) {
+    if (!nisn) return null;
+    return db.prepare(`
+        SELECT u.id, u.nisn, u.nama_lengkap, sp.kelas as siswa_kelas
+        FROM users u
+        LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
+        WHERE u.nisn = ? AND u.role = 'siswa' AND u.is_active = 1
+    `).get(nisn);
 }
 
 function canManageAllCbt(user) {
@@ -231,15 +245,79 @@ function assertExamAvailable(exam) {
     return { ok: true };
 }
 
+function findOrCreateClassSession(db, nisn, token) {
+    const publicToken = String(token || '').trim().toUpperCase();
+    if (!nisn || !publicToken || !/^[A-Z0-9]{6,16}$/.test(publicToken)) return null;
+    const student = getStudentByNisn(db, nisn);
+    if (!student?.siswa_kelas) return null;
+    const classSession = db.prepare(`
+        SELECT cs.*, u.nama_lengkap, ? as siswa_kelas
+        FROM cbt_sessions cs
+        LEFT JOIN users u ON u.nisn = ?
+        WHERE UPPER(cs.token) = ?
+          AND cs.token_scope = 'class'
+          AND cs.kelas = ?
+          AND cs.used = 0
+          AND cs.status != 'revoked'
+        ORDER BY cs.created_at DESC
+        LIMIT 1
+    `).get(student.siswa_kelas, nisn, publicToken, student.siswa_kelas);
+    if (!classSession || isExpired(classSession.expires_at)) return null;
+
+    const existing = db.prepare(`
+        SELECT cs.*, u.nama_lengkap, sp.kelas as siswa_kelas
+        FROM cbt_sessions cs
+        JOIN users u ON cs.nisn = u.nisn
+        LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
+        WHERE cs.exam_id = ? AND cs.nisn = ? AND cs.class_token_id = ? AND cs.status != 'revoked'
+        ORDER BY cs.created_at DESC
+        LIMIT 1
+    `).get(classSession.exam_id, nisn, classSession.id);
+    if (existing && !isExpired(existing.expires_at) && existing.used === 0) return existing;
+    if (existing?.used === 1 || existing?.status === 'finished') return null;
+
+    const individualToken = generateCbtToken();
+    const sessionId = uuidv4();
+    db.prepare(`
+        INSERT INTO cbt_sessions
+        (id, exam_id, nisn, mapel, token, used, status, token_scope, kelas, class_token_id, durasi_menit, expires_at, created_at)
+        VALUES (?, ?, ?, ?, ?, 0, 'issued', 'individual', ?, ?, ?, ?, ?)
+    `).run(
+        sessionId,
+        classSession.exam_id || null,
+        nisn,
+        classSession.mapel,
+        individualToken,
+        student.siswa_kelas,
+        classSession.id,
+        classSession.durasi_menit,
+        classSession.expires_at,
+        nowISO()
+    );
+    return db.prepare(`
+        SELECT cs.*, u.nama_lengkap, sp.kelas as siswa_kelas
+        FROM cbt_sessions cs
+        JOIN users u ON cs.nisn = u.nisn
+        LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
+        WHERE cs.id = ?
+    `).get(sessionId);
+}
+
 function findValidSession(db, nisn, token) {
-    if (!nisn || !token || !/^[a-f0-9]{32}$/i.test(token)) return null;
+    if (!nisn || !token) return null;
+    const normalized = String(token).trim();
+    if (/^[A-Z0-9]{6,16}$/i.test(normalized)) {
+        const classBased = findOrCreateClassSession(db, nisn, normalized);
+        if (classBased) return classBased;
+    }
+    if (!/^[a-f0-9]{32}$/i.test(normalized)) return null;
     const session = db.prepare(`
         SELECT cs.*, u.nama_lengkap, sp.kelas as siswa_kelas
         FROM cbt_sessions cs
         JOIN users u ON cs.nisn = u.nisn
         LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
-        WHERE cs.token = ? AND cs.nisn = ? AND cs.used = 0
-    `).get(token.toLowerCase(), nisn);
+        WHERE cs.token = ? AND cs.nisn = ? AND cs.used = 0 AND cs.token_scope != 'class'
+    `).get(normalized.toLowerCase(), nisn);
     if (!session || isExpired(session.expires_at)) return null;
     return session;
 }
@@ -468,8 +546,8 @@ router.get('/exams', authenticate, authorize(...STAFF), (req, res) => {
             SELECT e.*,
                    u.nama_lengkap as created_by_name,
                    COUNT(DISTINCT q.question_id) as total_soal,
-                   COUNT(DISTINCT s.id) as total_token,
-                   SUM(CASE WHEN s.used = 1 THEN 1 ELSE 0 END) as total_selesai
+                   COUNT(DISTINCT CASE WHEN s.token_scope = 'class' THEN s.id END) as total_token,
+                   SUM(CASE WHEN s.status = 'finished' THEN 1 ELSE 0 END) as total_selesai
             FROM cbt_exams e
             LEFT JOIN users u ON u.id = e.created_by
             LEFT JOIN cbt_exam_questions q ON q.exam_id = e.id
@@ -716,34 +794,40 @@ router.post('/exams/:id/tokens', authenticate, authorize(...STAFF), (req, res) =
         }
 
         const expiry = req.body.expires_at || exam.end_at || getExpiry((parseInt(exam.durasi_menit) || 90) + 60);
-        const results = [];
+        let classToken = generatePublicClassToken();
+        while (db.prepare('SELECT 1 FROM cbt_sessions WHERE token = ?').get(classToken)) {
+            classToken = generatePublicClassToken();
+        }
+        const classSessionId = uuidv4();
         const tx = db.transaction(() => {
             db.prepare('UPDATE cbt_sessions SET used = 1, status = ? WHERE exam_id = ? AND used = 0').run('revoked', exam.id);
-            const insert = db.prepare(`
+            db.prepare(`
                 INSERT INTO cbt_sessions
-                (id, exam_id, nisn, mapel, token, used, status, durasi_menit, expires_at, created_at)
-                VALUES (?, ?, ?, ?, ?, 0, 'issued', ?, ?, ?)
-            `);
-            siswaList.forEach(s => {
-                const token = generateCbtToken();
-                insert.run(uuidv4(), exam.id, s.nisn, exam.mapel, token, exam.durasi_menit, expiry, nowISO());
-                results.push({ nisn: s.nisn, nama_lengkap: s.nama_lengkap, token, expires_at: expiry });
-            });
+                (id, exam_id, nisn, mapel, token, used, status, token_scope, kelas, durasi_menit, expires_at, created_at)
+                VALUES (?, ?, ?, ?, ?, 0, 'issued', 'class', ?, ?, ?, ?)
+            `).run(classSessionId, exam.id, `CLASS:${exam.kelas}`, exam.mapel, classToken, exam.kelas, exam.durasi_menit, expiry, nowISO());
             notifyStudents(db, siswaList, {
                 judul: 'Token CBT tersedia',
-                pesan: `Token ${exam.title}: lihat token ujianmu di layanan CBT dashboard siswa.`,
+                pesan: `Token kelas ${exam.title}: ${classToken}. Token hanya bisa dipakai siswa ${exam.kelas}.`,
                 link: '/LMS.html'
             });
         });
         tx();
 
-        const clipboardText = results
-            .map(r => `${r.nama_lengkap} (${r.nisn}): ${r.token}`)
-            .join('\n');
+        const result = {
+            id: classSessionId,
+            token_scope: 'class',
+            kelas: exam.kelas,
+            mapel: exam.mapel,
+            token: classToken,
+            total_siswa: siswaList.length,
+            expires_at: expiry
+        };
+        const clipboardText = `${exam.title}\nKelas: ${exam.kelas}\nMapel: ${exam.mapel}\nToken kelas: ${classToken}\nBerlaku untuk ${siswaList.length} siswa kelas ${exam.kelas}`;
         return res.status(201).json({
             success: true,
-            message: `${results.length} token kelas berhasil dibuat.`,
-            data: results,
+            message: `Token kelas ${exam.kelas} berhasil dibuat untuk ${siswaList.length} siswa.`,
+            data: [result],
             clipboard_text: clipboardText
         });
     } catch (err) {
@@ -758,18 +842,21 @@ router.get('/exams/:id/tokens', authenticate, authorize(...STAFF), (req, res) =>
         const exam = getExam(db, req.params.id);
         if (!assertExamAccess(req.user, exam, res)) return;
         const rows = db.prepare(`
-            SELECT cs.id, cs.nisn, cs.mapel, cs.token, cs.used, cs.status,
+            SELECT cs.id, cs.nisn, cs.mapel, cs.token, cs.used, cs.status, cs.token_scope, cs.kelas, cs.class_token_id,
                    cs.start_time, cs.end_time, cs.expires_at, cs.created_at,
                    cs.last_seen_at, cs.location_lat, cs.location_lng,
                    cs.device_info, cs.browser_info, cs.network_mbps,
                    cs.camera_status, cs.screen_status,
                    cs.progress_answered, cs.progress_total, cs.current_question,
                    cs.violation_count,
-                   u.nama_lengkap
+                   u.nama_lengkap,
+                   (SELECT COUNT(*) FROM siswa_profil sp JOIN users su ON su.nisn = sp.nisn WHERE sp.kelas = cs.kelas AND su.role = 'siswa' AND su.is_active = 1) as total_siswa,
+                   (SELECT COUNT(*) FROM cbt_sessions child WHERE child.class_token_id = cs.id AND child.status = 'started') as total_started,
+                   (SELECT COUNT(*) FROM cbt_sessions child WHERE child.class_token_id = cs.id AND child.status = 'finished') as total_finished
             FROM cbt_sessions cs
             LEFT JOIN users u ON u.nisn = cs.nisn
-            WHERE cs.exam_id = ?
-            ORDER BY u.nama_lengkap ASC
+            WHERE cs.exam_id = ? AND cs.token_scope = 'class'
+            ORDER BY cs.created_at DESC
         `).all(req.params.id);
         return res.json({ success: true, data: rows });
     } catch (err) {
@@ -971,18 +1058,24 @@ router.get('/student/sessions', authenticate, (req, res) => {
     const db = getDB();
     if (req.user.role !== 'siswa') return res.status(403).json({ success: false, message: 'Hanya siswa.' });
     try {
+        const student = getStudentByNisn(db, req.user.nisn);
+        const kelas = student?.siswa_kelas || '';
         const rows = db.prepare(`
             SELECT e.id as exam_id, e.title, e.mapel, e.kelas, e.durasi_menit, e.question_count,
                    e.start_at, e.end_at, e.status,
-                   cs.token, cs.used, cs.status as token_status, cs.expires_at, cs.start_time, cs.end_time
+                   cs.token, COALESCE(child.used, 0) as used,
+                   COALESCE(child.status, cs.status) as token_status,
+                   cs.expires_at, child.start_time, child.end_time
             FROM cbt_sessions cs
             JOIN cbt_exams e ON e.id = cs.exam_id
-            WHERE cs.nisn = ?
+            LEFT JOIN cbt_sessions child ON child.class_token_id = cs.id AND child.nisn = ?
+            WHERE cs.token_scope = 'class'
+              AND cs.kelas = ?
               AND e.status IN ('draft','open')
               AND cs.status != 'revoked'
             ORDER BY e.status = 'open' DESC, e.created_at DESC
             LIMIT 10
-        `).all(req.user.nisn);
+        `).all(req.user.nisn, kelas);
         return res.json({ success: true, data: rows });
     } catch (err) {
         return res.status(500).json({ success: false, message: 'Gagal mengambil sesi CBT siswa.' });
@@ -992,7 +1085,10 @@ router.get('/student/sessions', authenticate, (req, res) => {
 router.delete('/token/:token', authenticate, authorize(...STAFF), (req, res) => {
     const db = getDB();
     try {
-        db.prepare('UPDATE cbt_sessions SET used = 1, status = ? WHERE token = ?').run('revoked', req.params.token);
+        const token = String(req.params.token || '');
+        const row = db.prepare('SELECT id FROM cbt_sessions WHERE token = ?').get(token);
+        db.prepare('UPDATE cbt_sessions SET used = 1, status = ? WHERE token = ?').run('revoked', token);
+        if (row) db.prepare('UPDATE cbt_sessions SET used = 1, status = ? WHERE class_token_id = ? AND used = 0').run('revoked', row.id);
         return res.status(200).json({ success: true, message: 'Token berhasil diinvalidasi.' });
     } catch (err) {
         return res.status(500).json({ success: false, message: 'Gagal invalidasi token.' });
