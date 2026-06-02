@@ -30,11 +30,20 @@ function normalizeList(value, maxItems = 20) {
 function ensureLmsSchema(db) {
     const taskCols = db.pragma('table_info(tugas_kelas)').map(c => c.name);
     if (!taskCols.includes('assignment_group_id')) db.exec('ALTER TABLE tugas_kelas ADD COLUMN assignment_group_id TEXT');
+    if (!taskCols.includes('target_nisn')) db.exec('ALTER TABLE tugas_kelas ADD COLUMN target_nisn TEXT');
 
     const forumCols = db.pragma('table_info(forum_posts)').map(c => c.name);
     if (!forumCols.includes('is_pinned')) db.exec('ALTER TABLE forum_posts ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0');
     if (!forumCols.includes('pinned_at')) db.exec('ALTER TABLE forum_posts ADD COLUMN pinned_at TEXT');
     if (!forumCols.includes('pinned_by')) db.exec('ALTER TABLE forum_posts ADD COLUMN pinned_by TEXT');
+
+    const uploadCols = db.pragma('table_info(file_uploads)').map(c => c.name);
+    if (!uploadCols.includes('materi_title')) db.exec('ALTER TABLE file_uploads ADD COLUMN materi_title TEXT');
+    if (!uploadCols.includes('materi_desc')) db.exec('ALTER TABLE file_uploads ADD COLUMN materi_desc TEXT');
+    if (!uploadCols.includes('mapel')) db.exec('ALTER TABLE file_uploads ADD COLUMN mapel TEXT');
+    if (!uploadCols.includes('target_type')) db.exec('ALTER TABLE file_uploads ADD COLUMN target_type TEXT');
+    if (!uploadCols.includes('target_kelas')) db.exec('ALTER TABLE file_uploads ADD COLUMN target_kelas TEXT');
+    if (!uploadCols.includes('target_nisn')) db.exec('ALTER TABLE file_uploads ADD COLUMN target_nisn TEXT');
 }
 
 function getUserClass(db, user) {
@@ -64,13 +73,14 @@ router.get('/tugas', authenticate, (req, res) => {
         if (isStaffUser(req.user)) {
             const tugas = db.prepare(`
                 SELECT t.*, u.nama_lengkap as guru_nama,
-                       COUNT(DISTINCT su.nisn) as total_siswa,
+                       COUNT(DISTINCT CASE WHEN t.target_nisn IS NOT NULL THEN target_user.nisn ELSE su.nisn END) as total_siswa,
                        COUNT(DISTINCT s.nisn) as total_selesai
                 FROM tugas_kelas t
                 LEFT JOIN users u ON t.created_by = u.id
-                LEFT JOIN siswa_profil sp ON sp.kelas = t.kelas
+                LEFT JOIN siswa_profil sp ON sp.kelas = t.kelas AND t.target_nisn IS NULL
                 LEFT JOIN users su ON su.nisn = sp.nisn AND su.role = 'siswa' AND su.is_active = 1
-                LEFT JOIN submission_tugas s ON s.tugas_id = t.id AND s.nisn = sp.nisn
+                LEFT JOIN users target_user ON target_user.nisn = t.target_nisn AND target_user.role = 'siswa' AND target_user.is_active = 1
+                LEFT JOIN submission_tugas s ON s.tugas_id = t.id AND s.nisn = COALESCE(t.target_nisn, sp.nisn)
                 WHERE t.created_by = ? AND t.is_active = 1
                 GROUP BY t.id
                 ORDER BY t.created_at DESC, t.deadline ASC
@@ -90,9 +100,9 @@ router.get('/tugas', authenticate, (req, res) => {
             FROM tugas_kelas t
             LEFT JOIN users u ON t.created_by = u.id
             LEFT JOIN submission_tugas s ON s.tugas_id = t.id AND s.nisn = ?
-            WHERE t.kelas = ? AND t.is_active = 1
+            WHERE ((t.target_nisn IS NULL AND t.kelas = ?) OR t.target_nisn = ?) AND t.is_active = 1
             ORDER BY t.deadline ASC
-        `).all(req.user.nisn || '', kelas);
+        `).all(req.user.nisn || '', kelas, req.user.nisn || '');
 
         return res.json({ success: true, data: tugas });
     } catch (err) {
@@ -108,13 +118,16 @@ router.post('/tugas', authenticate, authorize(...STAFF), (req, res) => {
     const deskripsi = cleanText(req.body.deskripsi, 2000);
     const kelasList = normalizeList(req.body.kelas_list || req.body.kelas);
     const mapelList = normalizeList(req.body.mapel_list || req.body.mapel);
+    const targetNisnList = normalizeList(req.body.target_nisn_list || req.body.target_nisn, 40)
+        .map(n => String(n).replace(/\D/g, '').slice(0, 10))
+        .filter(n => n.length === 10);
     const deadline = cleanText(req.body.deadline, 40);
 
-    if (!judul || !mapelList.length || !kelasList.length) {
-        return res.status(400).json({ success: false, message: 'Judul, minimal 1 mapel, dan minimal 1 kelas wajib diisi.' });
+    if (!judul || !mapelList.length || (!kelasList.length && !targetNisnList.length)) {
+        return res.status(400).json({ success: false, message: 'Judul, minimal 1 mapel, dan target kelas atau NISN siswa wajib diisi.' });
     }
-    if (kelasList.length * mapelList.length > 60) {
-        return res.status(400).json({ success: false, message: 'Target terlalu banyak. Maksimal 60 kombinasi kelas-mapel per publish.' });
+    if ((kelasList.length + targetNisnList.length) * mapelList.length > 80) {
+        return res.status(400).json({ success: false, message: 'Target terlalu banyak. Maksimal 80 kombinasi target-mapel per publish.' });
     }
     try {
         ensureLmsSchema(db);
@@ -122,13 +135,19 @@ router.post('/tugas', authenticate, authorize(...STAFF), (req, res) => {
         const now = nowISO();
         const ids = [];
         const insertTask = db.prepare(`
-            INSERT INTO tugas_kelas (id,judul,deskripsi,mapel,kelas,deadline,assignment_group_id,created_by,is_active,created_at,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,1,?,?)
+            INSERT INTO tugas_kelas (id,judul,deskripsi,mapel,kelas,deadline,assignment_group_id,target_nisn,created_by,is_active,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,1,?,?)
         `);
         const siswaStmt = db.prepare(`
             SELECT DISTINCT u.id FROM users u
             JOIN siswa_profil sp ON sp.nisn = u.nisn
             WHERE sp.kelas = ? AND u.role = 'siswa' AND u.is_active = 1
+        `);
+        const targetSiswaStmt = db.prepare(`
+            SELECT u.id, u.nisn, sp.kelas
+            FROM users u
+            LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
+            WHERE u.nisn = ? AND u.role = 'siswa' AND u.is_active = 1
         `);
 
         const insertNotif = db.prepare(`
@@ -140,7 +159,7 @@ router.post('/tugas', authenticate, authorize(...STAFF), (req, res) => {
                 for (const mapel of mapelList) {
                     const id = uuidv4();
                     ids.push(id);
-                    insertTask.run(id, judul, deskripsi, mapel, kelas, deadline, groupId, req.user.sub, now, now);
+                    insertTask.run(id, judul, deskripsi, mapel, kelas, deadline, groupId, null, req.user.sub, now, now);
                     for (const s of siswaStmt.all(kelas)) {
                         insertNotif.run(
                             uuidv4(), s.id,
@@ -151,11 +170,27 @@ router.post('/tugas', authenticate, authorize(...STAFF), (req, res) => {
                     }
                 }
             }
+            for (const nisn of targetNisnList) {
+                const target = targetSiswaStmt.get(nisn);
+                if (!target) continue;
+                for (const mapel of mapelList) {
+                    const id = uuidv4();
+                    ids.push(id);
+                    const kelas = target.kelas || 'Individu';
+                    insertTask.run(id, judul, deskripsi, mapel, kelas, deadline, groupId, nisn, req.user.sub, now, now);
+                    insertNotif.run(
+                        uuidv4(), target.id,
+                        `Tugas Individu: ${judul}`,
+                        `${mapel} - ${kelas} - Deadline: ${deadline || 'Tidak ditentukan'}`,
+                        'tugas', '/LMS.html#tugas', now
+                    );
+                }
+            }
         })();
 
         return res.status(201).json({
             success: true,
-            message: `Tugas berhasil diterbitkan ke ${kelasList.length} kelas dan ${mapelList.length} mapel.`,
+            message: `Tugas berhasil diterbitkan ke ${kelasList.length} kelas, ${targetNisnList.length} siswa, dan ${mapelList.length} mapel.`,
             data: { ids, assignment_group_id: groupId }
         });
     } catch (err) {
@@ -170,13 +205,14 @@ router.get('/tugas/progress', authenticate, authorize(...STAFF), (req, res) => {
         ensureLmsSchema(db);
         const rows = db.prepare(`
             SELECT t.id, t.assignment_group_id, t.judul, t.mapel, t.kelas, t.deadline, t.created_at,
-                   COUNT(DISTINCT u.nisn) as total_siswa,
+                   COUNT(DISTINCT CASE WHEN t.target_nisn IS NOT NULL THEN target_user.nisn ELSE u.nisn END) as total_siswa,
                    COUNT(DISTINCT s.nisn) as total_selesai,
-                   GROUP_CONCAT(CASE WHEN u.nisn IS NOT NULL AND s.id IS NULL THEN sp.nisn || ' - ' || COALESCE(u.nama_lengkap, sp.nisn) END, '||') as belum_list
+                   GROUP_CONCAT(CASE WHEN COALESCE(t.target_nisn, u.nisn) IS NOT NULL AND s.id IS NULL THEN COALESCE(t.target_nisn, sp.nisn) || ' - ' || COALESCE(target_user.nama_lengkap, u.nama_lengkap, t.target_nisn, sp.nisn) END, '||') as belum_list
             FROM tugas_kelas t
-            LEFT JOIN siswa_profil sp ON sp.kelas = t.kelas
+            LEFT JOIN siswa_profil sp ON sp.kelas = t.kelas AND t.target_nisn IS NULL
             LEFT JOIN users u ON u.nisn = sp.nisn AND u.role = 'siswa' AND u.is_active = 1
-            LEFT JOIN submission_tugas s ON s.tugas_id = t.id AND s.nisn = sp.nisn
+            LEFT JOIN users target_user ON target_user.nisn = t.target_nisn AND target_user.role = 'siswa' AND target_user.is_active = 1
+            LEFT JOIN submission_tugas s ON s.tugas_id = t.id AND s.nisn = COALESCE(t.target_nisn, sp.nisn)
             WHERE t.created_by = ? AND t.is_active = 1
             GROUP BY t.id
             ORDER BY t.created_at DESC, t.kelas ASC, t.mapel ASC
@@ -191,6 +227,34 @@ router.get('/tugas/progress', authenticate, authorize(...STAFF), (req, res) => {
     } catch (err) {
         console.error('[LMS tugas progress]', err.message);
         return res.status(500).json({ success: false, message: 'Gagal mengambil progress tugas.' });
+    }
+});
+
+router.get('/tugas/:id/submissions', authenticate, authorize(...STAFF), (req, res) => {
+    const db = getDB();
+    try {
+        ensureLmsSchema(db);
+        const task = db.prepare(`
+            SELECT t.id, t.judul, t.mapel, t.kelas, t.deadline, t.created_by
+            FROM tugas_kelas t
+            WHERE t.id = ? AND t.is_active = 1
+        `).get(req.params.id);
+        if (!task) return res.status(404).json({ success:false, message:'Tugas tidak ditemukan.' });
+        if (task.created_by !== req.user.sub && !['super_admin','kepala_sekolah','wakil_kepala_sekolah'].includes(req.user.role)) {
+            return res.status(403).json({ success:false, message:'Anda tidak punya akses meninjau tugas ini.' });
+        }
+        const submissions = db.prepare(`
+            SELECT s.id, s.nisn, s.jawaban, s.file_url, s.status, s.nilai, s.feedback, s.submitted_at,
+                   u.nama_lengkap
+            FROM submission_tugas s
+            LEFT JOIN users u ON u.nisn = s.nisn
+            WHERE s.tugas_id = ?
+            ORDER BY s.submitted_at DESC
+        `).all(req.params.id);
+        return res.json({ success:true, data:{ task, submissions } });
+    } catch (err) {
+        console.error('[LMS tugas submissions]', err.message);
+        return res.status(500).json({ success:false, message:'Gagal mengambil submission tugas.' });
     }
 });
 
@@ -239,9 +303,15 @@ router.patch('/tugas/:tugasId/nilai/:nisn', authenticate, authorize(...STAFF), (
     const { nilai, feedback } = req.body;
     if (nilai === undefined) return res.status(400).json({ success: false, message: 'nilai wajib ada.' });
     try {
-        db.prepare(`
+        const task = db.prepare('SELECT id, created_by FROM tugas_kelas WHERE id = ? AND is_active = 1').get(req.params.tugasId);
+        if (!task) return res.status(404).json({ success:false, message:'Tugas tidak ditemukan.' });
+        if (task.created_by !== req.user.sub && !['super_admin','kepala_sekolah','wakil_kepala_sekolah'].includes(req.user.role)) {
+            return res.status(403).json({ success:false, message:'Anda tidak punya akses menilai tugas ini.' });
+        }
+        const info = db.prepare(`
             UPDATE submission_tugas SET nilai = ?, feedback = ?, status = 'dinilai' WHERE tugas_id = ? AND nisn = ?
         `).run(parseFloat(nilai), feedback || null, req.params.tugasId, req.params.nisn);
+        if (!info.changes) return res.status(404).json({ success:false, message:'Submission siswa belum ditemukan.' });
         return res.json({ success: true, message: 'Nilai berhasil disimpan.' });
     } catch (err) {
         console.error('[LMS nilai tugas]', err.message);
@@ -257,22 +327,40 @@ router.patch('/tugas/:tugasId/nilai/:nisn', authenticate, authorize(...STAFF), (
 router.get('/materi', authenticate, (req, res) => {
     const db = getDB();
     try {
-        const { mapel, search } = req.query;
-        const conds  = [];
+        ensureLmsSchema(db);
+        const { mapel, search, target = '' } = req.query;
+        const conds  = ["f.category = 'materi'"];
         const params = [];
+        const userClass = getUserClass(db, req.user);
 
-        if (mapel)  { conds.push('f.entity_id = ?'); params.push(mapel); }
+        if (mapel)  { conds.push('(f.mapel = ? OR f.entity_id = ?)'); params.push(mapel, mapel); }
         if (search) {
             const s = `%${search.replace(/[%_\\]/g, '\\$&')}%`;
-            conds.push('(f.original_name LIKE ? OR f.entity_id LIKE ?)');
-            params.push(s, s);
+            conds.push('(f.original_name LIKE ? OR f.entity_id LIKE ? OR f.materi_title LIKE ? OR f.mapel LIKE ? OR f.target_kelas LIKE ? OR f.target_nisn LIKE ?)');
+            params.push(s, s, s, s, s, s);
         }
-        conds.push("f.category = 'materi'");
+        if (!isStaffUser(req.user)) {
+            conds.push(`(
+                f.target_type IS NULL
+                OR f.target_type = 'school'
+                OR (f.target_type = 'class' AND f.target_kelas = ?)
+                OR (f.target_type = 'student' AND f.target_nisn = ?)
+            )`);
+            params.push(userClass || '', req.user.nisn || '');
+        } else if (target === 'class') {
+            conds.push("f.target_type = 'class'");
+        } else if (target === 'student') {
+            conds.push("f.target_type = 'student'");
+        } else if (target === 'school') {
+            conds.push("f.target_type = 'school'");
+        }
 
-        const where = conds.length ? 'WHERE ' + conds.join(' AND ') : "WHERE f.category = 'materi'";
+        const where = 'WHERE ' + conds.join(' AND ');
         const files = db.prepare(`
             SELECT f.id, f.original_name, f.file_url, f.mime_type,
-                   f.size_bytes, f.entity_id as mapel, f.created_at,
+                   f.size_bytes, COALESCE(f.mapel, f.entity_id) as mapel,
+                   f.materi_title, f.materi_desc, f.target_type, f.target_kelas, f.target_nisn,
+                   f.entity_id, f.created_at,
                    u.nama_lengkap as uploaded_by
             FROM file_uploads f
             LEFT JOIN users u ON f.uploader_id = u.id
@@ -283,6 +371,15 @@ router.get('/materi', authenticate, (req, res) => {
         // Format ukuran file
         const formatted = files.map(f => ({
             ...f,
+            title: f.materi_title || f.original_name,
+            deskripsi: f.materi_desc || null,
+            target_label: f.target_type === 'student'
+                ? `Siswa ${f.target_nisn || '-'}`
+                : f.target_type === 'class'
+                    ? `Kelas ${f.target_kelas || f.entity_id || '-'}`
+                    : f.target_type === 'school'
+                        ? 'Semua siswa'
+                        : (f.entity_id ? `Target ${f.entity_id}` : 'Umum'),
             ukuran: formatBytes(f.size_bytes),
             jenis:  getFileType(f.mime_type),
             tipe:   getFileTipe(f.mime_type),

@@ -107,6 +107,24 @@ const ATTACHMENT_EXTENSIONS = {
 };
 
 const attachmentPreviewUrls = { forum: null, kantinChat: null, staffMateri: null, tugas: null };
+const STUDENT_BIODATA_REQUIRED = [
+    ['pf-email', 'Email'],
+    ['pf-phone', 'No. HP'],
+    ['pf-kelas', 'Kelas'],
+    ['pf-tempat', 'Tempat lahir'],
+    ['pf-tanggal', 'Tanggal lahir'],
+    ['pf-gender', 'Jenis kelamin'],
+    ['pf-agama', 'Agama'],
+    ['pf-alamat', 'Alamat'],
+    ['pf-kelurahan', 'Kelurahan'],
+    ['pf-kecamatan', 'Kecamatan'],
+    ['pf-ayah', 'Nama ayah'],
+    ['pf-pekerjaan-ayah', 'Pekerjaan ayah'],
+    ['pf-ibu', 'Nama ibu'],
+    ['pf-pekerjaan-ibu', 'Pekerjaan ibu'],
+    ['pf-hp-ortu', 'No. HP orang tua'],
+    ['pf-email-ortu', 'Email orang tua'],
+];
 
 /* ── Utils ──────────────────────────────────────────────────── */
 function showLmsScreen(id) {
@@ -302,6 +320,14 @@ function canEditBiodata() {
     return ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'].includes(lmsState.user?.role);
 }
 
+function canEditProfileBiodata() {
+    return canEditBiodata() || lmsState.user?.role === 'siswa';
+}
+
+function toggleCbtNav() {
+    document.getElementById('snav-cbt-menu')?.classList.toggle('open');
+}
+
 function configureDashboardForRole() {
     const staff = canEditBiodata();
     document.body.classList.toggle('staff-mode', staff);
@@ -362,11 +388,12 @@ function setText(id, value) {
 
 function renderProfil() {
     const data = lmsState.profileData;
-    const editable = canEditBiodata();
-    document.getElementById('staff-target')?.classList.toggle('hidden', !editable);
+    const staffEditable = canEditBiodata();
+    const editable = canEditProfileBiodata();
+    document.getElementById('staff-target')?.classList.toggle('hidden', !staffEditable);
     if (!data) {
-        setText('profile-name', editable ? 'Pilih siswa' : '-');
-        setText('profile-meta', editable ? 'Masukkan NISN untuk memuat biodata' : '-');
+        setText('profile-name', staffEditable ? 'Pilih siswa' : '-');
+        setText('profile-meta', staffEditable ? 'Masukkan NISN untuk memuat biodata' : '-');
         setText('profile-nisn', '-');
         setText('profile-kelas', '-');
         setText('profile-jurusan', '-');
@@ -413,9 +440,9 @@ function renderProfil() {
     const lock = document.getElementById('biodata-lock');
     if (lock) {
         lock.classList.toggle('editable', editable);
-        lock.innerHTML = editable
+        lock.innerHTML = staffEditable
             ? '<i class="fas fa-unlock"></i> Mode staff aktif: biodata siswa bisa diperbarui.'
-            : '<i class="fas fa-lock"></i> Biodata di bawah ini hanya bisa diubah oleh guru atau staff.';
+            : '<i class="fas fa-circle-check"></i> Lengkapi biodata sendiri. Simpan hanya jika semua data sudah benar.';
     }
 
     ['pf-kelas','pf-tempat','pf-tanggal','pf-gender','pf-agama','pf-alamat','pf-kelurahan','pf-kecamatan','pf-ayah','pf-pekerjaan-ayah','pf-ibu','pf-pekerjaan-ibu','pf-hp-ortu','pf-email-ortu']
@@ -430,8 +457,9 @@ function renderProfil() {
 async function saveProfil(event) {
     event.preventDefault();
     const btn = document.getElementById('profile-save-btn');
-    const editable = canEditBiodata();
-    if (editable && !lmsState.targetNisn) {
+    const staffEditable = canEditBiodata();
+    const editable = canEditProfileBiodata();
+    if (staffEditable && !lmsState.targetNisn) {
         showToast('Masukkan NISN siswa dulu.', 'red');
         return;
     }
@@ -462,9 +490,30 @@ async function saveProfil(event) {
         });
     }
 
+    if (lmsState.user?.role === 'siswa') {
+        const missing = STUDENT_BIODATA_REQUIRED
+            .filter(([id]) => !String(document.getElementById(id)?.value || '').trim())
+            .map(([, label]) => label);
+        if (missing.length) {
+            showToast(`Lengkapi dulu: ${missing.slice(0, 4).join(', ')}${missing.length > 4 ? ', dan lainnya' : ''}.`, 'red');
+            document.getElementById(STUDENT_BIODATA_REQUIRED.find(([id]) => !String(document.getElementById(id)?.value || '').trim())?.[0])?.focus();
+            return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email || '')) {
+            showToast('Format email siswa belum valid.', 'red');
+            document.getElementById('pf-email')?.focus();
+            return;
+        }
+        if (!/^[0-9+\-\s]{8,24}$/.test(payload.no_hp || '') || !/^[0-9+\-\s]{8,24}$/.test(payload.no_hp_ortu || '')) {
+            showToast('Nomor HP siswa dan orang tua harus valid.', 'red');
+            return;
+        }
+        if (!confirm('Apakah kamu yakin semua biodata sudah diisi dengan benar? Data ini akan dipakai untuk administrasi sekolah.')) return;
+    }
+
     setLoading(btn, true);
     try {
-        const target = editable && lmsState.targetNisn ? `?nisn=${encodeURIComponent(lmsState.targetNisn)}` : '';
+        const target = staffEditable && lmsState.targetNisn ? `?nisn=${encodeURIComponent(lmsState.targetNisn)}` : '';
         const res = await apiFetch('/siswa/profil' + target, {
             method: 'PUT',
             body: JSON.stringify(payload),
@@ -609,7 +658,22 @@ function renderStaffStudentDetail(data) {
     `;
 }
 
+function syncStaffTaskTargetMode() {
+    const mode = document.querySelector('input[name="staff-task-target"]:checked')?.value || 'class';
+    const classSelect = document.getElementById('staff-task-classes');
+    const nisnList = document.getElementById('staff-task-nisn-list');
+    if (classSelect) {
+        classSelect.style.display = mode === 'student' ? 'none' : '';
+        classSelect.setAttribute('aria-hidden', mode === 'student' ? 'true' : 'false');
+    }
+    if (nisnList) {
+        nisnList.style.display = mode === 'class' ? 'none' : '';
+        nisnList.setAttribute('aria-hidden', mode === 'class' ? 'true' : 'false');
+    }
+}
+
 async function createStaffTask() {
+    const mode = document.querySelector('input[name="staff-task-target"]:checked')?.value || 'class';
     const selectedClasses = Array.from(document.getElementById('staff-task-classes')?.selectedOptions || [])
         .map(opt => opt.value)
         .filter(Boolean);
@@ -618,21 +682,27 @@ async function createStaffTask() {
         .split(/[,;\n]/)
         .map(v => v.trim())
         .filter(Boolean);
+    const targetNisnList = String(document.getElementById('staff-task-nisn-list')?.value || '')
+        .split(/[,;\n\s]+/)
+        .map(v => v.replace(/\D/g, '').slice(0, 10))
+        .filter(v => v.length === 10);
     const payload = {
         judul: document.getElementById('staff-task-title')?.value.trim(),
         mapel_list: mapelList,
-        kelas_list: selectedClasses.length ? selectedClasses : (legacyClass ? [legacyClass] : []),
+        kelas_list: mode === 'student' ? [] : (selectedClasses.length ? selectedClasses : (legacyClass ? [legacyClass] : [])),
+        target_nisn_list: mode === 'class' ? [] : targetNisnList,
         deadline: document.getElementById('staff-task-deadline')?.value || null,
         deskripsi: document.getElementById('staff-task-desc')?.value.trim() || null,
     };
-    if (!payload.judul || !payload.mapel_list.length || !payload.kelas_list.length) {
-        return showToast('Judul, minimal 1 mapel, dan minimal 1 kelas wajib diisi.', 'red');
+    if (!payload.judul || !payload.mapel_list.length || (!payload.kelas_list.length && !payload.target_nisn_list.length)) {
+        return showToast('Judul, minimal 1 mapel, dan target kelas atau NISN siswa wajib diisi.', 'red');
     }
     try {
         const res = await apiFetch('/lms/tugas', { method:'POST', body:JSON.stringify(payload) });
         showToast(res.message || (res.success ? 'Tugas diterbitkan.' : 'Gagal membuat tugas.'), res.success ? 'green' : 'red');
         if (res.success) {
             ['staff-task-title','staff-task-mapel','staff-task-deadline','staff-task-desc'].forEach(id => setVal(id, ''));
+            setVal('staff-task-nisn-list', '');
             Array.from(document.getElementById('staff-task-classes')?.options || []).forEach(opt => { opt.selected = false; });
             await fetchTugas();
             await fetchTaskProgress();
@@ -674,7 +744,7 @@ function renderTaskProgress() {
                 <div class="task-progress-head">
                     <div>
                         <strong>${escHtml(t.judul)}</strong>
-                        <span>${escHtml(t.kelas)} · ${escHtml(t.mapel)}</span>
+                        <span>${t.target_nisn ? 'Individu ' + escHtml(t.target_nisn) + ' · ' : ''}${escHtml(t.kelas)} · ${escHtml(t.mapel)}</span>
                     </div>
                     <b>${done}/${total}</b>
                 </div>
@@ -685,10 +755,69 @@ function renderTaskProgress() {
                     <span>${pct}% selesai</span>
                     <span>${t.deadline ? 'DL ' + new Date(t.deadline).toLocaleDateString('id-ID') : 'Tanpa deadline'}</span>
                 </div>
+                <button type="button" class="staff-mini-btn" onclick="fetchTaskSubmissions('${escAttr(t.id)}')"><i class="fas fa-eye"></i> Tinjau Jawaban</button>
                 ${belum.length ? `<details class="task-missing"><summary>Belum mengumpulkan (${Math.max(0, total - done)})</summary><p>${belum.map(escHtml).join('<br>')}</p></details>` : '<p class="task-complete">Semua siswa aktif sudah mengumpulkan.</p>'}
             </article>
         `;
     }).join('');
+}
+
+async function fetchTaskSubmissions(taskId) {
+    const panel = document.getElementById('task-review-panel');
+    if (!panel || !taskId) return;
+    panel.innerHTML = '<p class="staff-empty"><i class="fas fa-spinner fa-spin"></i> Memuat jawaban siswa...</p>';
+    try {
+        const data = await apiFetch(`/lms/tugas/${encodeURIComponent(taskId)}/submissions`);
+        if (!data.success) {
+            panel.innerHTML = `<p class="staff-empty">${escHtml(data.message || 'Gagal memuat jawaban siswa.')}</p>`;
+            return;
+        }
+        const rows = data.data?.submissions || [];
+        const task = data.data?.task || {};
+        if (!rows.length) {
+            panel.innerHTML = `<div class="task-review-head"><strong>${escHtml(task.judul || 'Tugas')}</strong><span>Belum ada submission.</span></div>`;
+            return;
+        }
+        panel.innerHTML = `
+            <div class="task-review-head">
+                <strong>${escHtml(task.judul || 'Tugas')}</strong>
+                <span>${escHtml(task.kelas || '-')} · ${escHtml(task.mapel || '-')} · ${rows.length} submission</span>
+            </div>
+            ${rows.map(row => `
+                <article class="task-review-card">
+                    <div class="task-review-meta">
+                        <strong>${escHtml(row.nama_lengkap || row.nisn || 'Siswa')}</strong>
+                        <span>${escHtml(row.nisn || '-')} · ${row.submitted_at ? new Date(row.submitted_at).toLocaleString('id-ID') : '-'}</span>
+                    </div>
+                    ${row.jawaban ? `<p>${escHtml(row.jawaban)}</p>` : '<p class="muted">Tidak ada jawaban teks.</p>'}
+                    ${row.file_url ? renderAttachmentPreview({ url: row.file_url, name: row.file_url.split('/').pop(), type: '' }, { compact:true }) : ''}
+                    <div class="task-grade-row">
+                        <input type="number" min="0" max="100" value="${row.nilai ?? ''}" placeholder="Nilai" id="task-grade-${escAttr(row.nisn)}">
+                        <input type="text" value="${escAttr(row.feedback || '')}" placeholder="Feedback singkat" id="task-feedback-${escAttr(row.nisn)}">
+                        <button type="button" onclick="saveTaskSubmissionGrade('${escAttr(task.id)}','${escAttr(row.nisn)}')"><i class="fas fa-save"></i> Simpan</button>
+                    </div>
+                </article>
+            `).join('')}
+        `;
+    } catch(e) {
+        panel.innerHTML = '<p class="staff-empty">Gagal memuat jawaban siswa.</p>';
+    }
+}
+
+async function saveTaskSubmissionGrade(taskId, nisn) {
+    const nilai = document.getElementById(`task-grade-${nisn}`)?.value;
+    const feedback = document.getElementById(`task-feedback-${nisn}`)?.value.trim();
+    if (nilai === '' || Number(nilai) < 0 || Number(nilai) > 100) return showToast('Nilai harus 0-100.', 'red');
+    try {
+        const res = await apiFetch(`/lms/tugas/${encodeURIComponent(taskId)}/nilai/${encodeURIComponent(nisn)}`, {
+            method:'PATCH',
+            body:JSON.stringify({ nilai:Number(nilai), feedback }),
+        });
+        showToast(res.message || 'Nilai tersimpan.', res.success ? 'green' : 'red');
+        if (res.success) await fetchTaskProgress();
+    } catch(e) {
+        showToast('Gagal menyimpan nilai tugas.', 'red');
+    }
 }
 
 async function uploadStaffMateri() {
@@ -818,7 +947,7 @@ function renderTugas(filter) {
             </div>
             <div class="ti-info">
                 <h4>${escHtml(t.judul)}</h4>
-                <p>${escHtml(t.mapel)} · ${escHtml(t.kelas || '')} · Deadline: ${deadlineFmt}</p>
+                <p>${escHtml(t.mapel)} · ${t.target_nisn ? `Individu ${escHtml(t.target_nisn)} · ` : ''}${escHtml(t.kelas || '')} · Deadline: ${deadlineFmt}</p>
                 ${t.submission_nilai ? `<p style="color:#10b981;font-size:.75rem;font-weight:700;">Nilai: ${t.submission_nilai}</p>` : ''}
                 ${staffView ? `<p class="task-inline-progress">${totalSelesai}/${totalSiswa} siswa selesai · ${progressPct}%</p>` : ''}
             </div>
@@ -1020,8 +1149,9 @@ function renderMateri() {
                 <i class="${getFileIcon(m.tipe)}" style="color:${getFileColor(m.tipe)};"></i>
             </div>
             <div class="mi-info">
-                <h4>${escHtml(m.original_name)}</h4>
-                <p>${escHtml(m.mapel || '-')} · ${m.ukuran || '-'}</p>
+                <h4>${escHtml(m.title || m.original_name)}</h4>
+                <p>${escHtml(m.mapel || '-')} · ${escHtml(m.target_label || 'Materi LMS')} · ${m.ukuran || '-'}</p>
+                ${m.deskripsi ? `<p>${escHtml(m.deskripsi)}</p>` : ''}
             </div>
             <span class="mi-type ${m.tipe}">${m.jenis}</span>
             <i class="fas fa-download mi-dl"></i>
@@ -2704,6 +2834,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('profile-form')?.addEventListener('submit', saveProfil);
+    syncStaffTaskTargetMode();
     document.getElementById('pf-kelas')?.addEventListener('change', (e) => {
         const found = lmsState.schoolClasses.find(k => k.kelas === e.target.value);
         const jurusan = document.getElementById('pf-jurusan');

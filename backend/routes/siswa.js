@@ -193,7 +193,7 @@ router.get('/profil', authenticate, (req, res) => {
     }
 });
 
-/* PUT /api/siswa/profil — siswa boleh edit kontak, biodata akademik hanya staff */
+/* PUT /api/siswa/profil — siswa isi biodata sendiri, staff bisa koreksi data siswa */
 router.put('/profil', authenticate, (req, res) => {
     try {
         const db   = getDB();
@@ -202,7 +202,7 @@ router.put('/profil', authenticate, (req, res) => {
         const isStaff = isStaffRole(req.user.role);
         if (!nisn) return res.status(400).json({ success:false, message:'NISN tidak ditemukan.' });
 
-        const targetUser = db.prepare('SELECT id, role FROM users WHERE nisn = ?').get(nisn);
+        const targetUser = db.prepare('SELECT id, role, email, no_hp FROM users WHERE nisn = ?').get(nisn);
         if (!targetUser) return res.status(404).json({ success:false, message:'Siswa tidak ditemukan.' });
 
         const {
@@ -218,11 +218,31 @@ router.put('/profil', authenticate, (req, res) => {
             'nama_ibu','pekerjaan_ibu','no_hp_ortu','email_ortu'
         ].some(field => req.body[field] !== undefined);
 
-        if (restrictedTouched && !isStaff) {
-            return res.status(403).json({
-                success:false,
-                message:'Biodata siswa hanya bisa diubah oleh guru atau staff.'
-            });
+        if (restrictedTouched && !isStaff && req.user.role !== 'siswa') {
+            return res.status(403).json({ success:false, message:'Biodata hanya bisa diubah oleh siswa terkait atau staff.' });
+        }
+
+        if (!isStaff) {
+            const requiredInput = {
+                kelas, jurusan, tempat_lahir, tanggal_lahir, jenis_kelamin, agama,
+                alamat, kelurahan, kecamatan, nama_ayah, pekerjaan_ayah,
+                nama_ibu, pekerjaan_ibu, no_hp_ortu, email_ortu,
+                email: email === undefined ? targetUser.email : email,
+                no_hp: no_hp === undefined ? targetUser.no_hp : no_hp,
+            };
+            const missingInput = Object.entries(requiredInput)
+                .filter(([, value]) => !String(value || '').trim())
+                .map(([key]) => key);
+            if (missingInput.length) {
+                return res.status(400).json({ success:false, message:`Lengkapi biodata wajib: ${missingInput.slice(0, 5).join(', ')}.` });
+            }
+            if (kelas && !findSchoolClass(kelas)) return res.status(400).json({ success:false, message:'Kelas tidak valid.' });
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(requiredInput.email)) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(requiredInput.email_ortu))) {
+                return res.status(400).json({ success:false, message:'Format email siswa atau orang tua tidak valid.' });
+            }
+            if (!/^[0-9+\-\s]{8,24}$/.test(String(requiredInput.no_hp)) || !/^[0-9+\-\s]{8,24}$/.test(String(requiredInput.no_hp_ortu))) {
+                return res.status(400).json({ success:false, message:'Nomor HP siswa atau orang tua tidak valid.' });
+            }
         }
 
         const userFields = [];
@@ -274,6 +294,38 @@ router.put('/profil', authenticate, (req, res) => {
             no_hp_ortu: cleanIncoming(req.body, 'no_hp_ortu', exists?.no_hp_ortu || null, 24),
             email_ortu: cleanIncoming(req.body, 'email_ortu', exists?.email_ortu || null, 120),
         };
+
+        if (!isStaff) {
+            const required = {
+                kelas: finalProfile.kelas,
+                jurusan: finalProfile.jurusan,
+                tempat_lahir: finalProfile.tempat_lahir,
+                tanggal_lahir: finalProfile.tanggal_lahir,
+                jenis_kelamin: finalProfile.jenis_kelamin,
+                agama: finalProfile.agama,
+                alamat: finalProfile.alamat,
+                kelurahan: finalProfile.kelurahan,
+                kecamatan: finalProfile.kecamatan,
+                nama_ayah: finalProfile.nama_ayah,
+                pekerjaan_ayah: finalProfile.pekerjaan_ayah,
+                nama_ibu: finalProfile.nama_ibu,
+                pekerjaan_ibu: finalProfile.pekerjaan_ibu,
+                no_hp_ortu: finalProfile.no_hp_ortu,
+                email_ortu: finalProfile.email_ortu,
+                email: email === undefined ? targetUser.email : userVals.email,
+                no_hp: no_hp === undefined ? targetUser.no_hp : userVals.hp,
+            };
+            const missing = Object.entries(required).filter(([, value]) => !value).map(([key]) => key);
+            if (missing.length) {
+                return res.status(400).json({ success:false, message:`Lengkapi biodata wajib: ${missing.slice(0, 5).join(', ')}.` });
+            }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(required.email) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(required.email_ortu)) {
+                return res.status(400).json({ success:false, message:'Format email siswa atau orang tua tidak valid.' });
+            }
+            if (!/^[0-9+\-\s]{8,24}$/.test(required.no_hp) || !/^[0-9+\-\s]{8,24}$/.test(required.no_hp_ortu)) {
+                return res.status(400).json({ success:false, message:'Nomor HP siswa atau orang tua tidak valid.' });
+            }
+        }
 
         if (exists) {
             db.prepare(`UPDATE siswa_profil SET

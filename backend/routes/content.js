@@ -7,7 +7,7 @@ const express = require('express');
 const router  = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const getDB   = require('../config/database');
-const { authenticate, isAdmin, isStaff, isTU } = require('../middleware/auth');
+const { authenticate, isAdmin, isContentAdmin, isStaff, isTU } = require('../middleware/auth');
 const { log } = require('../middleware/auditLog');
 const { sklSearchLimiter } = require('../middleware/rateLimiter');
 
@@ -181,14 +181,14 @@ router.get('/announcements', (req, res) => {
 });
 
 // GET /api/content/announcements/all — admin: lihat semua termasuk nonaktif
-router.get('/announcements/all', authenticate, isStaff, (req, res) => {
+router.get('/announcements/all', authenticate, isContentAdmin, (req, res) => {
     const db   = getDB();
     const rows = db.prepare('SELECT * FROM announcements ORDER BY urutan ASC, created_at DESC').all();
     return res.status(200).json({ success:true, data:rows });
 });
 
 // POST /api/content/announcements — admin: tambah pengumuman
-router.post('/announcements', authenticate, isStaff, (req, res) => {
+router.post('/announcements', authenticate, isContentAdmin, (req, res) => {
     const db  = getDB();
     const { tipe = 'info', urutan = 0 } = req.body;
     const judul = cleanText(req.body.judul, 120);
@@ -213,7 +213,7 @@ router.post('/announcements', authenticate, isStaff, (req, res) => {
 });
 
 // PUT /api/content/announcements/:id
-router.put('/announcements/:id', authenticate, isStaff, (req, res) => {
+router.put('/announcements/:id', authenticate, isContentAdmin, (req, res) => {
     const db  = getDB();
     const { id } = req.params;
     const { judul, isi, tipe, is_active, urutan } = req.body;
@@ -241,7 +241,7 @@ router.put('/announcements/:id', authenticate, isStaff, (req, res) => {
 });
 
 // DELETE /api/content/announcements/:id
-router.delete('/announcements/:id', authenticate, isAdmin, (req, res) => {
+router.delete('/announcements/:id', authenticate, isContentAdmin, (req, res) => {
     const db = getDB();
     db.prepare('DELETE FROM announcements WHERE id=:id').run({ id:req.params.id });
     log(req.user.sub, 'ANNOUNCEMENT_DELETED', 'announcements', req.params.id, null, req.ip);
@@ -285,7 +285,7 @@ router.get('/website', (req, res) => {
 });
 
 // GET /api/content/website/all — admin: semua konten
-router.get('/website/all', authenticate, isStaff, (req, res) => {
+router.get('/website/all', authenticate, isContentAdmin, (req, res) => {
     const db = getDB();
     const { type = '', search = '', page = 1, limit = 30 } = req.query;
     const pageInt = Math.max(parseInt(page) || 1, 1);
@@ -316,7 +316,7 @@ router.get('/website/all', authenticate, isStaff, (req, res) => {
 });
 
 // POST /api/content/website — admin: tambah konten
-router.post('/website', authenticate, isStaff, (req, res) => {
+router.post('/website', authenticate, isContentAdmin, (req, res) => {
     const db = getDB();
     const normalized = normalizeContentPayload(req.body);
     if (!normalized.ok) return res.status(400).json({ success:false, message:normalized.message });
@@ -332,7 +332,7 @@ router.post('/website', authenticate, isStaff, (req, res) => {
 });
 
 // PUT /api/content/website/:id — admin: edit konten
-router.put('/website/:id', authenticate, isStaff, (req, res) => {
+router.put('/website/:id', authenticate, isContentAdmin, (req, res) => {
     const db = getDB();
     const { id } = req.params;
     const exists = db.prepare('SELECT * FROM website_contents WHERE id = ?').get(id);
@@ -355,7 +355,7 @@ router.put('/website/:id', authenticate, isStaff, (req, res) => {
 });
 
 // DELETE /api/content/website/:id — admin: hapus konten
-router.delete('/website/:id', authenticate, isStaff, (req, res) => {
+router.delete('/website/:id', authenticate, isContentAdmin, (req, res) => {
     const db = getDB();
     const info = db.prepare('DELETE FROM website_contents WHERE id = ?').run(req.params.id);
     if (!info.changes) return res.status(404).json({ success:false, message:'Konten tidak ditemukan.' });

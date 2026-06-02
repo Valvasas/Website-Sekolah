@@ -9,8 +9,9 @@ const path     = require('path');
 const fs       = require('fs');
 const crypto   = require('crypto');
 const { v4: uuidv4 } = require('uuid');
-const { authenticate, isStaff } = require('../middleware/auth');
+const { authenticate, isStaff, isContentAdmin } = require('../middleware/auth');
 const getDB    = require('../config/database');
+const ENV      = require('../config/env');
 
 // ── Upload directory ───────────────────────────────────────────────
 const UPLOAD_DIR = path.join(__dirname, '../public/uploads');
@@ -45,17 +46,61 @@ const ALLOWED_TYPES = {
 };
 
 const MAX_SIZE = {
-    tugas:  50 * 1024 * 1024,  // 50MB
+    tugas:  ENV.UPLOAD_MAX_TUGAS_MB * 1024 * 1024,
     profil:  2 * 1024 * 1024,  //  2MB
     ppdb:    5 * 1024 * 1024,  //  5MB
-    materi: 50 * 1024 * 1024,  // 50MB
+    materi: ENV.UPLOAD_MAX_MATERI_MB * 1024 * 1024,
     website: 5 * 1024 * 1024,  //  5MB
-    cbt:    80 * 1024 * 1024,  // 80MB
+    cbt:    ENV.UPLOAD_MAX_CBT_MB * 1024 * 1024,
     kantin:  5 * 1024 * 1024,  //  5MB
-    forum:  50 * 1024 * 1024,  // 50MB
-    kantin_chat: 50 * 1024 * 1024, // 50MB
+    forum:  ENV.UPLOAD_MAX_FORUM_MB * 1024 * 1024,
+    kantin_chat: ENV.UPLOAD_MAX_FORUM_MB * 1024 * 1024,
     general: 5 * 1024 * 1024,  //  5MB
 };
+
+const UPLOAD_QUOTA_BYTES = Math.round(ENV.UPLOAD_MAX_TOTAL_GB * 1024 * 1024 * 1024);
+
+function cleanText(value, max = 500) {
+    return String(value || '').replace(/[<>]/g, '').trim().slice(0, max) || null;
+}
+
+function cleanNisn(value) {
+    const text = String(value || '').replace(/\D/g, '').slice(0, 10);
+    return text.length === 10 ? text : null;
+}
+
+function ensureFileUploadSchema(db) {
+    const cols = db.pragma('table_info(file_uploads)').map(c => c.name);
+    if (!cols.includes('materi_title')) db.exec('ALTER TABLE file_uploads ADD COLUMN materi_title TEXT');
+    if (!cols.includes('materi_desc')) db.exec('ALTER TABLE file_uploads ADD COLUMN materi_desc TEXT');
+    if (!cols.includes('mapel')) db.exec('ALTER TABLE file_uploads ADD COLUMN mapel TEXT');
+    if (!cols.includes('target_type')) db.exec('ALTER TABLE file_uploads ADD COLUMN target_type TEXT');
+    if (!cols.includes('target_kelas')) db.exec('ALTER TABLE file_uploads ADD COLUMN target_kelas TEXT');
+    if (!cols.includes('target_nisn')) db.exec('ALTER TABLE file_uploads ADD COLUMN target_nisn TEXT');
+}
+
+function getDirSize(dir) {
+    if (!fs.existsSync(dir)) return 0;
+    return fs.readdirSync(dir, { withFileTypes: true }).reduce((sum, entry) => {
+        const full = path.join(dir, entry.name);
+        return sum + (entry.isDirectory() ? getDirSize(full) : fs.statSync(full).size);
+    }, 0);
+}
+
+function enforceUploadQuota(req, res, next) {
+    try {
+        const used = getDirSize(UPLOAD_DIR);
+        if (UPLOAD_QUOTA_BYTES > 0 && used >= UPLOAD_QUOTA_BYTES) {
+            return res.status(507).json({
+                success: false,
+                message: 'Kuota penyimpanan upload sudah penuh. Arsipkan atau hapus file lama sebelum upload lagi.'
+            });
+        }
+    } catch (err) {
+        console.warn('[Upload quota check]', err.message);
+    }
+    next();
+}
 
 // ── Multer storage engine ──────────────────────────────────────────
 function createStorage(category) {
@@ -90,6 +135,7 @@ function createUploader(category) {
 
 // ── Helper: simpan record upload ke DB ────────────────────────────
 function saveFileRecord(db, { uploaderId, originalName, fileName, category, mimeType, size, entityType, entityId }) {
+    ensureFileUploadSchema(db);
     const id      = uuidv4();
     const fileUrl = `/uploads/${category}/${fileName}`;
     const filePath = path.join(CATEGORIES[category], fileName);
@@ -109,6 +155,7 @@ function saveFileRecord(db, { uploaderId, originalName, fileName, category, mime
 // ── ROUTE: Upload lampiran tugas ───────────────────────────────────
 router.post('/tugas',
     authenticate,
+    enforceUploadQuota,
     createUploader('tugas').single('file'),
     (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada file yang di-upload.' });
@@ -137,6 +184,7 @@ router.post('/tugas',
 // ── ROUTE: Upload foto profil ──────────────────────────────────────
 router.post('/profil',
     authenticate,
+    enforceUploadQuota,
     createUploader('profil').single('foto'),
     (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada file yang di-upload.' });
@@ -179,6 +227,7 @@ router.post('/profil',
 // ── ROUTE: Upload berkas PPDB ──────────────────────────────────────
 // Tidak butuh auth karena calon siswa belum punya akun
 router.post('/ppdb',
+    enforceUploadQuota,
     createUploader('ppdb').fields([
         { name: 'kartu_keluarga', maxCount: 1 },
         { name: 'akta_kelahiran', maxCount: 1 },
@@ -221,11 +270,24 @@ router.post('/materi',
         }
         next();
     },
+    enforceUploadQuota,
     createUploader('materi').single('file'),
     (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada file yang di-upload.' });
         try {
             const db = getDB();
+            ensureFileUploadSchema(db);
+            const targetType = ['school','class','student'].includes(req.body.target_type) ? req.body.target_type : 'class';
+            const targetKelas = targetType === 'class' ? cleanText(req.body.kelas || req.body.target_kelas, 80) : null;
+            const targetNisn = targetType === 'student' ? cleanNisn(req.body.target_nisn || req.body.nisn) : null;
+            if (targetType === 'class' && !targetKelas) {
+                fs.unlink(req.file.path, () => {});
+                return res.status(400).json({ success: false, message: 'Kelas target wajib dipilih.' });
+            }
+            if (targetType === 'student' && !targetNisn) {
+                fs.unlink(req.file.path, () => {});
+                return res.status(400).json({ success: false, message: 'NISN target wajib 10 digit.' });
+            }
             const record = saveFileRecord(db, {
                 uploaderId:   req.user.sub,
                 originalName: req.file.originalname,
@@ -233,9 +295,22 @@ router.post('/materi',
                 category:     'materi',
                 mimeType:     req.file.mimetype,
                 size:         req.file.size,
-                entityType:   'materi',
-                entityId:     req.body.kelas || null,
+                entityType:   targetType === 'student' ? 'materi_siswa' : targetType === 'school' ? 'materi_sekolah' : 'materi_kelas',
+                entityId:     targetType === 'student' ? targetNisn : targetType === 'class' ? targetKelas : 'school',
             });
+            db.prepare(`
+                UPDATE file_uploads
+                SET materi_title = ?, materi_desc = ?, mapel = ?, target_type = ?, target_kelas = ?, target_nisn = ?
+                WHERE id = ?
+            `).run(
+                cleanText(req.body.title || req.body.judul || req.file.originalname, 160),
+                cleanText(req.body.deskripsi || req.body.description, 1500),
+                cleanText(req.body.mapel, 100),
+                targetType,
+                targetKelas,
+                targetNisn,
+                record.id
+            );
             return res.status(201).json({ success: true, message: 'Materi berhasil di-upload.', data: record });
         } catch (err) {
             fs.unlink(req.file.path, () => {});
@@ -248,7 +323,8 @@ router.post('/materi',
 // ── ROUTE: Upload aset website (berita, galeri, PPDB info) ───────
 router.post('/website',
     authenticate,
-    isStaff,
+    isContentAdmin,
+    enforceUploadQuota,
     createUploader('website').single('image'),
     (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada gambar yang di-upload.' });
@@ -276,6 +352,7 @@ router.post('/website',
 // ── ROUTE: Upload foto produk Kantin ku (siswa) ───────────────────
 router.post('/kantin',
     authenticate,
+    enforceUploadQuota,
     createUploader('kantin').single('image'),
     (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada gambar yang di-upload.' });
@@ -303,6 +380,7 @@ router.post('/kantin',
 function uploadStudentAttachment(category, entityType) {
     return [
         authenticate,
+        enforceUploadQuota,
         createUploader(category).single('file'),
         (req, res) => {
             if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada file yang di-upload.' });
@@ -335,6 +413,7 @@ router.post('/kantin-chat', ...uploadStudentAttachment('kantin_chat', 'kantin_ch
 router.post('/cbt',
     authenticate,
     isStaff,
+    enforceUploadQuota,
     createUploader('cbt').single('file'),
     (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada file yang di-upload.' });

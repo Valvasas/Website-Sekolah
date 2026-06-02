@@ -18,6 +18,12 @@ const schema = [
     { key: 'LOGIN_MAX_ATTEMPTS',     required: false, default: '5', validate: v => !isNaN(parseInt(v)) },
     { key: 'LOGIN_WINDOW_MINUTES',   required: false, default: '15', validate: v => !isNaN(parseInt(v)) },
     { key: 'RESET_TOKEN_EXPIRY',     required: false, default: '15', validate: v => !isNaN(parseInt(v)) },
+    { key: 'JSON_BODY_LIMIT',        required: false, default: '2mb' },
+    { key: 'UPLOAD_MAX_TOTAL_GB',    required: false, default: '28', validate: v => !isNaN(parseFloat(v)) },
+    { key: 'UPLOAD_MAX_TUGAS_MB',    required: false, default: '25', validate: v => !isNaN(parseInt(v)) },
+    { key: 'UPLOAD_MAX_MATERI_MB',   required: false, default: '40', validate: v => !isNaN(parseInt(v)) },
+    { key: 'UPLOAD_MAX_FORUM_MB',    required: false, default: '20', validate: v => !isNaN(parseInt(v)) },
+    { key: 'UPLOAD_MAX_CBT_MB',      required: false, default: '30', validate: v => !isNaN(parseInt(v)) },
     // Production-only
     { key: 'ALLOWED_ORIGINS', required: !isDev, fatal: false,
       hint: 'Set ke domain sekolah: https://smkn1terisi.sch.id' },
@@ -101,4 +107,10 @@ module.exports = {
     LOGIN_MAX_ATTEMPTS:   parseInt(process.env.LOGIN_MAX_ATTEMPTS)   || 5,
     LOGIN_WINDOW_MINUTES: parseInt(process.env.LOGIN_WINDOW_MINUTES) || 15,
     RESET_TOKEN_EXPIRY:   parseInt(process.env.RESET_TOKEN_EXPIRY)   || 15,
+    JSON_BODY_LIMIT:      process.env.JSON_BODY_LIMIT || '2mb',
+    UPLOAD_MAX_TOTAL_GB:  parseFloat(process.env.UPLOAD_MAX_TOTAL_GB) || 28,
+    UPLOAD_MAX_TUGAS_MB:  parseInt(process.env.UPLOAD_MAX_TUGAS_MB)   || 25,
+    UPLOAD_MAX_MATERI_MB: parseInt(process.env.UPLOAD_MAX_MATERI_MB)  || 40,
+    UPLOAD_MAX_FORUM_MB:  parseInt(process.env.UPLOAD_MAX_FORUM_MB)   || 20,
+    UPLOAD_MAX_CBT_MB:    parseInt(process.env.UPLOAD_MAX_CBT_MB)     || 30,
 };

@@ -38,7 +38,7 @@ function getAllUsers(req, res) {
 
     if (role) {
         // FIX: Validasi role value sebelum masuk query
-        const validRoles = ['super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha','siswa','wali_murid','calon_siswa'];
+        const validRoles = ['super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha','siswa','wali_murid','calon_siswa'];
         if (!validRoles.includes(role)) {
             return res.status(400).json({ success: false, message: 'Role tidak valid.' });
         }
@@ -181,7 +181,7 @@ async function updateUser(req, res) {
         const user = db.prepare('SELECT * FROM users WHERE id=:id').get({ id });
         if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan.' });
 
-        const restrictedRoles = ['super_admin', 'kepala_sekolah', 'wakil_kepala_sekolah'];
+        const restrictedRoles = ['super_admin', 'content_admin', 'kepala_sekolah', 'wakil_kepala_sekolah'];
         if (role && restrictedRoles.includes(role) && req.user.role !== 'super_admin') {
             return res.status(403).json({ success: false, message: 'Tidak bisa assign role ini.' });
         }

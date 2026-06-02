@@ -123,6 +123,18 @@
                 <button class="snav-item" data-page="forum" onclick="navigate('forum',this)">
                     <i class="fas fa-comments"></i><span>Forum Diskusi</span>
                 </button>
+                <div class="snav-group">
+                    <button class="snav-item snav-toggle" type="button" onclick="toggleCbtNav()">
+                        <i class="fas fa-laptop-code"></i><span>CBT</span>
+                        <i class="fas fa-chevron-down snav-chevron"></i>
+                    </button>
+                    <div class="snav-submenu" id="snav-cbt-menu">
+                        <a href="cbt.html#ujian"><i class="fas fa-play"></i><span>Ujian Aktif</span></a>
+                        <a class="staff-only hidden" href="../backend/admin-panel/dashboard.html#cbt-builder"><i class="fas fa-pen-ruler"></i><span>Builder</span></a>
+                        <a class="staff-only hidden" href="../backend/admin-panel/dashboard.html#cbt-sesi"><i class="fas fa-list-check"></i><span>Sesi</span></a>
+                        <a class="staff-only hidden" href="../backend/admin-panel/dashboard.html#cbt-kegiatan"><i class="fas fa-chart-line"></i><span>Kegiatan</span></a>
+                    </div>
+                </div>
                 <button class="snav-item" data-page="nilai" onclick="navigate('nilai',this)">
                     <i class="fas fa-chart-bar"></i><span>Nilai Saya</span>
                 </button>
@@ -630,7 +642,7 @@
                         <div class="profile-panel-head">
                             <div>
                                 <h3>Edit Profil</h3>
-                                <p>Kontak bisa diperbarui siswa. Biodata akademik dikunci untuk staff.</p>
+                                <p>Siswa wajib melengkapi biodata sendiri. Staff tetap bisa membantu koreksi data jika diperlukan.</p>
                             </div>
                             <button class="small-action" onclick="fetchProfil()"><i class="fas fa-rotate"></i> Refresh</button>
                         </div>
@@ -655,64 +667,64 @@
 
                             <div class="biodata-lock" id="biodata-lock">
                                 <i class="fas fa-lock"></i>
-                                Biodata di bawah ini hanya bisa diubah oleh guru atau staff.
+                                Lengkapi semua data dengan benar sebelum disimpan.
                             </div>
 
                             <div class="form-grid">
                                 <label>Kelas
-                                    <select id="pf-kelas" disabled>
+                                    <select id="pf-kelas" disabled required>
                                         <option value="">Pilih kelas</option>
                                     </select>
                                 </label>
                                 <label>Jurusan
-                                    <input id="pf-jurusan" type="text" disabled>
+                                    <input id="pf-jurusan" type="text" disabled required>
                                 </label>
                                 <label>Tempat Lahir
-                                    <input id="pf-tempat" type="text" disabled>
+                                    <input id="pf-tempat" type="text" disabled required>
                                 </label>
                                 <label>Tanggal Lahir
-                                    <input id="pf-tanggal" type="date" disabled>
+                                    <input id="pf-tanggal" type="date" disabled required>
                                 </label>
                                 <label>Jenis Kelamin
-                                    <select id="pf-gender" disabled>
+                                    <select id="pf-gender" disabled required>
                                         <option value="">Pilih</option>
                                         <option value="Laki-laki">Laki-laki</option>
                                         <option value="Perempuan">Perempuan</option>
                                     </select>
                                 </label>
                                 <label>Agama
-                                    <input id="pf-agama" type="text" disabled>
+                                    <input id="pf-agama" type="text" disabled required>
                                 </label>
                             </div>
 
                             <label>Alamat
-                                <textarea id="pf-alamat" rows="3" disabled></textarea>
+                                <textarea id="pf-alamat" rows="3" disabled required></textarea>
                             </label>
 
                             <div class="form-grid">
                                 <label>Kelurahan
-                                    <input id="pf-kelurahan" type="text" disabled>
+                                    <input id="pf-kelurahan" type="text" disabled required>
                                 </label>
                                 <label>Kecamatan
-                                    <input id="pf-kecamatan" type="text" disabled>
+                                    <input id="pf-kecamatan" type="text" disabled required>
                                 </label>
                                 <label>Nama Ayah
-                                    <input id="pf-ayah" type="text" disabled>
+                                    <input id="pf-ayah" type="text" disabled required>
                                 </label>
                                 <label>Pekerjaan Ayah
-                                    <input id="pf-pekerjaan-ayah" type="text" disabled>
+                                    <input id="pf-pekerjaan-ayah" type="text" disabled required>
                                 </label>
                                 <label>Nama Ibu
-                                    <input id="pf-ibu" type="text" disabled>
+                                    <input id="pf-ibu" type="text" disabled required>
                                 </label>
                                 <label>Pekerjaan Ibu
-                                    <input id="pf-pekerjaan-ibu" type="text" disabled>
+                                    <input id="pf-pekerjaan-ibu" type="text" disabled required>
                                 </label>
                                 <label>No. HP Orang Tua
-                                    <input id="pf-hp-ortu" type="tel" disabled>
+                                    <input id="pf-hp-ortu" type="tel" disabled required>
                                 </label>
                                 <label>Email Orang Tua
-                                    <input id="pf-email-ortu" type="email" disabled>
+                                    <input id="pf-email-ortu" type="email" disabled required>
                                 </label>
                             </div>
 
@@ -786,13 +798,19 @@
                         <div class="staff-panel-head"><h3><i class="fas fa-tasks"></i> Buat Tugas Kelas</h3></div>
                         <div class="staff-form">
                             <input id="staff-task-title" type="text" placeholder="Judul tugas">
+                            <div class="staff-target-mode" role="radiogroup" aria-label="Target tugas">
+                                <label><input type="radio" name="staff-task-target" value="class" checked onchange="syncStaffTaskTargetMode()"> Kelas</label>
+                                <label><input type="radio" name="staff-task-target" value="student" onchange="syncStaffTaskTargetMode()"> Siswa tertentu</label>
+                                <label><input type="radio" name="staff-task-target" value="mixed" onchange="syncStaffTaskTargetMode()"> Campuran</label>
+                            </div>
                             <div class="staff-form-grid">
                                 <input id="staff-task-mapel" type="text" placeholder="Mapel, pisahkan koma jika banyak">
                                 <select id="staff-task-classes" multiple size="5" aria-label="Pilih kelas target"></select>
                             </div>
+                            <textarea id="staff-task-nisn-list" rows="2" placeholder="NISN siswa individu, pisahkan koma atau baris baru" style="display:none;"></textarea>
                             <input id="staff-task-deadline" type="datetime-local">
                             <textarea id="staff-task-desc" rows="3" placeholder="Instruksi tugas"></textarea>
-                            <small class="staff-form-hint">Tahan Ctrl untuk pilih banyak kelas. Contoh mapel: Matematika, Bahasa Indonesia.</small>
+                            <small class="staff-form-hint">Tahan Ctrl untuk pilih banyak kelas. Untuk remedial/khusus, pilih mode siswa tertentu dan isi NISN.</small>
                             <button onclick="createStaffTask()"><i class="fas fa-paper-plane"></i> Terbitkan Tugas</button>
                         </div>
                     </section>
@@ -804,6 +822,9 @@
                         </div>
                         <div class="task-progress-list" id="task-progress-list">
                             <p class="staff-empty">Progress tugas akan tampil setelah guru menerbitkan tugas.</p>
+                        </div>
+                        <div class="task-review-panel" id="task-review-panel" aria-live="polite">
+                            <p class="staff-empty">Pilih tombol Tinjau pada tugas untuk melihat jawaban siswa.</p>
                         </div>
                     </section>
 

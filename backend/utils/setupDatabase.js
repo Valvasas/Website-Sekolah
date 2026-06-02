@@ -208,6 +208,7 @@ function setup() {
             deskripsi TEXT, mapel TEXT NOT NULL,
             kelas TEXT NOT NULL, deadline TEXT,
             assignment_group_id TEXT,
+            target_nisn TEXT,
             created_by TEXT NOT NULL,
             is_active INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
@@ -237,6 +238,12 @@ function setup() {
             category TEXT DEFAULT 'general',
             entity_type TEXT,
             entity_id TEXT,
+            materi_title TEXT,
+            materi_desc TEXT,
+            mapel TEXT,
+            target_type TEXT,
+            target_kelas TEXT,
+            target_nisn TEXT,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         );
         CREATE TABLE IF NOT EXISTS website_contents (
@@ -567,6 +574,7 @@ function setup() {
 
     seedUsers([
         { id:uuidv4(), nama:'Administrator Sistem',                  email:'admin@smkn1terisi.sch.id',               role:'super_admin',    nisn:null,         nip:'000000000000000001', hp:'081200000001', hash, now },
+        { id:uuidv4(), nama:'Admin Konten Website',                  email:'konten@smkn1terisi.sch.id',              role:'content_admin',  nisn:null,         nip:'000000000000000011', hp:'081200000011', hash, now },
         { id:uuidv4(), nama:'Agung Hendra Adiwiguna, S.Kom., M.M.', email:'kepsek@smkn1terisi.sch.id',              role:'kepala_sekolah', nisn:null,         nip:'198001012005011001', hp:'081200000002', hash, now },
         { id:uuidv4(), nama:'Deni Setiawan, S.Kom',                  email:'deni.setiawan@smkn1terisi.sch.id',       role:'guru',           nisn:null,         nip:'198505152010011002', hp:'081200000003', hash, now },
         { id:uuidv4(), nama:'Ratna Sari, S.Pd',                      email:'ratna.sari@smkn1terisi.sch.id',          role:'guru',           nisn:null,         nip:'198705202011012003', hp:'081200000004', hash, now },
@@ -650,6 +658,7 @@ function setup() {
     console.log('✅ Seed data berhasil.');
     console.log('\n  Akun testing (password: Smkn1Terisi@2024):');
     console.log('  super_admin    → admin@smkn1terisi.sch.id');
+    console.log('  content_admin  → konten@smkn1terisi.sch.id');
     console.log('  kepala_sekolah → kepsek@smkn1terisi.sch.id');
     console.log('  guru           → deni.setiawan@smkn1terisi.sch.id');
     console.log('  tata_usaha     → tu@smkn1terisi.sch.id');

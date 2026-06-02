@@ -363,6 +363,9 @@
             <button class="role-tab" data-role="super_admin" onclick="switchRole('super_admin', this)">
                 <i class="fas fa-user-shield"></i> Admin
             </button>
+            <button class="role-tab" data-role="content_admin" onclick="switchRole('content_admin', this)">
+                <i class="fas fa-pen-to-square"></i> Admin Konten
+            </button>
         </div>
 
         <!-- Alert Box -->
@@ -580,7 +583,7 @@ if (oauthToken) {
 /* ══════════════════════════════════════
    ROLE SWITCHER
 ══════════════════════════════════════ */
-const STAFF_ROLES = new Set(['guru', 'tata_usaha', 'kepala_sekolah', 'wakil_kepala_sekolah', 'super_admin']);
+const STAFF_ROLES = new Set(['guru', 'tata_usaha', 'kepala_sekolah', 'wakil_kepala_sekolah', 'super_admin', 'content_admin']);
 let currentRole = 'guru';
 
 function switchRole(role, btn) {
@@ -599,6 +602,7 @@ function switchRole(role, btn) {
         kepala_sekolah:  { label:'Email Kepala Sekolah', placeholder:'email@smkn1terisi.sch.id', google: false, register: false },
         wakil_kepala_sekolah: { label:'Email Wakasek', placeholder:'email@smkn1terisi.sch.id', google: false, register: false },
         super_admin:     { label:'Email Admin', placeholder:'admin@smkn1terisi.sch.id', google: false, register: false },
+        content_admin:   { label:'Email Admin Konten', placeholder:'konten@smkn1terisi.sch.id', google: false, register: false },
     };
 
     const c = config[role] || config.guru;
@@ -864,6 +868,7 @@ function onRegisterRoleChange(role) {
 function redirectByRole(role) {
     const map = {
         super_admin:     '/admin-panel/dashboard.html',
+        content_admin:   '/admin-panel/dashboard.html',
         kepala_sekolah:  '/admin-panel/dashboard.html',
         wakil_kepala_sekolah: '/admin-panel/dashboard.html',
         guru:            '/admin-panel/dashboard.html',

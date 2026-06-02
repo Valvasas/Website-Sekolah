@@ -69,6 +69,7 @@ function isSelfOrAdmin(req, res, next) {
 }
 
 const isAdmin  = authorize('super_admin');
+const isContentAdmin = authorize('super_admin','content_admin');
 const isStaff  = authorize('super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha');
 const isGuru   = authorize('super_admin','kepala_sekolah','wakil_kepala_sekolah','guru');
 const isSiswa  = authorize('siswa');
@@ -77,6 +78,6 @@ const isTU     = authorize('super_admin','tata_usaha');
 
 module.exports = {
     authenticate, optionalAuth, authorize,
-    isAdmin, isStaff, isGuru, isSiswa, isKepsek, isTU,
+    isAdmin, isContentAdmin, isStaff, isGuru, isSiswa, isKepsek, isTU,
     isSelfOrAdmin
 };

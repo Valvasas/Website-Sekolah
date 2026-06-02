@@ -170,7 +170,7 @@ PATCH /api/users/:id/approve      → Aktifkan akun staff (admin only)
 |------|-------|----------|
 | Super Admin | admin@smkn1terisi.sch.id | Smkn1Terisi@2024 |
 | Kepala Sekolah | kepsek@smkn1terisi.sch.id | Smkn1Terisi@2024 |
-| Guru | deni.setiawan@smkn1terisi.sch.id | Smkn1Terisi@2024 |
+| Guru | ~deni.setiawan@smkn1terisi.sch.id~ | Smkn1Terisi@2024 |
 | Tata Usaha | tu@smkn1terisi.sch.id | Smkn1Terisi@2024 |
 | Siswa | NISN: 0012345678 | Smkn1Terisi@2024 |
 

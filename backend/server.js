@@ -82,8 +82,8 @@ app.use(cors({
 }));
 
 /* ── Body parsing ─────────────────────────────────────────────────── */
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: ENV.JSON_BODY_LIMIT }));
+app.use(express.urlencoded({ extended: true, limit: ENV.JSON_BODY_LIMIT }));
 
 /* ── Static files dengan cache headers ───────────────────────────── */
 const projectRoot  = path.resolve(__dirname, '..');
@@ -118,6 +118,44 @@ app.get('/api/health', (_req, res) => {
         timestamp: new Date().toISOString(),
         env:       ENV.NODE_ENV,
         version:   '2.0.0',
+    });
+});
+
+app.get('/api/resource-status', (_req, res) => {
+    const authHeader = _req.headers['authorization'];
+    const rawToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    const { valid, decoded } = verifyToken(rawToken);
+    const allowed = ['super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'];
+    if (!valid || !allowed.includes(decoded?.role)) {
+        return res.status(401).json({ success:false, message:'Autentikasi admin/staff diperlukan.' });
+    }
+    const uploadRoot = path.join(__dirname, 'public/uploads');
+    const maxBytes = Math.round(ENV.UPLOAD_MAX_TOTAL_GB * 1024 * 1024 * 1024);
+    function dirSize(dir) {
+        if (!fs.existsSync(dir)) return 0;
+        return fs.readdirSync(dir, { withFileTypes: true }).reduce((sum, entry) => {
+            const full = path.join(dir, entry.name);
+            return sum + (entry.isDirectory() ? dirSize(full) : fs.statSync(full).size);
+        }, 0);
+    }
+    const usedBytes = dirSize(uploadRoot);
+    res.json({
+        success: true,
+        data: {
+            profile: '2vCPU / 4GB RAM / 40GB SSD ready',
+            uploadUsedBytes: usedBytes,
+            uploadMaxBytes: maxBytes,
+            uploadUsedPct: maxBytes ? Math.round((usedBytes / maxBytes) * 100) : 0,
+            bodyLimit: ENV.JSON_BODY_LIMIT,
+            fileLimitsMb: {
+                tugas: ENV.UPLOAD_MAX_TUGAS_MB,
+                materi: ENV.UPLOAD_MAX_MATERI_MB,
+                forum: ENV.UPLOAD_MAX_FORUM_MB,
+                cbt: ENV.UPLOAD_MAX_CBT_MB,
+            },
+            uptime: Math.floor(process.uptime()),
+            heapMb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        }
     });
 });
 

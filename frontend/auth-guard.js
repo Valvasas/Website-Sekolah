@@ -24,6 +24,7 @@
   /* ── Redirect map by role ── */
   const REDIRECT_MAP = {
     super_admin:     '/admin-panel/dashboard.html',
+    content_admin:   '/admin-panel/dashboard.html',
     kepala_sekolah:  '/admin-panel/dashboard.html',
     wakil_kepala_sekolah: '/admin-panel/dashboard.html',
     guru:            '/admin-panel/dashboard.html',
@@ -42,7 +43,7 @@
   /* ── Token helpers ── */
   function getToken(allowedRoles = []) {
     const wantsStaff = allowedRoles.some(role => [
-      'super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'
+      'super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'
     ].includes(role));
     const wantsStudent = allowedRoles.some(role => ['siswa','wali_murid','calon_siswa'].includes(role));
 
@@ -211,7 +212,7 @@
       if (['siswa','wali_murid','calon_siswa'].includes(role)) {
         localStorage.setItem('studentAccessToken', token);
         localStorage.setItem('studentUserData', JSON.stringify(user));
-      } else if (['super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'].includes(role)) {
+      } else if (['super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'].includes(role)) {
         localStorage.setItem('adminAccessToken', token);
         localStorage.setItem('adminUserData', JSON.stringify(user));
       }

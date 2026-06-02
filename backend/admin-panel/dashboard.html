@@ -22,6 +22,7 @@
         }
         *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
         body{font-family:'Sora',sans-serif;background:var(--light);color:var(--navy);display:flex;min-height:100vh;overflow-x:hidden;}
+        button,input,select,textarea,td,th,p,span,strong,small,div{min-width:0;overflow-wrap:anywhere;}
 
         /* ── SIDEBAR ── */
         .sidebar{
@@ -60,6 +61,7 @@
         .badge-guru {background:rgba(59,130,246,0.2);color:#93c5fd;}
         .badge-tu   {background:rgba(16,185,129,0.2);color:#6ee7b7;}
         .badge-kepsek{background:rgba(139,92,246,0.2);color:#c4b5fd;}
+        .badge-content{background:rgba(245,158,11,0.2);color:#fbbf24;}
 
         /* Nav */
         .sb-nav{flex:1;padding:10px 10px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;}
@@ -157,6 +159,7 @@
         .badge-unverified{background:#fef3c7;color:#92400e;}
         .role-badge{padding:3px 9px;border-radius:50px;font-size:0.68rem;font-weight:700;}
         .role-super_admin   {background:#fce7f3;color:#9d174d;}
+        .role-content_admin {background:#fff7ed;color:#9a3412;}
         .role-kepala_sekolah{background:#ede9fe;color:#4c1d95;}
         .role-wakil_kepala_sekolah{background:#e0f2fe;color:#075985;}
         .role-guru          {background:#dbeafe;color:#1e40af;}
@@ -284,6 +287,12 @@
         .log-info span{font-size:0.73rem;color:var(--muted);}
         .log-time{margin-left:auto;font-size:0.7rem;color:var(--muted);white-space:nowrap;}
         .activity-feed{display:grid;gap:10px;max-height:360px;overflow:auto;}
+        .activity-columns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start;}
+        .activity-column{border:1px solid var(--border);border-radius:12px;background:#f8fafc;min-width:0;overflow:hidden;}
+        .activity-column-head{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:8px;align-items:center;background:#fff;}
+        .activity-column-head strong{font-size:.75rem;color:var(--navy);display:flex;align-items:center;gap:7px;}
+        .activity-column-head span{font-size:.68rem;font-weight:900;color:var(--muted);background:#f1f5f9;border-radius:999px;padding:3px 7px;}
+        .activity-column-body{display:grid;gap:8px;padding:10px;max-height:340px;overflow:auto;}
         .activity-item{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff;}
         .activity-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#eff6ff;color:#1e40af;}
         .activity-icon.kantin_order,.activity-icon.kantin_chat{background:#ecfdf5;color:#047857;}
@@ -316,6 +325,12 @@
         .cbt-step strong{display:flex;align-items:center;gap:8px;font-size:0.82rem;margin-bottom:6px;color:var(--navy);}
         .cbt-step p{font-size:0.72rem;line-height:1.45;color:var(--muted);}
         .cbt-quick-note{margin-top:10px;padding:10px 12px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:0.76rem;line-height:1.45;}
+        .cbt-admin-nav .card-body{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+        .cbt-admin-nav label{font-size:.72rem;font-weight:900;color:var(--muted);text-transform:uppercase;}
+        .cbt-admin-tabs{display:flex;gap:8px;flex-wrap:wrap;}
+        .cbt-admin-tabs button{border:1.5px solid var(--border);background:#fff;color:var(--navy);border-radius:10px;padding:9px 12px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:7px;}
+        .cbt-admin-tabs button.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+        .cbt-admin-section.is-hidden{display:none!important;}
         .cbt-form-grid{display:grid;grid-template-columns:2fr 1fr 1fr 120px 120px auto;gap:10px;align-items:end;}
         .cbt-field{display:flex;flex-direction:column;gap:5px;min-width:0;}
         .cbt-field label{font-size:0.68rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;}
@@ -420,6 +435,21 @@
         .content-list-meta{font-size:.7rem;color:var(--muted);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;}
         .content-img-thumb{width:74px;aspect-ratio:4/3;object-fit:cover;border-radius:9px;border:1px solid var(--border);background:#f1f5f9;}
         .content-actions{display:flex;gap:6px;flex-wrap:wrap;}
+        .resource-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+        .resource-meter{height:9px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:8px;}
+        .resource-meter span{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--orange));}
+        .material-admin-grid{display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:16px;align-items:start;}
+        .material-target-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+        .material-target-grid label{border:1.5px solid var(--border);border-radius:10px;background:#f8fafc;padding:10px 12px;font-size:.74rem;font-weight:800;color:var(--navy);display:flex;align-items:center;gap:8px;}
+        .material-target-grid input{width:auto;}
+        .material-list{display:grid;gap:10px;}
+        .material-card{border:1px solid var(--border);border-radius:12px;background:#fff;padding:12px;display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:10px;align-items:start;}
+        .material-icon{width:42px;height:42px;border-radius:11px;background:#eff6ff;color:#1d4ed8;display:grid;place-items:center;font-size:1rem;}
+        .material-main{display:grid;gap:5px;min-width:0;}
+        .material-main strong{font-size:.86rem;color:var(--navy);}
+        .material-main p{margin:0;color:var(--muted);font-size:.73rem;line-height:1.45;}
+        .material-tags{display:flex;gap:5px;flex-wrap:wrap;}
+        .material-tags span{background:#f1f5f9;color:#334155;border-radius:999px;padding:3px 7px;font-size:.65rem;font-weight:800;}
         .form-group textarea{
             padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;
             font-family:'Sora',sans-serif;font-size:0.85rem;color:var(--navy);
@@ -448,7 +478,9 @@
             .cbt-question-settings,.cbt-essay-grid{grid-template-columns:1fr;}
             .topbar{padding:12px 14px;}
             .content{padding:18px 14px;}
+            .activity-columns{grid-template-columns:1fr;}
             .toolbar,.cbt-live-toolbar,.cbt-builder-actions{align-items:stretch;display:grid;grid-template-columns:1fr;}
+            .material-admin-grid,.material-target-grid{grid-template-columns:1fr;}
             .admin-compact-fold summary{grid-template-columns:1fr;}
             .admin-compact-fold summary .btn-act,.admin-compact-fold summary .btn-primary{width:100%;}
             .toolbar .search-input,.toolbar .filter-select,.toolbar button,
@@ -506,6 +538,9 @@
         </button>
         <button class="nav-item" data-nav-page="students" onclick="switchPage('students', this)">
             <i class="fas fa-user-graduate"></i> Data Siswa
+        </button>
+        <button class="nav-item" data-nav-page="materials" onclick="switchPage('materials', this)">
+            <i class="fas fa-folder-open"></i> Materi LMS
         </button>
         <button class="nav-item" data-nav-page="cbt" onclick="switchPage('cbt', this)">
             <i class="fas fa-laptop-code"></i> CBT
@@ -590,6 +625,18 @@
             </div>
         </div>
 
+        <div class="card" id="dashboardResourceCard">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-server"></i> Resource Hosting</div>
+                <button class="btn-act" onclick="loadResourceStatus()"><i class="fas fa-sync"></i> Refresh</button>
+            </div>
+            <div class="card-body">
+                <div class="resource-grid" id="resourceStatusGrid">
+                    <div class="empty-cell">Memuat status resource...</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Recent Logs -->
         <div class="card" id="dashboardRecentCard">
             <div class="card-header">
@@ -626,6 +673,7 @@
                     <select class="filter-select" id="filterRole" onchange="loadUsers()">
                         <option value="">Semua Role</option>
                         <option value="super_admin">Super Admin</option>
+                        <option value="content_admin">Admin Konten</option>
                         <option value="kepala_sekolah">Kepala Sekolah</option>
                         <option value="wakil_kepala_sekolah">Wakil Kepala Sekolah</option>
                         <option value="guru">Guru</option>
@@ -698,6 +746,78 @@
                     </div>
                     <div class="student-detail" id="studentDetailPanel">
                         <div class="empty-cell">Pilih siswa untuk melihat profil, nilai, tugas, ujian, dan kehadiran.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ PAGE: MATERI LMS ══ -->
+    <div class="content page" id="page-materials">
+        <div class="material-admin-grid">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-cloud-arrow-up"></i> Publish Materi ke LMS</div>
+                </div>
+                <div class="card-body">
+                    <form id="adminMaterialForm" onsubmit="submitAdminMaterial(event)">
+                        <div class="form-row">
+                            <div class="form-group full">
+                                <label for="adminMaterialTitle">Judul Materi *</label>
+                                <input type="text" id="adminMaterialTitle" maxlength="160" placeholder="Contoh: Modul VLAN Dasar" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="adminMaterialMapel">Mapel *</label>
+                                <input type="text" id="adminMaterialMapel" maxlength="100" placeholder="Contoh: Produktif TKJ" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="adminMaterialFile">File *</label>
+                                <input type="file" id="adminMaterialFile" required accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.mp4,.webm,.mov,.jpg,.jpeg,.png,.webp,.gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,video/mp4,video/webm,video/quicktime,image/jpeg,image/png,image/webp,image/gif">
+                            </div>
+                            <div class="form-group full">
+                                <label>Target Materi *</label>
+                                <div class="material-target-grid">
+                                    <label><input type="radio" name="adminMaterialTarget" value="school" onchange="syncAdminMaterialTarget()"> Semua siswa</label>
+                                    <label><input type="radio" name="adminMaterialTarget" value="class" checked onchange="syncAdminMaterialTarget()"> Kelas</label>
+                                    <label><input type="radio" name="adminMaterialTarget" value="student" onchange="syncAdminMaterialTarget()"> Siswa</label>
+                                </div>
+                            </div>
+                            <div class="form-group full" id="adminMaterialClassGroup">
+                                <label for="adminMaterialClass">Kelas Target</label>
+                                <select id="adminMaterialClass"></select>
+                            </div>
+                            <div class="form-group full" id="adminMaterialNisnGroup" style="display:none;">
+                                <label for="adminMaterialNisn">NISN Siswa Target</label>
+                                <input type="text" id="adminMaterialNisn" maxlength="10" inputmode="numeric" placeholder="10 digit NISN">
+                            </div>
+                            <div class="form-group full">
+                                <label for="adminMaterialDesc">Deskripsi / Instruksi</label>
+                                <textarea id="adminMaterialDesc" rows="4" maxlength="1500" placeholder="Ringkas saja: tujuan belajar, halaman yang wajib dibaca, atau instruksi lanjutan."></textarea>
+                            </div>
+                        </div>
+                        <button class="btn-primary" type="submit" id="adminMaterialSubmitBtn"><i class="fas fa-paper-plane"></i> Publish Materi</button>
+                    </form>
+                    <div class="cbt-quick-note"><strong>Catatan:</strong> materi siswa hanya muncul untuk NISN target. Materi kelas hanya muncul untuk siswa di kelas tersebut. Ini lebih aman daripada membanjiri semua siswa dengan file yang tidak relevan.</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-folder-open"></i> Materi Terpublish</div>
+                    <div class="toolbar" style="flex:1;justify-content:flex-end;">
+                        <select class="filter-select" id="adminMaterialTargetFilter" onchange="loadAdminMaterials()">
+                            <option value="">Semua target</option>
+                            <option value="school">Semua siswa</option>
+                            <option value="class">Kelas</option>
+                            <option value="student">Siswa</option>
+                        </select>
+                        <input type="text" class="search-input" id="adminMaterialSearch" placeholder="Cari judul, mapel, kelas, NISN..." style="min-width:190px;flex:0 1 240px;" oninput="debounce(loadAdminMaterials, 400)()">
+                        <button class="btn-act" type="button" onclick="loadAdminMaterials()"><i class="fas fa-sync"></i></button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="material-list" id="adminMaterialList">
+                        <div class="empty-cell">Memuat materi LMS...</div>
                     </div>
                 </div>
             </div>
@@ -877,7 +997,25 @@
             </div>
         </div>
 
-        <details class="card admin-compact-fold" id="cbtBuilderFold">
+        <div class="card cbt-admin-nav" id="cbt-admin-nav">
+            <div class="card-body">
+                <label for="cbtAdminSectionSelect">Navigasi CBT</label>
+                <select class="filter-select" id="cbtAdminSectionSelect" onchange="switchCbtAdminSection(this.value)">
+                    <option value="builder">Builder</option>
+                    <option value="bank">Bank Soal</option>
+                    <option value="sessions">Sesi & Token</option>
+                    <option value="activity">Kegiatan Live</option>
+                </select>
+                <div class="cbt-admin-tabs">
+                    <button type="button" class="active" data-cbt-tab="builder" onclick="switchCbtAdminSection('builder')"><i class="fas fa-pen-ruler"></i> Builder</button>
+                    <button type="button" data-cbt-tab="bank" onclick="switchCbtAdminSection('bank')"><i class="fas fa-folder-tree"></i> Bank Soal</button>
+                    <button type="button" data-cbt-tab="sessions" onclick="switchCbtAdminSection('sessions')"><i class="fas fa-list-check"></i> Sesi</button>
+                    <button type="button" data-cbt-tab="activity" onclick="switchCbtAdminSection('activity')"><i class="fas fa-chart-line"></i> Kegiatan</button>
+                </div>
+            </div>
+        </div>
+
+        <details class="card admin-compact-fold cbt-admin-section" id="cbtBuilderFold" data-cbt-section="builder">
             <summary>
                 <div><i class="fas fa-laptop-code"></i> Builder Sesi CBT</div>
                 <span>Disembunyikan default agar admin fokus ke daftar sesi dan monitoring</span>
@@ -910,7 +1048,7 @@
             </div>
         </details>
 
-        <details class="admin-fold" id="cbtBankFold">
+        <details class="admin-fold cbt-admin-section" id="cbtBankFold" data-cbt-section="bank">
             <summary>
                 <div><i class="fas fa-folder-tree"></i> Bank Soal CBT & CRUD</div>
                 <span>Disembunyikan default agar panel admin tetap bersih</span>
@@ -958,14 +1096,13 @@
                         <option value="canvas">Canvas</option>
                     </select>
                     <input type="file" class="search-input" id="qMediaFile" accept="image/png,image/jpeg,image/webp,audio/mpeg,audio/wav,audio/ogg,video/mp4,video/webm" onchange="uploadCbtQuestionMedia()" style="max-width:260px;">
-                    <input type="url" class="search-input" id="qMediaUrl" placeholder="URL media" oninput="previewCbtQuestionMedia()">
-                    <input type="text" class="search-input" id="qMediaAlt" placeholder="Alt/caption/video notes media">
+                    <input type="hidden" id="qMediaUrl">
                     <textarea class="search-input" id="qCanvasData" rows="2" placeholder='Canvas JSON, contoh: {"label":"Diagram","shapes":[{"type":"circle","x":120,"y":90,"r":36}]}' style="min-width:300px;"></textarea>
                     <div class="media-preview" id="qMediaPreview"></div>
                     <button class="btn-primary" id="qSubmitBtn" onclick="createCbtQuestion()"><i class="fas fa-plus"></i> Tambah Soal</button>
                     <button class="btn-act" id="qCancelEditBtn" onclick="resetCbtQuestionForm()" style="display:none;"><i class="fas fa-xmark"></i> Batal Edit</button>
                 </div>
-                <div class="cbt-quick-note"><strong>Catatan media:</strong> gambar/video akan tampil juga di ruang pengerjaan siswa. Kolom alt/caption bisa dipakai sebagai catatan video agar guru tahu konteks media yang dipasang.</div>
+                <div class="cbt-quick-note"><strong>Catatan media:</strong> pilih file lokal, sistem akan upload dan memasang URL internal otomatis. Kolom URL/alt manual dihapus karena rawan salah tempel.</div>
             </div>
             <div class="table-wrap">
                 <table class="data-table">
@@ -980,7 +1117,7 @@
         </div>
         </details>
 
-        <div class="card">
+        <div class="card cbt-admin-section" data-cbt-section="sessions" id="cbt-sesi">
             <div class="card-header">
                 <div class="card-title"><i class="fas fa-list-check"></i> Daftar Sesi CBT</div>
                 <button class="btn-act" onclick="loadCbtExams()"><i class="fas fa-sync"></i> Refresh</button>
@@ -1004,7 +1141,7 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card cbt-admin-section" data-cbt-section="sessions">
             <div class="card-header">
                 <div class="card-title"><i class="fas fa-key"></i> Token Kelas Sesi Terpilih</div>
                 <button class="btn-export" onclick="exportCbtTokens()"><i class="fas fa-download"></i> Export Token</button>
@@ -1021,7 +1158,7 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card cbt-admin-section" data-cbt-section="activity" id="cbt-kegiatan">
             <div class="card-header">
                 <div class="card-title"><i class="fas fa-eye"></i> Monitoring Sesi Terpilih</div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -1043,7 +1180,7 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card cbt-admin-section" data-cbt-section="activity">
             <div class="card-header">
                 <div class="card-title"><i class="fas fa-comments"></i> Chat Darurat & Announcement</div>
                 <button class="btn-act" onclick="loadCbtMessages(selectedCbtExam)"><i class="fas fa-sync"></i> Refresh Chat</button>
@@ -1135,6 +1272,7 @@
                             <option value="wakil_kepala_sekolah">Wakil Kepala Sekolah</option>
                             <option value="kepala_sekolah">Kepala Sekolah</option>
                             <option value="super_admin">Super Admin</option>
+                            <option value="content_admin">Admin Konten</option>
                         </select>
                     </div>
                     <div class="form-group" id="nisnGroup" style="display:none">
@@ -1251,6 +1389,7 @@ let studentPage = 1;
 let selectedStudentNisn = null;
 let websiteContentRows = [];
 let websiteContentPage = 1;
+let adminMaterialRows = [];
 let cbtMonitorSocket = null;
 let cbtMonitorTimer = null;
 let schoolClasses = [];
@@ -1264,7 +1403,7 @@ let schoolClasses = [];
         .then(r => r.json())
         .then(d => {
             if (!d.success) return redirectToLogin();
-            const allowedRoles = ['super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'];
+            const allowedRoles = ['super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'];
             if (!allowedRoles.includes(d.user.role)) {
                 alert('Anda tidak memiliki akses ke halaman ini.');
                 return redirectToLogin();
@@ -1301,11 +1440,11 @@ function initDashboard(user) {
     document.getElementById('topbarName').textContent  = user.nama?.split(' ')[0] || 'Admin';
 
     const roleLabels = {
-        super_admin:'Admin', kepala_sekolah:'Kepsek', wakil_kepala_sekolah:'Wakasek',
+        super_admin:'Admin', content_admin:'Admin Konten', kepala_sekolah:'Kepsek', wakil_kepala_sekolah:'Wakasek',
         guru:'Guru', tata_usaha:'Staff TU'
     };
     const badgeClasses = {
-        super_admin:'badge-admin', kepala_sekolah:'badge-kepsek', wakil_kepala_sekolah:'badge-kepsek',
+        super_admin:'badge-admin', content_admin:'badge-content', kepala_sekolah:'badge-kepsek', wakil_kepala_sekolah:'badge-kepsek',
         guru:'badge-guru', tata_usaha:'badge-tu'
     };
     document.getElementById('sbBadge').textContent  = roleLabels[user.role] || user.role;
@@ -1320,11 +1459,12 @@ function initDashboard(user) {
 
 function rolePages(role) {
     const pages = {
-        super_admin: ['dashboard','users','students','content','cbt','auditlog'],
-        kepala_sekolah: ['dashboard','students','content','cbt'],
-        wakil_kepala_sekolah: ['dashboard','students','content','cbt'],
-        guru: ['dashboard','students','content','cbt'],
-        tata_usaha: ['dashboard','students','content','cbt']
+        super_admin: ['dashboard','users','students','materials','content','cbt','auditlog'],
+        content_admin: ['dashboard','content'],
+        kepala_sekolah: ['dashboard','students','materials','cbt'],
+        wakil_kepala_sekolah: ['dashboard','students','materials','cbt'],
+        guru: ['dashboard','students','materials','cbt'],
+        tata_usaha: ['dashboard','students','materials','cbt']
     };
     return pages[role] || ['dashboard'];
 }
@@ -1339,10 +1479,17 @@ function applyRoleDashboard(role) {
         btn.style.display = allowed.includes(btn.dataset.navPage) ? '' : 'none';
     });
     const quickActions = document.getElementById('dashboardQuickActions');
-    if (quickActions && role !== 'super_admin') {
+    if (quickActions && role === 'content_admin') {
+        quickActions.querySelector('.card-title').innerHTML = '<i class="fas fa-bolt"></i> Aksi Cepat Admin Konten';
+        quickActions.querySelector('.card-body').innerHTML = `
+            <button class="btn-primary" onclick="switchPage('content', null)"><i class="fas fa-pen-to-square"></i> Kelola Konten Website</button>
+            <button class="btn-act" onclick="loadWebsiteContents()"><i class="fas fa-sync"></i> Refresh Konten</button>
+        `;
+    } else if (quickActions && role !== 'super_admin') {
         quickActions.querySelector('.card-title').innerHTML = '<i class="fas fa-bolt"></i> Aksi Cepat Akun Ini';
         quickActions.querySelector('.card-body').innerHTML = `
             <button class="btn-primary" onclick="switchPage('students', null)"><i class="fas fa-user-graduate"></i> Data Siswa</button>
+            <button class="btn-primary" style="background:var(--green);" onclick="switchPage('materials', null)"><i class="fas fa-folder-open"></i> Materi LMS</button>
             <button class="btn-primary" style="background:var(--blue);" onclick="switchPage('cbt', null)"><i class="fas fa-laptop-code"></i> CBT Saya</button>
         `;
     }
@@ -1364,7 +1511,7 @@ function switchPage(name, btn) {
     if (navBtn) navBtn.classList.add('active');
 
     currentSection = name;
-    const titles = { dashboard:'Dashboard', users:'Manajemen User', students:'Data Siswa', content:'Konten Website', cbt:'CBT', auditlog:'Audit Log' };
+    const titles = { dashboard:'Dashboard', users:'Manajemen User', students:'Data Siswa', materials:'Materi LMS', content:'Konten Website', cbt:'CBT', auditlog:'Audit Log' };
     document.getElementById('topbarTitle').textContent = titles[name] || 'Dashboard';
 
     if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
@@ -1372,6 +1519,7 @@ function switchPage(name, btn) {
     // Load data untuk page
     if (name === 'users')    loadUsers();
     if (name === 'students') loadStudentDirectory();
+    if (name === 'materials') loadMaterialManager();
     if (name === 'content')  loadWebsiteContents();
     if (name === 'cbt')      loadCbtDashboard();
     if (name === 'auditlog') loadAuditLogs();
@@ -1386,6 +1534,10 @@ function loadCurrentPage() {
    DASHBOARD
 ══════════════════════════════════════════ */
 async function loadDashboard() {
+    loadResourceStatus().catch(() => {});
+    if (userData.role === 'content_admin') {
+        return loadContentAdminDashboard();
+    }
     if (userData.role !== 'super_admin') {
         return loadRoleDashboard();
     }
@@ -1417,13 +1569,13 @@ async function loadDashboard() {
 
             // Role distribution cards
             const roleIcons = {
-                super_admin:'fas fa-crown',kepala_sekolah:'fas fa-user-tie',
+                super_admin:'fas fa-crown',content_admin:'fas fa-pen-to-square',kepala_sekolah:'fas fa-user-tie',
                 wakil_kepala_sekolah:'fas fa-user-shield',
                 guru:'fas fa-chalkboard-teacher',tata_usaha:'fas fa-briefcase',
                 siswa:'fas fa-user-graduate',wali_murid:'fas fa-users',calon_siswa:'fas fa-user-clock'
             };
             const roleColors = {
-                super_admin:'#9d174d',kepala_sekolah:'#4c1d95',guru:'#1e40af',
+                super_admin:'#9d174d',content_admin:'#9a3412',kepala_sekolah:'#4c1d95',guru:'#1e40af',
                 wakil_kepala_sekolah:'#075985',tata_usaha:'#065f46',siswa:'#0c4a6e',wali_murid:'#92400e',calon_siswa:'#475569'
             };
             document.getElementById('roleDistribution').innerHTML = stats.byRole.map(r => `
@@ -1445,6 +1597,57 @@ async function loadDashboard() {
 
     } catch (err) {
         console.error('Dashboard error:', err);
+    }
+}
+
+async function loadResourceStatus() {
+    const grid = document.getElementById('resourceStatusGrid');
+    if (!grid) return;
+    try {
+        const res = await apiFetch('/resource-status');
+        if (!res.success) throw new Error(res.message || 'Gagal memuat resource.');
+        const d = res.data || {};
+        const usedMb = Math.round(Number(d.uploadUsedBytes || 0) / 1024 / 1024);
+        const maxGb = (Number(d.uploadMaxBytes || 0) / 1024 / 1024 / 1024).toFixed(1);
+        const pct = Math.min(100, Math.max(0, Number(d.uploadUsedPct || 0)));
+        grid.innerHTML = `
+            <div class="stat-card blue"><i class="fas fa-microchip stat-icon"></i><div class="stat-val" style="font-size:1.2rem;">${escapeHtml(d.profile || '-')}</div><div class="stat-lbl">Profil Server</div></div>
+            <div class="stat-card green"><i class="fas fa-hard-drive stat-icon"></i><div class="stat-val">${pct}%</div><div class="stat-lbl">${usedMb} MB / ${maxGb} GB upload</div><div class="resource-meter"><span style="width:${pct}%"></span></div></div>
+            <div class="stat-card gold"><i class="fas fa-file-arrow-up stat-icon"></i><div class="stat-val" style="font-size:1.2rem;">${d.fileLimitsMb?.tugas || '-'}MB</div><div class="stat-lbl">Batas Tugas</div></div>
+            <div class="stat-card purple"><i class="fas fa-code stat-icon"></i><div class="stat-val" style="font-size:1.2rem;">${escapeHtml(d.bodyLimit || '-')}</div><div class="stat-lbl">Batas JSON/Form</div></div>
+        `;
+    } catch (err) {
+        grid.innerHTML = '<div class="empty-cell">Status resource belum bisa dimuat.</div>';
+    }
+}
+
+async function loadContentAdminDashboard() {
+    try {
+        document.getElementById('dashboardRecentCard').style.display = 'none';
+        document.getElementById('dashboardStudentActivityCard').style.display = 'none';
+        const res = await apiFetch('/content/website/all?limit=100');
+        const rows = res.data?.rows || [];
+        const active = rows.filter(r => Number(r.is_active) === 1).length;
+        const drafts = rows.length - active;
+        const gallery = rows.filter(r => r.type === 'galeri').length;
+        const news = rows.filter(r => r.type === 'berita').length;
+        document.getElementById('statsRow').innerHTML = `
+            <div class="stat-card gold"><i class="fas fa-layer-group stat-icon"></i><div class="stat-val">${rows.length}</div><div class="stat-lbl">Total Konten</div></div>
+            <div class="stat-card green"><i class="fas fa-circle-check stat-icon"></i><div class="stat-val">${active}</div><div class="stat-lbl">Aktif</div></div>
+            <div class="stat-card red"><i class="fas fa-file-pen stat-icon"></i><div class="stat-val">${drafts}</div><div class="stat-lbl">Draft / Nonaktif</div></div>
+            <div class="stat-card purple"><i class="fas fa-image stat-icon"></i><div class="stat-val">${gallery}</div><div class="stat-lbl">Galeri</div></div>
+            <div class="stat-card blue"><i class="fas fa-newspaper stat-icon"></i><div class="stat-val">${news}</div><div class="stat-lbl">Berita</div></div>
+        `;
+        document.querySelector('#dashboardRoleCard .card-title').innerHTML = '<i class="fas fa-chart-simple"></i> Konten Terbaru';
+        document.getElementById('roleDistribution').innerHTML = rows.slice(0, 8).map(item => `
+            <div style="background:var(--light);border-radius:12px;padding:16px;border:1px solid var(--border);">
+                <div style="font-size:.82rem;font-weight:800;color:var(--navy);">${escapeHtml(item.title)}</div>
+                <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">${websiteContentTypeLabel(item.type)} · ${escapeHtml(item.placement || 'general')}</div>
+                <div style="font-size:.7rem;color:${item.is_active ? 'var(--green)' : 'var(--orange)'};margin-top:6px;">${item.is_active ? 'Aktif' : 'Draft'}</div>
+            </div>
+        `).join('') || '<div class="empty-cell">Belum ada konten website.</div>';
+    } catch (err) {
+        document.getElementById('roleDistribution').innerHTML = '<div class="empty-cell">Gagal memuat ringkasan konten.</div>';
     }
 }
 
@@ -1529,7 +1732,7 @@ function renderStudentActivityFeed(rows = []) {
         kantin_chat:'fa-comment-dots',
         cbt:'fa-laptop-code'
     };
-    el.innerHTML = rows.map(row => {
+    const renderRow = row => {
         const amount = row.amount !== null && row.amount !== undefined && row.source === 'kantin_order'
             ? ` · ${formatMoney(row.amount)}`
             : '';
@@ -1550,7 +1753,29 @@ function renderStudentActivityFeed(rows = []) {
                 <div class="activity-time">${formatTime(row.created_at)}</div>
             </article>
         `;
-    }).join('');
+    };
+    const columns = [
+        { key:'kantin', title:'Jual Beli', icon:'fa-basket-shopping', match:r => ['kantin_order','kantin_chat'].includes(r.source) },
+        { key:'audit', title:'Login & Audit', icon:'fa-right-to-bracket', match:r => r.source === 'audit' },
+        { key:'cbt', title:'CBT', icon:'fa-laptop-code', match:r => r.source === 'cbt' },
+        { key:'social', title:'Forum & Chat', icon:'fa-comments', match:r => !['kantin_order','kantin_chat','audit','cbt'].includes(r.source) },
+    ];
+    el.innerHTML = `<div class="activity-columns">${
+        columns.map(col => {
+            const items = rows.filter(col.match);
+            return `
+                <section class="activity-column">
+                    <div class="activity-column-head">
+                        <strong><i class="fas ${col.icon}"></i> ${col.title}</strong>
+                        <span>${items.length}</span>
+                    </div>
+                    <div class="activity-column-body">
+                        ${items.length ? items.map(renderRow).join('') : '<div class="empty-cell" style="padding:20px!important;">Belum ada.</div>'}
+                    </div>
+                </section>
+            `;
+        }).join('')
+    }</div>`;
 }
 
 /* ══════════════════════════════════════════
@@ -1641,6 +1866,127 @@ function exportStudentData() {
         ['Nama','NISN','Email','HP','Kelas','Jurusan','Total Ujian','Total Nilai'],
         ...studentRows.map(s => [s.nama_lengkap, s.nisn, s.email || '', s.no_hp || '', s.kelas || '', s.jurusan || '', s.total_ujian || 0, s.total_nilai || 0])
     ], `data_siswa_${new Date().toISOString().slice(0,10)}.xls`, 'Rekap Data Siswa');
+}
+
+/* ══════════════════════════════════════════
+   MATERI LMS ADMIN
+══════════════════════════════════════════ */
+function syncAdminMaterialTarget() {
+    const target = document.querySelector('input[name="adminMaterialTarget"]:checked')?.value || 'class';
+    const classGroup = document.getElementById('adminMaterialClassGroup');
+    const nisnGroup = document.getElementById('adminMaterialNisnGroup');
+    if (classGroup) classGroup.style.display = target === 'class' ? '' : 'none';
+    if (nisnGroup) nisnGroup.style.display = target === 'student' ? '' : 'none';
+}
+
+async function loadMaterialManager() {
+    populateClassSelects();
+    syncAdminMaterialTarget();
+    await loadAdminMaterials();
+}
+
+async function submitAdminMaterial(event) {
+    event.preventDefault();
+    const btn = document.getElementById('adminMaterialSubmitBtn');
+    const file = document.getElementById('adminMaterialFile')?.files?.[0];
+    const targetType = document.querySelector('input[name="adminMaterialTarget"]:checked')?.value || 'class';
+    const title = document.getElementById('adminMaterialTitle')?.value.trim();
+    const mapel = document.getElementById('adminMaterialMapel')?.value.trim();
+    const kelas = document.getElementById('adminMaterialClass')?.value || '';
+    const nisn = document.getElementById('adminMaterialNisn')?.value.replace(/\D/g, '').slice(0, 10) || '';
+    const desc = document.getElementById('adminMaterialDesc')?.value.trim() || '';
+
+    if (!title || !mapel || !file) return showToast('Judul, mapel, dan file materi wajib diisi.', 'error');
+    if (targetType === 'class' && !kelas) return showToast('Pilih kelas target dulu.', 'error');
+    if (targetType === 'student' && nisn.length !== 10) return showToast('NISN target wajib 10 digit.', 'error');
+
+    const form = new FormData();
+    form.append('file', file);
+    form.append('title', title);
+    form.append('mapel', mapel);
+    form.append('deskripsi', desc);
+    form.append('target_type', targetType);
+    if (targetType === 'class') form.append('kelas', kelas);
+    if (targetType === 'student') form.append('target_nisn', nisn);
+
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengupload...';
+        }
+        const res = await fetch(`${API}/upload/materi`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: form,
+        });
+        const data = await res.json();
+        showToast(data.message || (data.success ? 'Materi dipublish.' : 'Gagal publish materi.'), data.success ? 'success' : 'error');
+        if (data.success) {
+            document.getElementById('adminMaterialForm')?.reset();
+            document.querySelector('input[name="adminMaterialTarget"][value="class"]').checked = true;
+            syncAdminMaterialTarget();
+            await loadAdminMaterials();
+        }
+    } catch (err) {
+        showToast('Upload materi gagal. Cek koneksi/server.', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Publish Materi';
+        }
+    }
+}
+
+async function loadAdminMaterials() {
+    const list = document.getElementById('adminMaterialList');
+    if (!list) return;
+    const params = new URLSearchParams();
+    const target = document.getElementById('adminMaterialTargetFilter')?.value || '';
+    const search = document.getElementById('adminMaterialSearch')?.value.trim() || '';
+    if (target) params.set('target', target);
+    if (search) params.set('search', search);
+    list.innerHTML = '<div class="empty-cell"><i class="fas fa-spinner fa-spin"></i> Memuat materi...</div>';
+    try {
+        const res = await apiFetch(`/lms/materi${params.toString() ? '?' + params.toString() : ''}`);
+        adminMaterialRows = res.success ? (res.data || []) : [];
+        if (!adminMaterialRows.length) {
+            list.innerHTML = '<div class="empty-cell">Belum ada materi sesuai filter.</div>';
+            return;
+        }
+        list.innerHTML = adminMaterialRows.map(row => `
+            <article class="material-card">
+                <div class="material-icon"><i class="fas ${materialIcon(row.tipe)}"></i></div>
+                <div class="material-main">
+                    <strong>${escapeHtml(row.title || row.original_name)}</strong>
+                    <p>${escapeHtml(row.deskripsi || row.original_name || '-')}</p>
+                    <div class="material-tags">
+                        <span>${escapeHtml(row.mapel || '-')}</span>
+                        <span>${escapeHtml(row.target_label || '-')}</span>
+                        <span>${escapeHtml(row.ukuran || '-')}</span>
+                        <span>${escapeHtml(formatTime(row.created_at))}</span>
+                    </div>
+                </div>
+                <button class="btn-act" type="button" onclick="openMaterialFile('${escapeAttr(row.file_url)}','${escapeAttr(row.tipe)}','${escapeAttr(row.title || row.original_name)}')"><i class="fas fa-eye"></i></button>
+            </article>
+        `).join('');
+    } catch (err) {
+        list.innerHTML = '<div class="empty-cell">Gagal memuat materi LMS.</div>';
+    }
+}
+
+function openMaterialFile(url, tipe, title) {
+    if (['img','video'].includes(tipe)) return openMediaPreview(url, tipe === 'video' ? 'video' : 'image', title);
+    window.open(url, '_blank', 'noopener');
+}
+
+function materialIcon(type) {
+    return {
+        pdf: 'fa-file-pdf',
+        video: 'fa-video',
+        ppt: 'fa-file-powerpoint',
+        doc: 'fa-file-word',
+        img: 'fa-image',
+    }[type] || 'fa-file-lines';
 }
 
 /* ══════════════════════════════════════════
@@ -2035,13 +2381,34 @@ async function loadUsers(page = currentPage) {
 ══════════════════════════════════════════ */
 async function loadCbtDashboard() {
     await loadCbtKelas();
-    renderBankMaterialGrid();
-    if (!document.querySelector('#cbtQuestionBuilder .cbt-question-card')) addCbtBuilderQuestion();
-    syncQuickQuestionFields();
-    previewCbtQuestionMedia();
-    await loadCbtQuestions();
     await loadCbtExams();
+    switchCbtAdminSection((location.hash || '').includes('cbt-builder') ? 'builder' : (location.hash || '').includes('cbt-bank') ? 'bank' : (location.hash || '').includes('cbt-kegiatan') ? 'activity' : 'sessions');
     connectCbtMonitorSocket();
+}
+
+function switchCbtAdminSection(section = 'builder') {
+    const allowed = ['builder', 'bank', 'sessions', 'activity'];
+    const active = allowed.includes(section) ? section : 'builder';
+    document.querySelectorAll('.cbt-admin-section').forEach(el => {
+        const show = el.dataset.cbtSection === active;
+        el.classList.toggle('is-hidden', !show);
+        if (show && el.tagName === 'DETAILS') el.setAttribute('open', '');
+    });
+    document.querySelectorAll('[data-cbt-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.cbtTab === active));
+    const select = document.getElementById('cbtAdminSectionSelect');
+    if (select) select.value = active;
+    if (active === 'builder' && !document.querySelector('#cbtQuestionBuilder .cbt-question-card')) {
+        addCbtBuilderQuestion();
+        syncQuickQuestionFields();
+        previewCbtQuestionMedia();
+    }
+    if (active === 'bank') {
+        renderBankMaterialGrid();
+        syncQuickQuestionFields();
+        previewCbtQuestionMedia();
+        loadCbtQuestions();
+    }
+    if (active === 'sessions') loadCbtExams();
 }
 
 async function loadSchoolClasses() {
@@ -2070,6 +2437,14 @@ function populateClassSelects() {
             `<option value="${escapeAttr(k.kelas)}">${escapeHtml(k.kelas)}</option>`
         ).join('');
         if (current) studentFilter.value = current;
+    }
+    const materialClass = document.getElementById('adminMaterialClass');
+    if (materialClass) {
+        const current = materialClass.value;
+        materialClass.innerHTML = '<option value="">Pilih kelas target</option>' + schoolClasses.map(k =>
+            `<option value="${escapeAttr(k.kelas)}">${escapeHtml(k.kelas)} - ${escapeHtml(k.jurusan)}</option>`
+        ).join('');
+        if (current) materialClass.value = current;
     }
 }
 
@@ -2155,8 +2530,8 @@ function addCbtBuilderQuestion(data = {}) {
                 <option value="" ${!data.media_type ? 'selected' : ''}>Tanpa media</option>
                 ${['image','audio','video','canvas'].map(type => `<option value="${type}" ${data.media_type === type ? 'selected' : ''}>${type}</option>`).join('')}
             </select>
-            <input class="search-input q-media-url" type="url" placeholder="URL media" value="${escapeAttr(data.media_url || '')}">
-            <input class="search-input q-media-alt" type="text" placeholder="Alt/caption media" value="${escapeAttr(data.media_alt || '')}">
+            <input class="search-input q-media-file" type="file" accept="image/png,image/jpeg,image/webp,audio/mpeg,audio/wav,audio/ogg,video/mp4,video/webm" onchange="uploadCbtBuilderMedia(this)">
+            <input class="q-media-url" type="hidden" value="${escapeAttr(data.media_url || '')}">
         </div>
         <textarea class="search-input q-soal" rows="3" placeholder="Tulis pertanyaan...">${escapeHtml(data.soal || '')}</textarea>
         <div class="cbt-option-grid q-mc-fields">
@@ -2238,13 +2613,13 @@ function collectCbtBuilderQuestions() {
             essay_keywords: card.querySelector('.q-keywords')?.value.trim() || '',
             essay_min_words: Number(card.querySelector('.q-min-words')?.value || 0),
             media_type: mediaType || null,
-            media_url: card.querySelector('.q-media-url')?.value.trim() || null,
-            media_alt: card.querySelector('.q-media-alt')?.value.trim() || null,
+            media_url: mediaType ? (card.querySelector('.q-media-url')?.value.trim() || null) : null,
+            media_alt: null,
             canvas_data: canvasData,
             urutan: index + 1
         };
-        const touched = [q.soal, q.opsi_a, q.opsi_b, q.opsi_c, q.opsi_d, q.opsi_e, q.essay_keywords, q.media_url, q.media_alt, card.querySelector('.q-canvas-data')?.value].some(v => String(v || '').trim()) && q.soal;
-        const anyField = [q.soal, q.opsi_a, q.opsi_b, q.opsi_c, q.opsi_d, q.opsi_e, q.essay_keywords, q.media_url, q.media_alt, card.querySelector('.q-canvas-data')?.value].some(Boolean);
+        const touched = [q.soal, q.opsi_a, q.opsi_b, q.opsi_c, q.opsi_d, q.opsi_e, q.essay_keywords, q.media_url, card.querySelector('.q-canvas-data')?.value].some(v => String(v || '').trim()) && q.soal;
+        const anyField = [q.soal, q.opsi_a, q.opsi_b, q.opsi_c, q.opsi_d, q.opsi_e, q.essay_keywords, q.media_url, card.querySelector('.q-canvas-data')?.value].some(Boolean);
         if (!anyField) continue;
         if (!q.soal) throw new Error(`Soal ${index + 1}: pertanyaan wajib diisi.`);
         if (mediaType === 'canvas' && !q.canvas_data) throw new Error(`Soal ${index + 1}: media canvas butuh Canvas JSON.`);
@@ -2312,28 +2687,51 @@ function syncQuickQuestionFields() {
     previewCbtQuestionMedia();
 }
 
+async function uploadCbtMediaFile(file, entityType = 'cbt_question') {
+    if (!file) throw new Error('File media belum dipilih.');
+    const form = new FormData();
+    form.append('file', file);
+    form.append('entity_type', entityType);
+    const res = await fetch(`${API}/upload/cbt`, {
+        method: 'POST',
+        headers: { Authorization:`Bearer ${token}` },
+        body: form
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Upload media CBT gagal.');
+    return data.data;
+}
+
+async function uploadCbtBuilderMedia(input) {
+    const file = input?.files?.[0];
+    const card = input?.closest('.cbt-question-card');
+    if (!file || !card) return;
+    try {
+        const data = await uploadCbtMediaFile(file, 'cbt_exam_builder');
+        const mediaType = card.querySelector('.q-media-type');
+        const mediaUrl = card.querySelector('.q-media-url');
+        if (mediaType) mediaType.value = data.mediaType;
+        if (mediaUrl) mediaUrl.value = data.fileUrl;
+        showToast('Media soal builder berhasil di-upload.', 'success');
+    } catch(e) {
+        showToast(e.message || 'Upload media builder gagal.', 'error');
+    } finally {
+        input.value = '';
+    }
+}
+
 async function uploadCbtQuestionMedia() {
     const input = document.getElementById('qMediaFile');
     const file = input?.files?.[0];
     if (!file) return;
-    const form = new FormData();
-    form.append('file', file);
-    form.append('entity_type', 'cbt_question');
     try {
-        const res = await fetch(`${API}/upload/cbt`, {
-            method: 'POST',
-            headers: { Authorization:`Bearer ${token}` },
-            body: form
-        });
-        const data = await res.json();
-        if (!data.success) return showToast(data.message || 'Upload media CBT gagal.', 'error');
-        document.getElementById('qMediaUrl').value = data.data.fileUrl;
-        document.getElementById('qMediaType').value = data.data.mediaType;
-        document.getElementById('qMediaAlt').value = file.name.replace(/\.[^.]+$/, '');
+        const data = await uploadCbtMediaFile(file, 'cbt_question');
+        document.getElementById('qMediaUrl').value = data.fileUrl;
+        document.getElementById('qMediaType').value = data.mediaType;
         previewCbtQuestionMedia({ name:file.name, size:file.size });
         showToast('Media CBT berhasil di-upload.', 'success');
-    } catch {
-        showToast('Upload media CBT gagal. Cek koneksi/server.', 'error');
+    } catch(e) {
+        showToast(e.message || 'Upload media CBT gagal. Cek koneksi/server.', 'error');
     } finally {
         if (input) input.value = '';
     }
@@ -2344,7 +2742,6 @@ function previewCbtQuestionMedia(fileMeta = null) {
     if (!box) return;
     const type = document.getElementById('qMediaType')?.value || '';
     const url = document.getElementById('qMediaUrl')?.value.trim() || '';
-    const alt = document.getElementById('qMediaAlt')?.value.trim() || 'Preview media soal';
     if (!type || (!url && type !== 'canvas')) {
         box.classList.remove('active');
         box.innerHTML = '';
@@ -2353,11 +2750,11 @@ function previewCbtQuestionMedia(fileMeta = null) {
     box.classList.add('active');
     const meta = fileMeta ? ` · ${(fileMeta.size / 1024 / 1024).toFixed(2)} MB` : '';
     if (type === 'image') {
-        box.innerHTML = `<img src="${escapeAttr(url)}" alt="${escapeAttr(alt)}"><small>${escapeHtml(alt)}${meta}. Pastikan objek utama tetap terbaca di layar HP.</small>`;
+        box.innerHTML = `<img src="${escapeAttr(url)}" alt="Preview media soal"><small>Media lokal sudah di-upload${meta}. Pastikan objek utama tetap terbaca di layar HP.</small>`;
     } else if (type === 'video') {
-        box.innerHTML = `<video controls preload="metadata" src="${escapeAttr(url)}"></video><small>${escapeHtml(alt)}${meta}. Caption ini dipakai sebagai video notes untuk guru dan siswa.</small>`;
+        box.innerHTML = `<video controls preload="metadata" src="${escapeAttr(url)}"></video><small>Video lokal sudah di-upload${meta}.</small>`;
     } else if (type === 'audio') {
-        box.innerHTML = `<audio controls preload="metadata" src="${escapeAttr(url)}"></audio><small>${escapeHtml(alt)}${meta}</small>`;
+        box.innerHTML = `<audio controls preload="metadata" src="${escapeAttr(url)}"></audio><small>Audio lokal sudah di-upload${meta}</small>`;
     } else if (type === 'canvas') {
         box.innerHTML = '<small>Canvas akan dirender dari JSON. Pakai Preview di ruang CBT siswa untuk validasi akhir.</small>';
     }
@@ -2382,7 +2779,7 @@ function openCbtQuestionMediaPreview(id) {
 
 function resetCbtQuestionForm() {
     cbtEditingQuestionId = null;
-    ['qSoal','qA','qB','qC','qD','qE','qEssayKeywords','qMediaUrl','qMediaAlt','qCanvasData'].forEach(id => {
+    ['qSoal','qA','qB','qC','qD','qE','qEssayKeywords','qMediaUrl','qCanvasData'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
@@ -2422,8 +2819,8 @@ async function createCbtQuestion() {
         essay_keywords: document.getElementById('qEssayKeywords')?.value.trim() || '',
         essay_min_words: Number(document.getElementById('qEssayMinWords')?.value || 0),
         media_type: mediaType || null,
-        media_url: document.getElementById('qMediaUrl')?.value.trim() || null,
-        media_alt: document.getElementById('qMediaAlt')?.value.trim() || null,
+        media_url: mediaType ? (document.getElementById('qMediaUrl')?.value.trim() || null) : null,
+        media_alt: null,
         canvas_data: canvasData,
         jenis_ujian: 'CBT',
         tingkat: 'sedang'
@@ -2468,7 +2865,6 @@ async function editCbtQuestion(id) {
     document.getElementById('qEssayMinWords').value = Number(q.essay_min_words || 0);
     document.getElementById('qMediaType').value = q.media_type || '';
     document.getElementById('qMediaUrl').value = q.media_url || '';
-    document.getElementById('qMediaAlt').value = q.media_alt || '';
     document.getElementById('qCanvasData').value = q.canvas_data ? JSON.stringify(q.canvas_data) : '';
     document.getElementById('qSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Soal';
     document.getElementById('qCancelEditBtn').style.display = '';
@@ -3219,7 +3615,7 @@ async function openEditModal(userId) {
 
 function onRoleChange() {
     const role = document.getElementById('fRole').value;
-    const staffRoles = ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'];
+    const staffRoles = ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin','content_admin'];
     const studentRole = ['siswa','calon_siswa'].includes(role);
     document.getElementById('nisnGroup').style.display = studentRole ? '' : 'none';
     document.getElementById('kelasGroup').style.display = studentRole ? '' : 'none';
@@ -3517,7 +3913,7 @@ function formatMapel(mapel) {
 
 function formatRole(role) {
     const m = {
-        super_admin:'Super Admin', kepala_sekolah:'Kepala Sekolah',
+        super_admin:'Super Admin', content_admin:'Admin Konten', kepala_sekolah:'Kepala Sekolah',
         wakil_kepala_sekolah:'Wakil Kepala Sekolah',
         guru:'Guru', tata_usaha:'Tata Usaha', siswa:'Siswa',
         wali_murid:'Wali Murid', calon_siswa:'Calon Siswa'
