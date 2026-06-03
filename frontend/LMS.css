@@ -37,6 +37,13 @@ body {
     overflow-x: hidden;
 }
 
+body.simplified-lms {
+    --sidebar-w: 224px;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --shadow: 0 8px 24px rgba(15,23,42,0.06);
+}
+
 a { text-decoration: none; color: inherit; }
 button { cursor: pointer; font-family: inherit; }
 button, a, input, select, textarea { -webkit-tap-highlight-color:transparent; }
@@ -341,14 +348,14 @@ textarea:focus-visible {
 .pd-item.red:hover { background:#fee2e2; }
 
 /* ---- PAGE CONTENT ---- */
-.page-content { display:none; padding:28px 28px 48px; }
+.page-content { display:none; padding:24px 24px 44px; }
 .page-content.active { display:block; }
 .page-title { font-family:'Playfair Display',serif; font-size:1.6rem; color:var(--navy); margin-bottom:24px; }
 
 /* ---- BERANDA ---- */
 .welcome-banner {
     background:linear-gradient(135deg, var(--navy), #003a77);
-    border-radius:var(--radius-lg); padding:28px 32px;
+    border-radius:var(--radius-lg); padding:22px 26px;
     display:flex; align-items:center; justify-content:space-between;
     margin-bottom:24px; position:relative; overflow:hidden;
     box-shadow:0 10px 30px rgba(0,34,68,0.25);
@@ -379,8 +386,11 @@ textarea:focus-visible {
 .sc-card .sc-val { display:block; font-size:1.6rem; font-weight:800; color:var(--navy); line-height:1; }
 .sc-card label  { font-size:0.78rem; color:var(--muted); font-weight:500; }
 
-.beranda-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
-.card-section { background:var(--white); border-radius:var(--radius-lg); padding:22px; box-shadow:var(--shadow); border:1px solid var(--border); }
+.beranda-grid { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr); gap:16px; align-items:start; }
+.card-section { background:var(--white); border-radius:var(--radius-lg); padding:18px; box-shadow:var(--shadow); border:1px solid var(--border); }
+.card-section:nth-child(1),
+.card-section:nth-child(2) { min-height:220px; }
+.card-section:nth-child(n+3) { min-height:0; }
 .cs-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
 .cs-header h3 { font-size:0.95rem; font-weight:700; display:flex; align-items:center; gap:8px; }
 .cs-header h3 i { color:var(--gold); }
@@ -389,8 +399,8 @@ textarea:focus-visible {
 .student-services {
     display:grid;
     grid-template-columns:repeat(4, minmax(0, 1fr));
-    gap:14px;
-    margin:22px 0;
+    gap:10px;
+    margin:16px 0;
 }
 .service-tile {
     display:flex;
@@ -2221,4 +2231,166 @@ button,
     background: #fee2e2;
     color: #b91c1c;
     outline: 2px solid #fecaca;
+}
+/* Simplified non-admin dashboard pass */
+body.simplified-lms {
+    --sidebar-w: 224px;
+}
+
+body.simplified-lms .sidebar-nav {
+    padding-block:10px;
+}
+
+body.simplified-lms .snav-item {
+    min-height:42px;
+    padding:10px 14px;
+}
+
+body.simplified-lms .snav-item span {
+    white-space:nowrap;
+}
+
+body.simplified-lms .wb-text h2 {
+    font-family:'Plus Jakarta Sans',sans-serif;
+    font-size:1.35rem;
+    letter-spacing:0;
+}
+
+body.simplified-lms .wb-text p {
+    max-width:620px;
+    font-size:.9rem;
+    line-height:1.45;
+}
+
+body.simplified-lms .wb-illustration {
+    opacity:.55;
+    font-size:3rem;
+}
+
+body.simplified-lms .sc-card {
+    min-height:76px;
+    padding:14px;
+}
+
+body.simplified-lms .sc-val {
+    font-size:1.35rem;
+}
+
+body.simplified-lms .service-tile {
+    min-height:72px;
+    padding:12px;
+}
+
+body.simplified-lms .service-tile small,
+body.simplified-lms .staff-panel-head p,
+body.simplified-lms .kantin-head p,
+body.simplified-lms .private-chat-head p {
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+}
+
+body.simplified-lms .cs-header {
+    margin-bottom:12px;
+}
+
+body.simplified-lms .cs-header h3 {
+    font-family:'Plus Jakarta Sans',sans-serif;
+    font-size:.9rem;
+}
+
+body.simplified-lms .announcement-list,
+body.simplified-lms .cbt-session-list,
+body.simplified-lms .mini-kelas-list,
+body.simplified-lms .mini-tugas-list {
+    display:grid;
+    gap:10px;
+}
+
+.staff-tools-fold {
+    margin-top:18px;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:16px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+}
+
+.staff-tools-fold > summary {
+    list-style:none;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    padding:16px 18px;
+    cursor:pointer;
+    color:var(--navy);
+    font-weight:800;
+}
+
+.staff-tools-fold > summary::-webkit-details-marker {
+    display:none;
+}
+
+.staff-tools-fold > summary span {
+    display:flex;
+    align-items:center;
+    gap:9px;
+}
+
+.staff-tools-fold > summary small {
+    color:var(--muted);
+    font-size:.76rem;
+    font-weight:700;
+}
+
+.staff-tools-fold > summary::after {
+    content:'Buka';
+    flex:0 0 auto;
+    color:var(--blue);
+    font-size:.76rem;
+    font-weight:900;
+}
+
+.staff-tools-fold[open] > summary {
+    border-bottom:1px solid var(--border);
+}
+
+.staff-tools-fold[open] > summary::after {
+    content:'Tutup';
+}
+
+.staff-tools-fold .staff-admin-grid {
+    padding:16px;
+}
+
+body.simplified-lms .staff-hero {
+    padding:22px;
+    border-radius:16px;
+}
+
+body.simplified-lms .staff-hero h2 {
+    font-family:'Plus Jakarta Sans',sans-serif;
+    font-size:1.35rem;
+}
+
+body.simplified-lms .staff-hero p {
+    max-width:580px;
+    line-height:1.45;
+}
+
+body.simplified-lms .staff-insights {
+    gap:12px;
+}
+
+body.simplified-lms .staff-insight-card {
+    padding:14px;
+    border-radius:14px;
+}
+
+@media(max-width:1100px) {
+    .beranda-grid {
+        grid-template-columns:1fr;
+    }
 }

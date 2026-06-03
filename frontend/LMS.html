@@ -13,7 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="/auth-guard.js"></script>
-    <link rel="stylesheet" href="lms.css">
+    <link rel="stylesheet" href="LMS.css">
 </head>
 <body>
 
@@ -121,28 +121,19 @@
                     <i class="fas fa-folder-open"></i><span>Materi</span>
                 </button>
                 <button class="snav-item" data-page="forum" onclick="navigate('forum',this)">
-                    <i class="fas fa-comments"></i><span>Forum Diskusi</span>
+                    <i class="fas fa-comments"></i><span>Forum</span>
                 </button>
-                <div class="snav-group">
-                    <button class="snav-item snav-toggle" type="button" onclick="toggleCbtNav()">
-                        <i class="fas fa-laptop-code"></i><span>CBT</span>
-                        <i class="fas fa-chevron-down snav-chevron"></i>
-                    </button>
-                    <div class="snav-submenu" id="snav-cbt-menu">
-                        <a href="cbt.html#ujian"><i class="fas fa-play"></i><span>Ujian Aktif</span></a>
-                        <a class="staff-only hidden" href="../backend/admin-panel/dashboard.html#cbt-builder"><i class="fas fa-pen-ruler"></i><span>Builder</span></a>
-                        <a class="staff-only hidden" href="../backend/admin-panel/dashboard.html#cbt-sesi"><i class="fas fa-list-check"></i><span>Sesi</span></a>
-                        <a class="staff-only hidden" href="../backend/admin-panel/dashboard.html#cbt-kegiatan"><i class="fas fa-chart-line"></i><span>Kegiatan</span></a>
-                    </div>
-                </div>
+                <a class="snav-item" href="cbt.html#ujian">
+                    <i class="fas fa-laptop-code"></i><span>CBT</span>
+                </a>
                 <button class="snav-item" data-page="nilai" onclick="navigate('nilai',this)">
                     <i class="fas fa-chart-bar"></i><span>Nilai Saya</span>
                 </button>
                 <button class="snav-item" data-page="kantin" onclick="navigate('kantin',this)">
-                    <i class="fas fa-store"></i><span>Kantin ku</span>
+                    <i class="fas fa-store"></i><span>Kantin</span>
                 </button>
                 <button class="snav-item" data-page="profil" onclick="navigate('profil',this)">
-                    <i class="fas fa-id-card"></i><span>Profil & Biodata</span>
+                    <i class="fas fa-id-card"></i><span>Profil</span>
                 </button>
                 <button class="snav-item staff-only hidden" data-page="staff" onclick="navigate('staff',this)">
                     <i class="fas fa-clipboard-list"></i><span>Ruang Staff</span>
@@ -221,8 +212,8 @@
             <div class="page-content active" id="page-beranda">
                 <div class="welcome-banner">
                     <div class="wb-text">
-                        <h2 id="wb-greeting">Selamat Datang 👋</h2>
-                        <p>Yuk lanjutkan belajar hari ini. Kamu punya <strong>3 tugas</strong> yang menunggu!</p>
+                        <h2 id="wb-greeting">Beranda</h2>
+                        <p>Cek yang penting dulu: tugas, ujian, materi, dan pengumuman.</p>
                     </div>
                     <div class="wb-illustration"><i class="fas fa-graduation-cap"></i></div>
                 </div>
@@ -250,19 +241,19 @@
                 <div class="student-services">
                     <a class="service-tile" href="cbt.html">
                         <span class="service-icon"><i class="fas fa-laptop-code"></i></span>
-                        <span><strong>CBT Online</strong><small id="svc-cbt-status">Cek sesi ujian aktif</small></span>
+                        <span><strong>CBT</strong><small id="svc-cbt-status">Ujian aktif</small></span>
                     </a>
                     <a class="service-tile" href="SKL.html">
                         <span class="service-icon green"><i class="fas fa-file-circle-check"></i></span>
-                        <span><strong>SKL Digital</strong><small>Cek surat kelulusan</small></span>
+                        <span><strong>SKL</strong><small>Surat kelulusan</small></span>
                     </a>
                     <a class="service-tile" href="ppdb.html">
                         <span class="service-icon orange"><i class="fas fa-user-plus"></i></span>
-                        <span><strong>PPDB</strong><small>Informasi penerimaan siswa</small></span>
+                        <span><strong>PPDB</strong><small>Penerimaan siswa</small></span>
                     </a>
                     <button class="service-tile" type="button" onclick="navigate('kantin', document.querySelector('[data-page=kantin]'))">
                         <span class="service-icon teal"><i class="fas fa-store"></i></span>
-                        <span><strong>Kantin ku</strong><small>Jual, pesan, dan bayar jajanan siswa</small></span>
+                        <span><strong>Kantin</strong><small>Pesan atau jual</small></span>
                     </button>
                 </div>
 
@@ -323,7 +314,7 @@
 
             <!-- Page: MATERI -->
             <div class="page-content" id="page-materi">
-                <h2 class="page-title">Repositori Materi</h2>
+                <h2 class="page-title">Materi</h2>
                 <div class="materi-search">
                     <i class="fas fa-search"></i>
                     <input type="text" placeholder="Cari materi..." oninput="searchMateri(this.value)">
@@ -333,7 +324,7 @@
 
             <!-- Page: FORUM -->
             <div class="page-content" id="page-forum">
-                <h2 class="page-title">Forum Diskusi</h2>
+                <h2 class="page-title">Forum</h2>
                 <div class="forum-scope-tabs" role="tablist" aria-label="Filter forum diskusi">
                     <button type="button" class="active" data-forum-scope="school" onclick="setForumScope('school')"><i class="fas fa-globe"></i> Semua Siswa</button>
                     <button type="button" data-forum-scope="class" onclick="setForumScope('class')"><i class="fas fa-users"></i> Kelas Saya</button>
@@ -402,7 +393,7 @@
 
             <!-- Page: KANTIN KU -->
             <div class="page-content" id="page-kantin">
-                <h2 class="page-title">Kantin ku</h2>
+                <h2 class="page-title">Kantin</h2>
                 <div class="kantin-layout">
                     <div class="kantin-tabs" role="tablist" aria-label="Navigasi Kantin ku">
                         <button class="active" type="button" data-kantin-tab="market" onclick="switchKantinTab('market')"><i class="fas fa-basket-shopping"></i> Pasar Jajanan</button>
@@ -414,7 +405,7 @@
                         <div class="kantin-head">
                             <div>
                                 <h3>Pasar Siswa</h3>
-                                <p>Fokus belanja jajanan. Produk yang paling cocok dengan profil Kantin ku akan naik ke atas.</p>
+                                <p>Cari jajanan, pesan, selesai.</p>
                             </div>
                             <button class="small-action" onclick="fetchKantinProducts()"><i class="fas fa-rotate"></i> Refresh</button>
                         </div>
@@ -619,7 +610,7 @@
 
             <!-- Page: PROFIL -->
             <div class="page-content" id="page-profil">
-                <h2 class="page-title">Profil & Biodata</h2>
+                <h2 class="page-title">Profil</h2>
 
                 <div class="profile-layout">
                     <section class="profile-card">
@@ -740,9 +731,9 @@
             <div class="page-content" id="page-staff">
                 <div class="staff-hero">
                     <div>
-                        <span class="staff-kicker">Ruang kerja guru & staff</span>
-                        <h2>Administrasi Siswa Terpadu</h2>
-                        <p>Kelola data akademik, tugas, materi, nilai, dan absensi dari satu tempat. Prioritas siswa otomatis dihitung dari kelengkapan data dan aktivitas akademik.</p>
+                        <span class="staff-kicker">Ruang kerja</span>
+                        <h2>Ringkasan Siswa</h2>
+                        <p>Mulai dari siswa yang perlu perhatian. Form tugas, materi, nilai, dan absensi ada di alat lanjutan.</p>
                     </div>
                     <button class="staff-primary" onclick="fetchStaffStudents()"><i class="fas fa-rotate"></i> Refresh Data</button>
                 </div>
@@ -758,8 +749,8 @@
                     <section class="staff-panel">
                         <div class="staff-panel-head">
                             <div>
-                                <h3><i class="fas fa-users"></i> Radar Siswa</h3>
-                                <p>Cari siswa, buka detail, lalu lanjutkan input nilai/absensi tanpa pindah halaman.</p>
+                                <h3><i class="fas fa-users"></i> Siswa</h3>
+                                <p>Cari, buka detail, lanjutkan tindakan seperlunya.</p>
                             </div>
                         </div>
                         <div class="staff-filter-row">
@@ -793,7 +784,12 @@
                     </section>
                 </div>
 
-                <div class="staff-admin-grid">
+                <details class="staff-tools-fold">
+                    <summary>
+                        <span><i class="fas fa-toolbox"></i> Alat lanjutan</span>
+                        <small>Tugas, materi, nilai, dan absensi</small>
+                    </summary>
+                    <div class="staff-admin-grid">
                     <section class="staff-panel">
                         <div class="staff-panel-head"><h3><i class="fas fa-tasks"></i> Buat Tugas Kelas</h3></div>
                         <div class="staff-form">
@@ -880,7 +876,8 @@
                             <button onclick="saveStaffAttendance()"><i class="fas fa-check"></i> Simpan Absensi</button>
                         </div>
                     </section>
-                </div>
+                    </div>
+                </details>
             </div>
 
         </div>
@@ -1009,6 +1006,6 @@
     </div>
     <!-- /lms-dashboard -->
 
-    <script src="lms.js"></script>
+    <script src="LMS.js"></script>
 </body>
 </html>

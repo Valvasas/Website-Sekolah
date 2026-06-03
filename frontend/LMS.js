@@ -331,20 +331,21 @@ function toggleCbtNav() {
 function configureDashboardForRole() {
     const staff = canEditBiodata();
     document.body.classList.toggle('staff-mode', staff);
+    document.body.classList.add('simplified-lms');
     document.querySelectorAll('.staff-only').forEach(el => el.classList.toggle('hidden', !staff));
 
     const welcome = document.querySelector('.wb-text p');
     if (welcome) {
         welcome.innerHTML = staff
-            ? 'Pantau administrasi kelas, profil siswa, materi, tugas, nilai, dan absensi dari satu dashboard.'
-            : 'Yuk lanjutkan belajar hari ini. Cek tugas, CBT, materi, dan pengumuman terbaru kamu.';
+            ? 'Lihat siswa prioritas dulu. Alat lain dibuka saat dibutuhkan.'
+            : 'Cek tugas, ujian, materi, dan pengumuman terbaru.';
     }
 
     const roleLabels = {
-        kelas: staff ? 'Kelas / Siswa' : 'Kelas Saya',
-        tugas: staff ? 'Tugas Kelas' : 'Tugas',
-        nilai: staff ? 'Nilai Siswa' : 'Nilai Saya',
-        profil: staff ? 'Profil Siswa' : 'Profil & Biodata',
+        kelas: staff ? 'Siswa' : 'Kelas',
+        tugas: staff ? 'Tugas' : 'Tugas',
+        nilai: staff ? 'Nilai' : 'Nilai',
+        profil: staff ? 'Profil Siswa' : 'Profil',
     };
     Object.entries(roleLabels).forEach(([page, label]) => {
         const span = document.querySelector(`[data-page="${page}"] span`);
