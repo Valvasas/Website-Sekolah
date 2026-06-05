@@ -5,6 +5,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { authenticate } = require('../middleware/auth');
 const getDB = require('../config/database');
+const ENV = require('../config/env');
 const { log } = require('../middleware/auditLog');
 
 const router = express.Router();
@@ -30,6 +31,16 @@ const weekStartISO = () => {
     date.setDate(date.getDate() - day + 1);
     return date.toISOString();
 };
+
+router.use((req, res, next) => {
+    if (!ENV.FEATURE_KANTIN) {
+        return res.status(403).json({
+            success: false,
+            message: 'Kantin ku sedang dimatikan untuk mode hosting hemat. Aktifkan FEATURE_KANTIN=true jika fitur siap dipakai.'
+        });
+    }
+    next();
+});
 
 function splitKeywords(value) {
     return String(value || '')
@@ -277,6 +288,19 @@ router.post('/products', authenticate, (req, res) => {
         return res.status(400).json({ success: false, message: 'Nama produk dan harga minimal Rp500 wajib diisi.' });
     }
     try {
+        const counts = db.prepare(`
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active
+            FROM kantin_products
+            WHERE seller_id = ? AND status != 'archived'
+        `).get(req.user.sub);
+        if (Number(counts.total || 0) >= ENV.KANTIN_MAX_PRODUCTS_PER_USER) {
+            return res.status(400).json({ success: false, message: `Maksimal ${ENV.KANTIN_MAX_PRODUCTS_PER_USER} produk per pedagang.` });
+        }
+        if (Number(counts.active || 0) >= ENV.KANTIN_MAX_ACTIVE_PRODUCTS_PER_USER) {
+            return res.status(400).json({ success: false, message: `Maksimal ${ENV.KANTIN_MAX_ACTIVE_PRODUCTS_PER_USER} produk aktif. Arsipkan produk lama dulu.` });
+        }
         const id = uuidv4();
         db.prepare(`
             INSERT INTO kantin_products
@@ -352,7 +376,7 @@ router.post('/products/:id/reviews', authenticate, (req, res) => {
     if (!ensureStudent(req, res)) return;
     const db = getDB();
     const rating = Math.max(1, Math.min(5, parseInt(req.body.rating) || 0));
-    const comment = cleanText(req.body.comment, 500);
+    const comment = cleanText(req.body.comment, ENV.KANTIN_REVIEW_MAX_LENGTH);
     if (!rating) return res.status(400).json({ success: false, message: 'Rating wajib 1 sampai 5 bintang.' });
     try {
         const product = db.prepare('SELECT * FROM kantin_products WHERE id = ? AND status != ?').get(req.params.id, 'archived');

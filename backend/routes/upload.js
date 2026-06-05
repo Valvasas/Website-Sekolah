@@ -31,9 +31,12 @@ Object.values(CATEGORIES).forEach(dir => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
+const VIDEO_MIMES = ['video/mp4','video/webm','video/quicktime'];
+const FORUM_AUDIO_MIMES = ['audio/mpeg','audio/wav','audio/ogg','audio/webm'];
+
 // ── MIME type whitelist ────────────────────────────────────────────
-const ALLOWED_TYPES = {
-    tugas:  ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain','image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm','video/quicktime','audio/mpeg','audio/wav','audio/ogg','audio/webm','application/zip','application/x-zip-compressed'],
+const BASE_ALLOWED_TYPES = {
+    tugas:  ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain','image/jpeg','image/png','image/webp','image/gif'],
     profil: ['image/jpeg','image/png','image/webp'],
     ppdb:   ['application/pdf','image/jpeg','image/png'],
     materi: ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain','video/mp4','video/webm','video/quicktime','image/jpeg','image/png','image/webp','image/gif'],
@@ -45,16 +48,35 @@ const ALLOWED_TYPES = {
     general:['application/pdf','image/jpeg','image/png'],
 };
 
+function buildAllowedTypes() {
+    const map = Object.fromEntries(Object.entries(BASE_ALLOWED_TYPES).map(([key, types]) => [key, [...types]]));
+    if (!ENV.FEATURE_FORUM_ATTACHMENT) {
+        map.forum = [];
+        map.kantin_chat = [];
+    }
+    if (!ENV.FEATURE_FORUM_VIDEO_ATTACHMENT) {
+        map.forum = map.forum.filter(type => !VIDEO_MIMES.includes(type));
+        map.kantin_chat = map.kantin_chat.filter(type => !VIDEO_MIMES.includes(type));
+    }
+    if (!ENV.FEATURE_FORUM_AUDIO_ATTACHMENT) {
+        map.forum = map.forum.filter(type => !FORUM_AUDIO_MIMES.includes(type));
+        map.kantin_chat = map.kantin_chat.filter(type => !FORUM_AUDIO_MIMES.includes(type));
+    }
+    return map;
+}
+
+const ALLOWED_TYPES = buildAllowedTypes();
+
 const MAX_SIZE = {
     tugas:  ENV.UPLOAD_MAX_TUGAS_MB * 1024 * 1024,
-    profil:  2 * 1024 * 1024,  //  2MB
-    ppdb:    5 * 1024 * 1024,  //  5MB
+    profil:  1 * 1024 * 1024,  //  1MB
+    ppdb:    3 * 1024 * 1024,  //  3MB
     materi: ENV.UPLOAD_MAX_MATERI_MB * 1024 * 1024,
-    website: 5 * 1024 * 1024,  //  5MB
+    website: 2 * 1024 * 1024,  //  2MB
     cbt:    ENV.UPLOAD_MAX_CBT_MB * 1024 * 1024,
-    kantin:  5 * 1024 * 1024,  //  5MB
+    kantin:  ENV.UPLOAD_MAX_KANTIN_MB * 1024 * 1024,
     forum:  ENV.UPLOAD_MAX_FORUM_MB * 1024 * 1024,
-    kantin_chat: ENV.UPLOAD_MAX_FORUM_MB * 1024 * 1024,
+    kantin_chat: ENV.KANTIN_CHAT_MAX_ATTACHMENT_MB * 1024 * 1024,
     general: 5 * 1024 * 1024,  //  5MB
 };
 
@@ -102,6 +124,58 @@ function enforceUploadQuota(req, res, next) {
     next();
 }
 
+function blockDisabledUploadFeature(category, mimeType) {
+    if (category === 'forum' && !ENV.FEATURE_FORUM_ATTACHMENT) {
+        return 'Lampiran forum sedang dinonaktifkan sementara. Teks forum tetap bisa digunakan.';
+    }
+    if (['forum','kantin_chat'].includes(category) && !ENV.FEATURE_FORUM_VIDEO_ATTACHMENT && VIDEO_MIMES.includes(mimeType)) {
+        return 'Upload video forum sedang dibatasi. Pakai file lebih ringan atau aktifkan FEATURE_FORUM_VIDEO_ATTACHMENT=true.';
+    }
+    if (['forum','kantin_chat'].includes(category) && !ENV.FEATURE_FORUM_AUDIO_ATTACHMENT && FORUM_AUDIO_MIMES.includes(mimeType)) {
+        return 'Upload audio forum sedang dibatasi. Aktifkan FEATURE_FORUM_AUDIO_ATTACHMENT=true jika dibutuhkan.';
+    }
+    return '';
+}
+
+function uploadPressureMessage(category, mimeType) {
+    const used = getDirSize(UPLOAD_DIR);
+    const pct = UPLOAD_QUOTA_BYTES ? (used / UPLOAD_QUOTA_BYTES) * 100 : 0;
+    const isMedia = VIDEO_MIMES.includes(mimeType) || FORUM_AUDIO_MIMES.includes(mimeType);
+    const critical = ['ppdb','tugas','profil'].includes(category);
+    if (pct >= 95 && !critical) {
+        return 'Storage server hampir penuh. Upload non-kritis sementara diblokir; minta super admin cleanup storage dulu.';
+    }
+    if (pct >= 85 && isMedia) {
+        return 'Upload media sementara dibatasi karena kapasitas server hampir penuh.';
+    }
+    return '';
+}
+
+function maxSizeByMime(category, mimeType) {
+    if (category === 'forum') {
+        if (mimeType.startsWith('image/')) return ENV.FORUM_IMAGE_MAX_MB * 1024 * 1024;
+        if (VIDEO_MIMES.includes(mimeType)) return ENV.FORUM_VIDEO_MAX_MB * 1024 * 1024;
+        if (FORUM_AUDIO_MIMES.includes(mimeType)) return ENV.FORUM_AUDIO_MAX_MB * 1024 * 1024;
+        return ENV.FORUM_DOCUMENT_MAX_MB * 1024 * 1024;
+    }
+    return MAX_SIZE[category] || MAX_SIZE.general;
+}
+
+function validateUploadedFilePolicy(req, res, next) {
+    const file = req.file;
+    if (!file) return next();
+    const category = req.uploadCategory || 'general';
+    const limit = maxSizeByMime(category, file.mimetype);
+    if (file.size > limit) {
+        fs.unlink(file.path, () => {});
+        return res.status(413).json({
+            success: false,
+            message: `File terlalu besar untuk kategori ${category}. Maksimal ${Math.round(limit / 1024 / 1024)}MB.`
+        });
+    }
+    next();
+}
+
 // ── Multer storage engine ──────────────────────────────────────────
 function createStorage(category) {
     return multer.diskStorage({
@@ -124,6 +198,10 @@ function createUploader(category) {
         limits:  { fileSize: MAX_SIZE[category] || MAX_SIZE.general },
         fileFilter: (_req, file, cb) => {
             const allowed = ALLOWED_TYPES[category] || ALLOWED_TYPES.general;
+            const disabledMessage = blockDisabledUploadFeature(category, file.mimetype);
+            if (disabledMessage) return cb(new Error(disabledMessage));
+            const pressureMessage = uploadPressureMessage(category, file.mimetype);
+            if (pressureMessage) return cb(new Error(pressureMessage));
             if (allowed.includes(file.mimetype)) {
                 cb(null, true);
             } else {
@@ -381,7 +459,9 @@ function uploadStudentAttachment(category, entityType) {
     return [
         authenticate,
         enforceUploadQuota,
+        (req, _res, next) => { req.uploadCategory = category; next(); },
         createUploader(category).single('file'),
+        validateUploadedFilePolicy,
         (req, res) => {
             if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada file yang di-upload.' });
             try {
@@ -474,6 +554,12 @@ router.use((err, _req, res, _next) => {
             return res.status(413).json({ success: false, message: 'File terlalu besar. Periksa batas ukuran file.' });
         }
         return res.status(400).json({ success: false, message: `Upload error: ${err.message}` });
+    }
+    if (err?.message?.includes('sedang dimatikan')) {
+        return res.status(403).json({ success: false, message: err.message });
+    }
+    if (err?.message?.includes('dibatasi') || err?.message?.includes('hampir penuh')) {
+        return res.status(507).json({ success: false, message: err.message });
     }
     if (err?.message?.includes('tidak diizinkan')) {
         return res.status(415).json({ success: false, message: err.message });

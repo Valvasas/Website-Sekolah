@@ -64,6 +64,17 @@ const lmsState = {
     staffFetchTimer: null,
 };
 
+const LMS_FEATURES = {
+    forumAttachment: true,
+    forumVideoAttachment: true,
+    forumAudioAttachment: true,
+    forumChat: true,
+    forumVoiceNote: false,
+    localVideoUpload: true,
+    kantin: true,
+    cbtCameraMonitor: true,
+};
+
 const ATTACHMENT_TYPES = {
     image: {
         label: 'Foto',
@@ -71,7 +82,7 @@ const ATTACHMENT_TYPES = {
         icon: 'fa-image',
         accept: '.jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif',
         mimes: ['image/jpeg','image/png','image/webp','image/gif'],
-        max: 15 * 1024 * 1024,
+        max: 1 * 1024 * 1024,
     },
     document: {
         label: 'Dokumen',
@@ -79,7 +90,7 @@ const ATTACHMENT_TYPES = {
         icon: 'fa-file-lines',
         accept: '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain',
         mimes: ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain'],
-        max: 25 * 1024 * 1024,
+        max: 3 * 1024 * 1024,
     },
     video: {
         label: 'Video',
@@ -87,7 +98,7 @@ const ATTACHMENT_TYPES = {
         icon: 'fa-video',
         accept: '.mp4,.webm,.mov,video/mp4,video/webm,video/quicktime',
         mimes: ['video/mp4','video/webm','video/quicktime'],
-        max: 50 * 1024 * 1024,
+        max: 5 * 1024 * 1024,
     },
     audio: {
         label: 'Audio',
@@ -95,7 +106,7 @@ const ATTACHMENT_TYPES = {
         icon: 'fa-microphone',
         accept: '.mp3,.wav,.ogg,.webm,audio/mpeg,audio/wav,audio/ogg,audio/webm',
         mimes: ['audio/mpeg','audio/wav','audio/ogg','audio/webm'],
-        max: 25 * 1024 * 1024,
+        max: 3 * 1024 * 1024,
     },
 };
 
@@ -203,6 +214,7 @@ async function lmsLogin() {
         err.classList.add('hidden');
         await initDashboard();
         showLmsScreen('lms-dashboard');
+        openInitialHashPage();
 
     } catch (e) {
         errMsg.textContent = 'Koneksi gagal. Pastikan server berjalan.';
@@ -228,6 +240,7 @@ async function initDashboard() {
     const u = lmsState.user || getUser();
     if (!u) return;
     lmsState.user = u;
+    await loadLmsFeatures();
 
     // Update UI user info
     const firstName = (u.nama || u.nama_lengkap || '').split(' ')[0] || (canEditBiodata() ? 'Staff' : 'Siswa');
@@ -267,6 +280,15 @@ async function initDashboard() {
     ]);
 
     await fetchKelas();
+    syncStaffTaskTargetMode();
+}
+
+function openInitialHashPage() {
+    const target = (location.hash || '').replace('#', '').trim();
+    const allowed = ['beranda','kelas','tugas','materi','forum','nilai','profil','kantin','staff'];
+    if (!target || !allowed.includes(target)) return;
+    if (target === 'staff' && !canEditBiodata()) return;
+    navigate(target, document.querySelector(`[data-page="${target}"]`));
 }
 
 /* ── Fetch: Dashboard stats ─────────────────────────────────── */
@@ -328,10 +350,32 @@ function toggleCbtNav() {
     document.getElementById('snav-cbt-menu')?.classList.toggle('open');
 }
 
+async function loadLmsFeatures() {
+    try {
+        const res = await fetch(`${API}/features`);
+        const json = await res.json();
+        if (json.success && json.data) Object.assign(LMS_FEATURES, json.data);
+    } catch {
+        // Pakai default lokal jika endpoint konfigurasi belum tersedia.
+    }
+}
+
 function configureDashboardForRole() {
     const staff = canEditBiodata();
+    const role = lmsState.user?.role || '';
+    const isWali = role === 'wali_murid';
+    const isStudent = role === 'siswa';
     document.body.classList.toggle('staff-mode', staff);
     document.querySelectorAll('.staff-only').forEach(el => el.classList.toggle('hidden', !staff));
+    document.querySelectorAll('[data-page="forum"]').forEach(el => el.classList.toggle('hidden', isWali || !LMS_FEATURES.forumChat));
+    document.querySelectorAll('[data-page="kantin"]').forEach(el => el.classList.toggle('hidden', !isStudent || !LMS_FEATURES.kantin));
+    document.querySelectorAll('[data-page="kelas"]').forEach(el => el.classList.toggle('hidden', isWali));
+    document.querySelectorAll('[onclick*="chooseForumAttachment"][onclick*="video"]').forEach(el => el.classList.toggle('hidden', !LMS_FEATURES.forumVideoAttachment));
+    document.querySelectorAll('[onclick*="chooseForumAttachment"][onclick*="audio"]').forEach(el => el.classList.toggle('hidden', !LMS_FEATURES.forumAudioAttachment));
+    document.querySelectorAll('[onclick*="chooseKantinChatAttachment"][onclick*="video"]').forEach(el => el.classList.toggle('hidden', !LMS_FEATURES.forumVideoAttachment));
+    document.querySelectorAll('[onclick*="chooseKantinChatAttachment"][onclick*="audio"]').forEach(el => el.classList.toggle('hidden', !LMS_FEATURES.forumAudioAttachment));
+    document.querySelectorAll('#forum-vn-btn').forEach(el => el.classList.toggle('hidden', !LMS_FEATURES.forumVoiceNote));
+    document.querySelectorAll('[onclick*="chooseStaffMateriAttachment"][onclick*="video"]').forEach(el => el.classList.toggle('hidden', !LMS_FEATURES.localVideoUpload));
 
     const welcome = document.querySelector('.wb-text p');
     if (welcome) {
@@ -344,7 +388,7 @@ function configureDashboardForRole() {
         kelas: staff ? 'Kelas / Siswa' : 'Kelas Saya',
         tugas: staff ? 'Tugas Kelas' : 'Tugas',
         nilai: staff ? 'Nilai Siswa' : 'Nilai Saya',
-        profil: staff ? 'Profil Siswa' : 'Profil & Biodata',
+        profil: staff ? 'Profil Siswa' : isWali ? 'Profil Anak' : 'Profil & Biodata',
     };
     Object.entries(roleLabels).forEach(([page, label]) => {
         const span = document.querySelector(`[data-page="${page}"] span`);
@@ -634,6 +678,14 @@ function renderStaffStudentDetail(data) {
     const avg = nilai.length
         ? Math.round(nilai.reduce((sum, n) => sum + Number(n.nilai_final || 0), 0) / nilai.length)
         : '-';
+    const gradeValues = nilai.map(n => Number(n.nilai_final || 0)).filter(v => !Number.isNaN(v));
+    const gradeSummary = gradeValues.length ? {
+        total: gradeValues.length,
+        avg: Math.round(gradeValues.reduce((sum, v) => sum + v, 0) / gradeValues.length),
+        high: Math.max(...gradeValues),
+        low: Math.min(...gradeValues),
+        pass: nilai.filter(n => Number(n.nilai_final || 0) >= Number(n.kkm || 70)).length,
+    } : null;
     setText('staff-detail-name', s.nama_lengkap || '-');
     setText('staff-detail-meta', `${s.nisn || '-'} · ${s.kelas || 'Kelas belum diisi'} · ${s.jurusan || '-'}`);
     document.getElementById('staff-detail-quick').innerHTML = `
@@ -644,8 +696,16 @@ function renderStaffStudentDetail(data) {
     `;
     document.getElementById('staff-detail-body').innerHTML = `
         <div class="staff-detail-section">
-            <h4>Nilai Terbaru</h4>
-            ${nilai.slice(0, 5).map(n => `<div class="staff-mini-row"><span>${escHtml(n.mapel)} · ${escHtml(n.semester)}</span><strong>${escHtml(n.nilai_final ?? '-')}</strong></div>`).join('') || '<p class="staff-empty">Belum ada nilai.</p>'}
+            <h4>Rekap Nilai Lengkap</h4>
+            ${gradeSummary ? `
+                <div class="staff-grade-summary">
+                    <span><strong>${gradeSummary.avg}</strong><small>Rata-rata</small></span>
+                    <span><strong>${gradeSummary.high}</strong><small>Tertinggi</small></span>
+                    <span><strong>${gradeSummary.low}</strong><small>Terendah</small></span>
+                    <span><strong>${gradeSummary.pass}/${gradeSummary.total}</strong><small>Lulus KKM</small></span>
+                </div>
+            ` : '<p class="staff-empty">Belum ada nilai.</p>'}
+            ${nilai.map(n => `<div class="staff-mini-row"><span>${escHtml(n.mapel)} · ${escHtml(n.semester)} · KKM ${escHtml(n.kkm ?? 70)}</span><strong>${escHtml(n.nilai_final ?? '-')}</strong></div>`).join('')}
         </div>
         <div class="staff-detail-section">
             <h4>Tugas Dikumpulkan</h4>
@@ -662,6 +722,7 @@ function syncStaffTaskTargetMode() {
     const mode = document.querySelector('input[name="staff-task-target"]:checked')?.value || 'class';
     const classSelect = document.getElementById('staff-task-classes');
     const nisnList = document.getElementById('staff-task-nisn-list');
+    const nisnField = nisnList?.closest('.staff-field');
     if (classSelect) {
         classSelect.style.display = mode === 'student' ? 'none' : '';
         classSelect.setAttribute('aria-hidden', mode === 'student' ? 'true' : 'false');
@@ -669,6 +730,9 @@ function syncStaffTaskTargetMode() {
     if (nisnList) {
         nisnList.style.display = mode === 'class' ? 'none' : '';
         nisnList.setAttribute('aria-hidden', mode === 'class' ? 'true' : 'false');
+    }
+    if (nisnField) {
+        nisnField.style.display = mode === 'class' ? 'none' : '';
     }
 }
 
@@ -693,6 +757,7 @@ async function createStaffTask() {
         target_nisn_list: mode === 'class' ? [] : targetNisnList,
         deadline: document.getElementById('staff-task-deadline')?.value || null,
         deskripsi: document.getElementById('staff-task-desc')?.value.trim() || null,
+        show_score: document.getElementById('staff-task-show-score')?.checked ? 1 : 0,
     };
     if (!payload.judul || !payload.mapel_list.length || (!payload.kelas_list.length && !payload.target_nisn_list.length)) {
         return showToast('Judul, minimal 1 mapel, dan target kelas atau NISN siswa wajib diisi.', 'red');
@@ -703,6 +768,8 @@ async function createStaffTask() {
         if (res.success) {
             ['staff-task-title','staff-task-mapel','staff-task-deadline','staff-task-desc'].forEach(id => setVal(id, ''));
             setVal('staff-task-nisn-list', '');
+            const showScore = document.getElementById('staff-task-show-score');
+            if (showScore) showScore.checked = true;
             Array.from(document.getElementById('staff-task-classes')?.options || []).forEach(opt => { opt.selected = false; });
             await fetchTugas();
             await fetchTaskProgress();
@@ -737,7 +804,10 @@ function renderTaskProgress() {
     el.innerHTML = lmsState.taskProgress.map(t => {
         const total = Number(t.total_siswa || 0);
         const done = Number(t.total_selesai || 0);
+        const reviewed = Number(t.total_direview || 0);
         const pct = total ? Math.round((done / total) * 100) : 0;
+        const reviewPct = done ? Math.round((reviewed / done) * 100) : 0;
+        const scoreVisible = Number(t.show_score ?? 1) !== 0;
         const belum = Array.isArray(t.belum) ? t.belum : [];
         return `
             <article class="task-progress-card">
@@ -753,7 +823,13 @@ function renderTaskProgress() {
                 </div>
                 <div class="task-progress-meta">
                     <span>${pct}% selesai</span>
+                    <span>${reviewed}/${done} direview (${reviewPct}%)</span>
                     <span>${t.deadline ? 'DL ' + new Date(t.deadline).toLocaleDateString('id-ID') : 'Tanpa deadline'}</span>
+                </div>
+                <div class="task-status-row">
+                    <span class="task-status-chip submitted"><i class="fas fa-inbox"></i>${done} terkumpul</span>
+                    <span class="task-status-chip ${reviewed ? 'reviewed' : 'pending'}"><i class="fas fa-pen-to-square"></i>${reviewed} direview</span>
+                    <span class="task-status-chip ${scoreVisible ? 'visible' : 'private'}"><i class="fas ${scoreVisible ? 'fa-eye' : 'fa-eye-slash'}"></i>${scoreVisible ? 'Nilai tampil' : 'Nilai rahasia'}</span>
                 </div>
                 <button type="button" class="staff-mini-btn" onclick="fetchTaskSubmissions('${escAttr(t.id)}')"><i class="fas fa-eye"></i> Tinjau Jawaban</button>
                 ${belum.length ? `<details class="task-missing"><summary>Belum mengumpulkan (${Math.max(0, total - done)})</summary><p>${belum.map(escHtml).join('<br>')}</p></details>` : '<p class="task-complete">Semua siswa aktif sudah mengumpulkan.</p>'}
@@ -774,6 +850,7 @@ async function fetchTaskSubmissions(taskId) {
         }
         const rows = data.data?.submissions || [];
         const task = data.data?.task || {};
+        const scoreVisible = Number(task.show_score ?? 1) !== 0;
         if (!rows.length) {
             panel.innerHTML = `<div class="task-review-head"><strong>${escHtml(task.judul || 'Tugas')}</strong><span>Belum ada submission.</span></div>`;
             return;
@@ -781,7 +858,7 @@ async function fetchTaskSubmissions(taskId) {
         panel.innerHTML = `
             <div class="task-review-head">
                 <strong>${escHtml(task.judul || 'Tugas')}</strong>
-                <span>${escHtml(task.kelas || '-')} · ${escHtml(task.mapel || '-')} · ${rows.length} submission</span>
+                <span>${escHtml(task.kelas || '-')} · ${escHtml(task.mapel || '-')} · ${rows.length} submission · ${scoreVisible ? 'nilai tampil ke siswa' : 'nilai rahasia'}</span>
             </div>
             ${rows.map(row => `
                 <article class="task-review-card">
@@ -789,12 +866,17 @@ async function fetchTaskSubmissions(taskId) {
                         <strong>${escHtml(row.nama_lengkap || row.nisn || 'Siswa')}</strong>
                         <span>${escHtml(row.nisn || '-')} · ${row.submitted_at ? new Date(row.submitted_at).toLocaleString('id-ID') : '-'}</span>
                     </div>
+                    <div class="task-status-row">
+                        <span class="task-status-chip submitted"><i class="fas fa-circle-check"></i> Tugas terkumpul</span>
+                        <span class="task-status-chip ${row.status === 'dinilai' ? 'reviewed' : 'pending'}"><i class="fas ${row.status === 'dinilai' ? 'fa-check-double' : 'fa-hourglass-half'}"></i> ${row.status === 'dinilai' ? 'Sudah direview' : 'Belum direview'}</span>
+                        <span class="task-status-chip ${scoreVisible ? 'visible' : 'private'}"><i class="fas ${scoreVisible ? 'fa-eye' : 'fa-eye-slash'}"></i> ${scoreVisible ? 'Nilai tampil' : 'Nilai rahasia'}</span>
+                    </div>
                     ${row.jawaban ? `<p>${escHtml(row.jawaban)}</p>` : '<p class="muted">Tidak ada jawaban teks.</p>'}
                     ${row.file_url ? renderAttachmentPreview({ url: row.file_url, name: row.file_url.split('/').pop(), type: '' }, { compact:true }) : ''}
                     <div class="task-grade-row">
                         <input type="number" min="0" max="100" value="${row.nilai ?? ''}" placeholder="Nilai" id="task-grade-${escAttr(row.nisn)}">
                         <input type="text" value="${escAttr(row.feedback || '')}" placeholder="Feedback singkat" id="task-feedback-${escAttr(row.nisn)}">
-                        <button type="button" onclick="saveTaskSubmissionGrade('${escAttr(task.id)}','${escAttr(row.nisn)}')"><i class="fas fa-save"></i> Simpan</button>
+                        <button type="button" onclick="saveTaskSubmissionGrade('${escAttr(task.id)}','${escAttr(row.nisn)}')"><i class="fas fa-save"></i> ${scoreVisible ? 'Simpan Review & Rekap' : 'Simpan Review Internal'}</button>
                     </div>
                 </article>
             `).join('')}
@@ -814,7 +896,10 @@ async function saveTaskSubmissionGrade(taskId, nisn) {
             body:JSON.stringify({ nilai:Number(nilai), feedback }),
         });
         showToast(res.message || 'Nilai tersimpan.', res.success ? 'green' : 'red');
-        if (res.success) await fetchTaskProgress();
+        if (res.success) {
+            await fetchTaskProgress();
+            await fetchTaskSubmissions(taskId);
+        }
     } catch(e) {
         showToast('Gagal menyimpan nilai tugas.', 'red');
     }
@@ -924,7 +1009,7 @@ function renderTugas(filter) {
     if (filter === 'selesai') list = list.filter(t => !!t.submission_id);
 
     if (!list.length) {
-        el.innerHTML = '<p style="text-align:center;color:#64748b;padding:40px 0;">Tidak ada tugas.</p>';
+        el.innerHTML = '<div class="empty-state"><i class="fas fa-clipboard-check"></i><strong>Tidak ada tugas</strong><span>Filter ini sedang kosong. Mantap, area kerja kamu bersih.</span></div>';
         return;
     }
 
@@ -939,6 +1024,18 @@ function renderTugas(filter) {
         const deadlineFmt = t.deadline
             ? new Date(t.deadline).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })
             : 'Tidak ada deadline';
+        const deadlineDetail = t.deadline
+            ? new Date(t.deadline).toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
+            : 'Fleksibel';
+        const reviewed = t.submission_status === 'dinilai';
+        const scoreHidden = Number(t.show_score ?? 1) === 0;
+        const hasVisibleScore = t.submission_nilai !== null && t.submission_nilai !== undefined && t.submission_nilai !== '';
+        const statusLabel = staffView
+            ? `${progressPct}% terkumpul`
+            : reviewed ? (scoreHidden ? 'Selesai, nilai tidak ditampilkan' : 'Sudah direview')
+            : isDone ? 'Terkumpul, menunggu review'
+            : isLate ? 'Lewat deadline'
+            : 'Perlu dikerjakan';
 
         return `
         <div class="tugas-item ${isDone ? 'done' : ''}" id="tugas-item-${t.id}">
@@ -946,20 +1043,27 @@ function renderTugas(filter) {
                 <i class="${getMapelIcon(t.mapel)}" style="color:${getMapelColor(t.mapel)};"></i>
             </div>
             <div class="ti-info">
-                <h4>${escHtml(t.judul)}</h4>
-                <p>${escHtml(t.mapel)} · ${t.target_nisn ? `Individu ${escHtml(t.target_nisn)} · ` : ''}${escHtml(t.kelas || '')} · Deadline: ${deadlineFmt}</p>
-                ${t.submission_nilai ? `<p style="color:#10b981;font-size:.75rem;font-weight:700;">Nilai: ${t.submission_nilai}</p>` : ''}
+                <div class="ti-title-row">
+                    <h4>${escHtml(t.judul)}</h4>
+                    <span class="status-pill ${staffView ? 'info' : prioritas}">${escHtml(statusLabel)}</span>
+                </div>
+                <div class="ti-meta">
+                    <span><i class="fas fa-book"></i>${escHtml(t.mapel || 'Mapel')}</span>
+                    <span><i class="fas fa-users"></i>${t.target_nisn ? `Individu ${escHtml(t.target_nisn)}` : escHtml(t.kelas || 'Kelas')}</span>
+                    <span><i class="fas fa-clock"></i>${escHtml(deadlineDetail)}</span>
+                </div>
+                ${hasVisibleScore ? `<p class="ti-score">Nilai: ${escHtml(t.submission_nilai)}</p>` : ''}
+                ${reviewed && scoreHidden ? '<p class="ti-score muted">Tugas sudah selesai dan direview. Nilai tidak ditampilkan untuk tugas ini.</p>' : ''}
                 ${staffView ? `<p class="task-inline-progress">${totalSelesai}/${totalSiswa} siswa selesai · ${progressPct}%</p>` : ''}
             </div>
-            <span class="ti-deadline ${staffView ? 'green' : prioritas}">${staffView ? `${progressPct}%` : isDone ? '✓ Selesai' : isLate ? 'Terlambat' : deadlineFmt}</span>
+            <span class="ti-deadline ${staffView ? 'green' : reviewed ? 'green' : prioritas}">${staffView ? `${progressPct}%` : reviewed ? (scoreHidden ? 'Selesai' : 'Direview') : isDone ? 'Terkumpul' : isLate ? 'Terlambat' : deadlineFmt}</span>
             ${!staffView && !isDone ? `<button onclick="bukaSubmitTugas('${t.id}')"
-                style="padding:8px 16px;background:var(--navy);color:white;border:none;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;"
-                onmouseover="this.style.background='var(--gold)';this.style.color='var(--navy)'"
-                onmouseout="this.style.background='var(--navy)';this.style.color='white'">
-                Kumpulkan
+                class="task-submit-btn">
+                <i class="fas fa-paper-plane"></i> Kumpulkan
             </button>` : ''}
         </div>`;
     }).join('');
+    updateLearningOverview();
 }
 
 function filterTugas(filter, btn) {
@@ -994,21 +1098,40 @@ function renderMiniTugas() {
 
 async function fetchKelas() {
     try {
-        const user = lmsState.user;
-        if (!user) return;
+        if (!lmsState.user) return;
 
-        const mapelSet = new Set(lmsState.tugasData.map(t => t.mapel).filter(Boolean));
-        const kelasList = [...mapelSet].map((mapel, i) => ({
-            id: i,
-            nama: mapel,
-            guru: 'Guru Pengampu',
-            progress: Math.min(100, Math.max(0, Math.round(
-                (lmsState.tugasData.filter(t => t.mapel === mapel && t.submission_id).length /
-                Math.max(1, lmsState.tugasData.filter(t => t.mapel === mapel).length)) * 100
-            ))),
-            color: getMapelColor(mapel),
-            icon: getMapelIcon(mapel)
-        }));
+        const mapels = new Set([
+            ...lmsState.tugasData.map(t => t.mapel).filter(Boolean),
+            ...lmsState.allMateri.map(m => m.mapel).filter(Boolean),
+            ...lmsState.nilaiData.map(n => n.mapel).filter(Boolean),
+        ]);
+
+        const kelasList = [...mapels].sort((a, b) => a.localeCompare(b, 'id')).map((mapel, i) => {
+            const tasks = lmsState.tugasData.filter(t => t.mapel === mapel);
+            const doneTasks = tasks.filter(t => t.submission_id);
+            const materials = lmsState.allMateri.filter(m => m.mapel === mapel);
+            const grade = lmsState.nilaiData.find(n => n.mapel === mapel);
+            const final = grade
+                ? Number(grade.nilai_final ?? (Number(grade.uh || 0) * 0.2 + Number(grade.uts || 0) * 0.25 + Number(grade.uas || 0) * 0.3 + Number(grade.tugas || 0) * 0.25)).toFixed(1)
+                : null;
+            const taskProgress = tasks.length ? Math.round((doneTasks.length / tasks.length) * 100) : 0;
+            const materialBoost = materials.length && !tasks.length ? 35 : Math.min(35, materials.length * 8);
+            const gradeBoost = grade ? 20 : 0;
+            const progress = Math.min(100, Math.max(0, Math.round((tasks.length ? taskProgress * 0.65 : 0) + materialBoost + gradeBoost)));
+            return {
+                id: i,
+                nama: mapel,
+                guru: grade?.guru_nama || tasks.find(t => t.guru_nama)?.guru_nama || 'Guru Pengampu',
+                progress,
+                color: getMapelColor(mapel),
+                icon: getMapelIcon(mapel),
+                tugasTotal: tasks.length,
+                tugasSelesai: doneTasks.length,
+                materiTotal: materials.length,
+                nilaiFinal: final,
+                nextDeadline: tasks.filter(t => !t.submission_id && t.deadline).sort((a, b) => new Date(a.deadline) - new Date(b.deadline))[0]?.deadline || null,
+            };
+        });
 
         renderKelas(kelasList);
         renderMiniKelas(kelasList);
@@ -1019,18 +1142,23 @@ function renderKelas(kelasList) {
     const el = document.getElementById('kelas-grid');
     if (!el) return;
     if (!kelasList.length) {
-        el.innerHTML = '<p style="text-align:center;color:#64748b;padding:40px 0;">Belum ada kelas terdaftar.</p>';
+        el.innerHTML = '<div class="empty-state"><i class="fas fa-book-open"></i><strong>Belum ada kelas</strong><span>Kelas akan muncul otomatis setelah ada tugas atau materi mapel.</span></div>';
         return;
     }
     el.innerHTML = kelasList.map(k => `
-        <div class="kelas-card">
+        <article class="kelas-card learning-card">
             <div class="kc-banner" style="background:linear-gradient(135deg,${k.color},${k.color}cc);">
                 <i class="${k.icon}"></i>
-                <span class="kc-badge">Aktif</span>
+                <span class="kc-badge">${k.nextDeadline ? 'Ada Deadline' : 'Aktif'}</span>
             </div>
             <div class="kc-body">
                 <h3>${escHtml(k.nama)}</h3>
                 <p>${escHtml(k.guru)}</p>
+                <div class="learning-facts">
+                    <span><i class="fas fa-folder-open"></i><strong>${k.materiTotal}</strong> Materi</span>
+                    <span><i class="fas fa-list-check"></i><strong>${k.tugasSelesai}/${k.tugasTotal}</strong> Tugas</span>
+                    <span><i class="fas fa-star"></i><strong>${k.nilaiFinal || '-'}</strong> Nilai</span>
+                </div>
                 <div class="kc-progress">
                     <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);">
                         <span>Progress</span><span>${k.progress}%</span>
@@ -1039,9 +1167,15 @@ function renderKelas(kelasList) {
                         <div class="kc-prog-fill" style="width:${k.progress}%"></div>
                     </div>
                 </div>
+                ${k.nextDeadline ? `<p class="learning-deadline"><i class="fas fa-clock"></i> Deadline terdekat ${new Date(k.nextDeadline).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })}</p>` : ''}
+                <div class="learning-actions">
+                    <button type="button" onclick="searchMateri(decodeURIComponent('${encodeURIComponent(k.nama)}'));navigate('materi', document.querySelector('[data-page=materi]'))"><i class="fas fa-book-open"></i> Materi</button>
+                    <button type="button" onclick="navigate('tugas', document.querySelector('[data-page=tugas]'))"><i class="fas fa-clipboard-check"></i> Tugas</button>
+                </div>
             </div>
-        </div>
+        </article>
     `).join('');
+    updateLearningOverview(kelasList);
 }
 
 function renderMiniKelas(kelasList) {
@@ -1140,7 +1274,7 @@ function renderMateri() {
     const el = document.getElementById('materi-list');
     if (!el) return;
     if (!lmsState.allMateri.length) {
-        el.innerHTML = '<p style="text-align:center;color:#64748b;padding:40px 0;">Belum ada materi.</p>';
+        el.innerHTML = '<div class="empty-state"><i class="fas fa-folder-open"></i><strong>Belum ada materi</strong><span>Materi yang diunggah guru akan tampil di sini.</span></div>';
         return;
     }
     el.innerHTML = lmsState.allMateri.map(m => `
@@ -1150,7 +1284,11 @@ function renderMateri() {
             </div>
             <div class="mi-info">
                 <h4>${escHtml(m.title || m.original_name)}</h4>
-                <p>${escHtml(m.mapel || '-')} · ${escHtml(m.target_label || 'Materi LMS')} · ${m.ukuran || '-'}</p>
+                <div class="mi-meta">
+                    <span><i class="fas fa-book"></i>${escHtml(m.mapel || '-')}</span>
+                    <span><i class="fas fa-user-group"></i>${escHtml(m.target_label || 'Materi LMS')}</span>
+                    <span><i class="fas fa-hard-drive"></i>${escHtml(m.ukuran || '-')}</span>
+                </div>
                 ${m.deskripsi ? `<p>${escHtml(m.deskripsi)}</p>` : ''}
             </div>
             <span class="mi-type ${m.tipe}">${m.jenis}</span>
@@ -1263,6 +1401,8 @@ function formatFileSize(bytes = 0) {
 function chooseAttachmentFile(inputId, kind) {
     const input = document.getElementById(inputId);
     if (!input) return;
+    if (kind === 'video' && !LMS_FEATURES.forumVideoAttachment) return showToast('Upload video sedang dibatasi oleh konfigurasi server.', 'orange');
+    if (kind === 'audio' && !LMS_FEATURES.forumAudioAttachment) return showToast('Upload audio sedang dibatasi oleh konfigurasi server.', 'orange');
     const config = getAttachmentConfig(kind);
     input.accept = config.accept;
     input.dataset.kind = kind;
@@ -1366,7 +1506,7 @@ function validateStudentAttachment(file) {
     const fileName = String(file.name || '').toLowerCase();
     const isAllowed = allowedMimes.includes(file.type) || allowedExts.some(ext => fileName.endsWith(ext));
     if (!isAllowed) {
-        showToast('Format file belum didukung. Pakai foto, PDF/dokumen, video, atau audio.', 'orange');
+        showToast('Format file belum didukung. Pakai foto, PDF/dokumen, video, atau audio sesuai konfigurasi.', 'orange');
         return null;
     }
     if (file.size > config.max) {
@@ -1400,6 +1540,10 @@ function clearForumAttachment() {
 }
 
 async function toggleForumVoiceNote() {
+    if (!LMS_FEATURES.forumVoiceNote) {
+        showToast('Voice note forum sedang dimatikan oleh konfigurasi server.', 'orange');
+        return;
+    }
     if (lmsState.forumRecorder?.state === 'recording') return stopForumVoiceNote();
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
         showToast('Browser belum mendukung rekam VN langsung.', 'orange');
@@ -1654,12 +1798,20 @@ function renderNilai() {
     const el = document.getElementById('nilai-grid');
     if (!el) return;
     if (!lmsState.nilaiData.length) {
-        el.innerHTML = '<p style="text-align:center;color:#64748b;padding:40px 0;">Belum ada data nilai.</p>';
+        el.innerHTML = '<div class="empty-state"><i class="fas fa-chart-line"></i><strong>Belum ada data nilai</strong><span>Nilai akan tampil setelah guru menginput komponen penilaian.</span></div>';
         return;
     }
-    el.innerHTML = lmsState.nilaiData.map(n => {
-        const final  = n.nilai_final ?? ((n.uh*0.2 + n.uts*0.25 + n.uas*0.3 + n.tugas*0.25)).toFixed(1);
-        const lulus  = parseFloat(final) >= (n.kkm || 70);
+    const nilaiRows = lmsState.nilaiData.map(n => {
+        const final = Number(n.nilai_final ?? ((Number(n.uh || 0) * 0.2 + Number(n.uts || 0) * 0.25 + Number(n.uas || 0) * 0.3 + Number(n.tugas || 0) * 0.25))).toFixed(1);
+        return { ...n, final: Number(final), finalText: final, kkmValue: Number(n.kkm || 70) };
+    });
+    const totalFinal = nilaiRows.reduce((sum, n) => sum + n.final, 0);
+    const avgFinal = nilaiRows.length ? (totalFinal / nilaiRows.length).toFixed(1) : '0.0';
+    const highest = Math.max(...nilaiRows.map(n => n.final));
+    const lowest = Math.min(...nilaiRows.map(n => n.final));
+    const passed = nilaiRows.filter(n => n.final >= n.kkmValue).length;
+    const cards = nilaiRows.map(n => {
+        const lulus  = n.final >= n.kkmValue;
         const color  = getMapelColor(n.mapel);
         return `
         <div class="nilai-card" style="border-top-color:${color};">
@@ -1669,7 +1821,7 @@ function renderNilai() {
                 </div>
                 <div class="nc-info">
                     <h3>${escHtml(n.mapel)}</h3>
-                    <p>Semester Genap · KKM ${n.kkm || 70}</p>
+                    <p>Semester Genap · KKM ${n.kkmValue}</p>
                 </div>
             </div>
             <div class="nc-body">
@@ -1681,16 +1833,51 @@ function renderNilai() {
                 ].map(r => `
                     <div class="nilai-row">
                         <span class="nr-label">${r.label}</span>
-                        <span class="nr-val ${r.val >= (n.kkm||70) ? 'lulus' : 'remedial'}">${r.val ?? '-'}</span>
+                        <span class="nr-val ${Number(r.val ?? 0) >= n.kkmValue ? 'lulus' : 'remedial'}">${r.val ?? '-'}</span>
                     </div>
                 `).join('')}
             </div>
             <div class="nc-avg">
                 <span>Nilai Akhir</span>
-                <strong style="color:${lulus ? 'var(--green)' : 'var(--red)'};">${final}</strong>
+                <strong style="color:${lulus ? 'var(--green)' : 'var(--red)'};">${n.finalText}</strong>
             </div>
         </div>`;
     }).join('');
+    el.innerHTML = `
+        ${cards}
+        <section class="nilai-summary-panel" aria-label="Total nilai keseluruhan">
+            <div>
+                <span class="summary-eyebrow">Total Keseluruhan</span>
+                <h3>Rata-rata akhir semua mapel</h3>
+                <p>Detail komponen tetap ditampilkan per mapel di atas. Angka ini hanya rangkuman akhir, bukan pengganti detail nilai.</p>
+            </div>
+            <div class="nilai-total-final">${avgFinal}</div>
+            <div class="nilai-summary-grid">
+                <span><strong>${nilaiRows.length}</strong><small>Mapel</small></span>
+                <span><strong>${passed}/${nilaiRows.length}</strong><small>Lulus KKM</small></span>
+                <span><strong>${highest.toFixed(1)}</strong><small>Tertinggi</small></span>
+                <span><strong>${lowest.toFixed(1)}</strong><small>Terendah</small></span>
+            </div>
+        </section>
+    `;
+    updateLearningOverview();
+}
+
+function updateLearningOverview(kelasList = null) {
+    const mapelCount = kelasList?.length
+        ?? new Set([
+            ...lmsState.tugasData.map(t => t.mapel).filter(Boolean),
+            ...lmsState.allMateri.map(m => m.mapel).filter(Boolean),
+            ...lmsState.nilaiData.map(n => n.mapel).filter(Boolean),
+        ]).size;
+    const activeTasks = canEditBiodata()
+        ? lmsState.tugasData.length
+        : lmsState.tugasData.filter(t => !t.submission_id).length;
+
+    const mapelEl = document.getElementById('sc-mapel');
+    const tugasEl = document.getElementById('sc-tugas');
+    if (mapelEl) mapelEl.textContent = mapelCount || '0';
+    if (tugasEl) tugasEl.textContent = activeTasks || '0';
 }
 
 /* ── Fetch: Jadwal ──────────────────────────────────────────── */
@@ -2772,20 +2959,17 @@ function validateTugasAttachment(file) {
         'application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation',
         'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain',
-        'image/jpeg','image/png','image/webp','image/gif',
-        'video/mp4','video/webm','video/quicktime',
-        'audio/mpeg','audio/wav','audio/ogg','audio/webm',
-        'application/zip','application/x-zip-compressed'
+        'image/jpeg','image/png','image/webp','image/gif'
     ];
-    const allowedExts = ['.pdf','.doc','.docx','.ppt','.pptx','.xls','.xlsx','.txt','.jpg','.jpeg','.png','.webp','.gif','.mp4','.webm','.mov','.mp3','.wav','.ogg','.zip'];
+    const allowedExts = ['.pdf','.doc','.docx','.ppt','.pptx','.xls','.xlsx','.txt','.jpg','.jpeg','.png','.webp','.gif'];
     const fileName = String(file.name || '').toLowerCase();
     const isAllowed = allowedMimes.includes(file.type) || allowedExts.some(ext => fileName.endsWith(ext));
     if (!isAllowed) {
-        showToast('Lampiran tugas harus dokumen, foto, video, audio, atau ZIP.', 'orange');
+        showToast('Lampiran tugas harus dokumen atau foto.', 'orange');
         return false;
     }
-    if (file.size > 50 * 1024 * 1024) {
-        showToast('Lampiran tugas maksimal 50MB.', 'orange');
+    if (file.size > 3 * 1024 * 1024) {
+        showToast('Lampiran tugas maksimal 3MB.', 'orange');
         return false;
     }
     return true;
@@ -2807,7 +2991,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (existingUser && token) {
         lmsState.user = existingUser;
-        initDashboard().then(() => showLmsScreen('lms-dashboard'));
+        initDashboard().then(() => {
+            showLmsScreen('lms-dashboard');
+            openInitialHashPage();
+        });
     } else {
         showLmsScreen('lms-login');
     }

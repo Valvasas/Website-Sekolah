@@ -19,6 +19,7 @@ const { initDatabase }                   = require('./config/database');
 const { apiLimiter }                     = require('./middleware/rateLimiter');
 const { verifyToken }                    = require('./config/jwt');
 const { notFoundHandler, globalErrorHandler } = require('./middleware/errorHandler');
+const permissions                        = require('./utils/permissions');
 
 const app    = express();
 const server = http.createServer(app);
@@ -153,10 +154,210 @@ app.get('/api/resource-status', (_req, res) => {
                 forum: ENV.UPLOAD_MAX_FORUM_MB,
                 cbt: ENV.UPLOAD_MAX_CBT_MB,
             },
+            features: publicFeatureFlags(),
             uptime: Math.floor(process.uptime()),
             heapMb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
         }
     });
+});
+
+function publicFeatureFlags() {
+    return {
+        forumAttachment: ENV.FEATURE_FORUM_ATTACHMENT,
+        forumVideoAttachment: ENV.FEATURE_FORUM_VIDEO_ATTACHMENT,
+        forumAudioAttachment: ENV.FEATURE_FORUM_AUDIO_ATTACHMENT,
+        forumChat: ENV.FEATURE_FORUM_CHAT,
+        forumVoiceNote: ENV.FEATURE_FORUM_VOICE_NOTE,
+        localVideoUpload: ENV.FEATURE_LOCAL_VIDEO_UPLOAD,
+        kantin: ENV.FEATURE_KANTIN,
+        cbtCameraMonitor: ENV.FEATURE_CBT_CAMERA_MONITOR,
+    };
+}
+
+function requireApiRole(req, res, roles) {
+    const authHeader = req.headers['authorization'];
+    const rawToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    const { valid, decoded } = verifyToken(rawToken);
+    if (!valid || !roles.includes(decoded?.role)) {
+        res.status(401).json({ success:false, message:'Akses tidak diizinkan untuk role akun ini.' });
+        return null;
+    }
+    return decoded;
+}
+
+function requireApiPermission(req, res, permission) {
+    const authHeader = req.headers['authorization'];
+    const rawToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    const { valid, decoded } = verifyToken(rawToken);
+    if (!valid || !permissions.hasPermission(decoded, permission)) {
+        res.status(401).json({ success:false, message:'Akses tidak diizinkan untuk permission akun ini.' });
+        return null;
+    }
+    return decoded;
+}
+
+function formatStorageFile(row) {
+    return {
+        id: row.id,
+        original_name: row.original_name,
+        file_url: row.file_url,
+        mime_type: row.mime_type,
+        size_bytes: Number(row.size_bytes || 0),
+        size_mb: Number((Number(row.size_bytes || 0) / 1024 / 1024).toFixed(2)),
+        category: row.category,
+        entity_type: row.entity_type,
+        created_at: row.created_at,
+        uploader_name: row.uploader_name || '-',
+    };
+}
+
+function resolveUploadPathFromRow(row) {
+    const uploadRoot = path.join(__dirname, 'public/uploads');
+    const candidate = row.file_path
+        ? path.resolve(row.file_path)
+        : path.resolve(__dirname, 'public', String(row.file_url || '').replace(/^\/+/, ''));
+    if (!candidate.startsWith(uploadRoot)) return null;
+    return candidate;
+}
+
+app.get('/api/features', (_req, res) => {
+    res.json({ success:true, data: publicFeatureFlags() });
+});
+
+app.get('/api/storage/files', (req, res) => {
+    if (!requireApiPermission(req, res, 'manageStorage')) return;
+    try {
+        const db = require('./config/database')();
+        const category = String(req.query.category || '').trim();
+        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+        const order = req.query.sort === 'old' ? 'f.created_at ASC' : 'f.size_bytes DESC';
+        const where = category ? 'WHERE f.category = ?' : '';
+        const params = category ? [category, limit] : [limit];
+        const rows = db.prepare(`
+            SELECT f.*, u.nama_lengkap as uploader_name
+            FROM file_uploads f
+            LEFT JOIN users u ON u.id = f.uploader_id
+            ${where}
+            ORDER BY ${order}
+            LIMIT ?
+        `).all(...params);
+        res.json({ success:true, data: rows.map(formatStorageFile) });
+    } catch (err) {
+        console.error('[Storage files]', err.message);
+        res.status(500).json({ success:false, message:'Gagal mengambil daftar file.' });
+    }
+});
+
+app.delete('/api/storage/files/:id', (req, res) => {
+    if (!requireApiPermission(req, res, 'manageStorage')) return;
+    try {
+        const db = require('./config/database')();
+        const row = db.prepare('SELECT * FROM file_uploads WHERE id = ?').get(req.params.id);
+        if (!row) return res.status(404).json({ success:false, message:'File tidak ditemukan.' });
+        const filePath = resolveUploadPathFromRow(row);
+        if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        db.prepare('DELETE FROM file_uploads WHERE id = ?').run(req.params.id);
+        res.json({ success:true, message:'File berhasil dihapus dari storage dan database.' });
+    } catch (err) {
+        console.error('[Storage delete]', err.message);
+        res.status(500).json({ success:false, message:'Gagal menghapus file.' });
+    }
+});
+
+app.post('/api/storage/cleanup-orphans', (req, res) => {
+    if (!requireApiPermission(req, res, 'manageStorage')) return;
+    try {
+        const uploadRoot = path.join(__dirname, 'public/uploads');
+        const db = require('./config/database')();
+        const known = new Set(db.prepare('SELECT file_path FROM file_uploads WHERE file_path IS NOT NULL').all().map(r => path.resolve(r.file_path)));
+        const orphanFiles = [];
+        function walk(dir) {
+            if (!fs.existsSync(dir)) return;
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                const full = path.join(dir, entry.name);
+                if (entry.isDirectory()) walk(full);
+                else if (!known.has(path.resolve(full))) orphanFiles.push(full);
+            }
+        }
+        walk(uploadRoot);
+        const shouldDelete = req.query.delete === 'true' || req.body?.delete === true;
+        let deleted = 0;
+        if (shouldDelete) {
+            orphanFiles.forEach(file => {
+                if (path.resolve(file).startsWith(uploadRoot) && fs.existsSync(file)) {
+                    fs.unlinkSync(file);
+                    deleted += 1;
+                }
+            });
+        }
+        res.json({
+            success:true,
+            message: shouldDelete ? `${deleted} file orphan dihapus.` : `${orphanFiles.length} file orphan ditemukan. Jalankan mode hapus jika sudah dicek.`,
+            data: {
+                count: orphanFiles.length,
+                deleted,
+                files: orphanFiles.slice(0, 50).map(file => path.relative(uploadRoot, file).replace(/\\/g, '/')),
+            }
+        });
+    } catch (err) {
+        console.error('[Storage cleanup]', err.message);
+        res.status(500).json({ success:false, message:'Gagal cleanup storage.' });
+    }
+});
+
+function dbFilePath() {
+    const configured = ENV.DB_PATH.endsWith('.db') ? ENV.DB_PATH : `${ENV.DB_PATH}.db`;
+    return path.resolve(__dirname, configured);
+}
+
+function backupDirPath() {
+    const dir = path.join(__dirname, 'backups');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive:true });
+    return dir;
+}
+
+app.get('/api/backup/database', (req, res) => {
+    if (!requireApiPermission(req, res, 'backupDatabase')) return;
+    try {
+        const dir = backupDirPath();
+        const rows = fs.readdirSync(dir)
+            .filter(name => /^smkn1terisi-\d{8}-\d{6}\.db$/.test(name))
+            .map(name => {
+                const stat = fs.statSync(path.join(dir, name));
+                return { name, size_bytes: stat.size, created_at: stat.birthtime.toISOString() };
+            })
+            .sort((a, b) => b.created_at.localeCompare(a.created_at));
+        res.json({ success:true, data: rows });
+    } catch (err) {
+        res.status(500).json({ success:false, message:'Gagal membaca daftar backup.' });
+    }
+});
+
+app.post('/api/backup/database', (req, res) => {
+    if (!requireApiPermission(req, res, 'backupDatabase')) return;
+    try {
+        const source = dbFilePath();
+        if (!fs.existsSync(source)) return res.status(404).json({ success:false, message:'File database tidak ditemukan.' });
+        const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+        const name = `smkn1terisi-${stamp.slice(0,8)}-${stamp.slice(8)}.db`;
+        const dir = backupDirPath();
+        fs.copyFileSync(source, path.join(dir, name));
+        const backups = fs.readdirSync(dir).filter(n => /^smkn1terisi-\d{8}-\d{6}\.db$/.test(n)).sort().reverse();
+        backups.slice(5).forEach(old => fs.unlinkSync(path.join(dir, old)));
+        res.status(201).json({ success:true, message:'Backup database berhasil dibuat.', data:{ name } });
+    } catch (err) {
+        console.error('[DB backup]', err.message);
+        res.status(500).json({ success:false, message:'Gagal membuat backup database.' });
+    }
+});
+
+app.get('/api/backup/database/:name', (req, res) => {
+    if (!requireApiPermission(req, res, 'backupDatabase')) return;
+    const name = String(req.params.name || '');
+    if (!/^smkn1terisi-\d{8}-\d{6}\.db$/.test(name)) return res.status(400).json({ success:false, message:'Nama backup tidak valid.' });
+    const file = path.join(backupDirPath(), name);
+    if (!fs.existsSync(file)) return res.status(404).json({ success:false, message:'Backup tidak ditemukan.' });
+    res.download(file, name);
 });
 
 /* ── Rate limiter untuk semua /api/* ──────────────────────────────── */
@@ -334,6 +535,10 @@ function setupWebSocket() {
                 case 'location': case 'location_update': case 'camera_status': case 'camera_frame':
                 case 'screen_frame': case 'screen_status':
                 case 'answer_update': case 'violation':
+                    if (!ENV.FEATURE_CBT_CAMERA_MONITOR && ['camera_frame','screen_frame','screen_status'].includes(msg.type)) {
+                        send(ws, { type: 'proctor_disabled', message: 'Monitoring kamera/screen sedang dimatikan di server.' });
+                        return;
+                    }
                     saveProctorEvent(msg, ws);
                     fwdAdminTelemetry(msg, ws);
                     break;

@@ -209,6 +209,7 @@ function setup() {
             kelas TEXT NOT NULL, deadline TEXT,
             assignment_group_id TEXT,
             target_nisn TEXT,
+            show_score INTEGER NOT NULL DEFAULT 1,
             created_by TEXT NOT NULL,
             is_active INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),

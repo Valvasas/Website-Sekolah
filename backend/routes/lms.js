@@ -7,6 +7,7 @@ const router   = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { authenticate, authorize } = require('../middleware/auth');
 const getDB    = require('../config/database');
+const ENV      = require('../config/env');
 
 const nowISO = () => new Date().toISOString();
 const STAFF  = ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'];
@@ -22,15 +23,52 @@ const cleanUrl = value => {
 };
 const isStaffUser = user => STAFF.includes(user?.role);
 
+function requireEnabled(flag, message) {
+    return (_req, res, next) => {
+        if (!flag) return res.status(403).json({ success: false, message });
+        next();
+    };
+}
+
 function normalizeList(value, maxItems = 20) {
     const raw = Array.isArray(value) ? value : String(value || '').split(',');
     return [...new Set(raw.map(v => cleanText(v, 80)).filter(Boolean))].slice(0, maxItems);
+}
+
+function syncTaskAverageToGradebook(db, { nisn, mapel, semester = 'genap' }) {
+    if (!nisn || !mapel) return null;
+    const avg = db.prepare(`
+        SELECT AVG(s.nilai) as rata
+        FROM submission_tugas s
+        JOIN tugas_kelas t ON t.id = s.tugas_id
+        WHERE s.nisn = ?
+          AND t.mapel = ?
+          AND t.is_active = 1
+          AND COALESCE(t.show_score, 1) = 1
+          AND s.status = 'dinilai'
+          AND s.nilai IS NOT NULL
+    `).get(nisn, mapel)?.rata;
+    if (avg === undefined || avg === null) return null;
+
+    const tugasAvg = Number(Number(avg).toFixed(2));
+    const existing = db.prepare('SELECT id FROM nilai_siswa WHERE nisn = ? AND semester = ? AND mapel = ?')
+        .get(nisn, semester, mapel);
+    if (existing) {
+        db.prepare('UPDATE nilai_siswa SET tugas = ? WHERE id = ?').run(tugasAvg, existing.id);
+    } else {
+        db.prepare(`
+            INSERT INTO nilai_siswa (id, nisn, semester, mapel, uh, uts, uas, tugas, kkm, created_at)
+            VALUES (?, ?, ?, ?, 0, 0, 0, ?, 70, ?)
+        `).run(uuidv4(), nisn, semester, mapel, tugasAvg, nowISO());
+    }
+    return tugasAvg;
 }
 
 function ensureLmsSchema(db) {
     const taskCols = db.pragma('table_info(tugas_kelas)').map(c => c.name);
     if (!taskCols.includes('assignment_group_id')) db.exec('ALTER TABLE tugas_kelas ADD COLUMN assignment_group_id TEXT');
     if (!taskCols.includes('target_nisn')) db.exec('ALTER TABLE tugas_kelas ADD COLUMN target_nisn TEXT');
+    if (!taskCols.includes('show_score')) db.exec('ALTER TABLE tugas_kelas ADD COLUMN show_score INTEGER NOT NULL DEFAULT 1');
 
     const forumCols = db.pragma('table_info(forum_posts)').map(c => c.name);
     if (!forumCols.includes('is_pinned')) db.exec('ALTER TABLE forum_posts ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0');
@@ -71,20 +109,22 @@ router.get('/tugas', authenticate, (req, res) => {
     try {
         ensureLmsSchema(db);
         if (isStaffUser(req.user)) {
+            const canSeeAllTasks = ['super_admin','kepala_sekolah','wakil_kepala_sekolah'].includes(req.user.role);
             const tugas = db.prepare(`
                 SELECT t.*, u.nama_lengkap as guru_nama,
                        COUNT(DISTINCT CASE WHEN t.target_nisn IS NOT NULL THEN target_user.nisn ELSE su.nisn END) as total_siswa,
-                       COUNT(DISTINCT s.nisn) as total_selesai
+                   COUNT(DISTINCT s.nisn) as total_selesai,
+                   COUNT(DISTINCT CASE WHEN s.status = 'dinilai' THEN s.nisn END) as total_direview
                 FROM tugas_kelas t
                 LEFT JOIN users u ON t.created_by = u.id
                 LEFT JOIN siswa_profil sp ON sp.kelas = t.kelas AND t.target_nisn IS NULL
                 LEFT JOIN users su ON su.nisn = sp.nisn AND su.role = 'siswa' AND su.is_active = 1
                 LEFT JOIN users target_user ON target_user.nisn = t.target_nisn AND target_user.role = 'siswa' AND target_user.is_active = 1
                 LEFT JOIN submission_tugas s ON s.tugas_id = t.id AND s.nisn = COALESCE(t.target_nisn, sp.nisn)
-                WHERE t.created_by = ? AND t.is_active = 1
+                WHERE ${canSeeAllTasks ? '1=1' : 't.created_by = ?'} AND t.is_active = 1
                 GROUP BY t.id
                 ORDER BY t.created_at DESC, t.deadline ASC
-            `).all(req.user.sub);
+            `).all(...(canSeeAllTasks ? [] : [req.user.sub]));
 
             return res.json({ success: true, data: tugas });
         }
@@ -96,7 +136,9 @@ router.get('/tugas', authenticate, (req, res) => {
         const tugas = db.prepare(`
             SELECT t.*, u.nama_lengkap as guru_nama,
                    s.id as submission_id, s.status as submission_status,
-                   s.submitted_at, s.nilai as submission_nilai
+                   s.submitted_at,
+                   CASE WHEN COALESCE(t.show_score, 1) = 1 THEN s.nilai ELSE NULL END as submission_nilai,
+                   CASE WHEN COALESCE(t.show_score, 1) = 1 THEN s.feedback ELSE NULL END as submission_feedback
             FROM tugas_kelas t
             LEFT JOIN users u ON t.created_by = u.id
             LEFT JOIN submission_tugas s ON s.tugas_id = t.id AND s.nisn = ?
@@ -122,6 +164,7 @@ router.post('/tugas', authenticate, authorize(...STAFF), (req, res) => {
         .map(n => String(n).replace(/\D/g, '').slice(0, 10))
         .filter(n => n.length === 10);
     const deadline = cleanText(req.body.deadline, 40);
+    const showScore = (req.body.show_score === false || req.body.show_score === 0 || req.body.show_score === '0') ? 0 : 1;
 
     if (!judul || !mapelList.length || (!kelasList.length && !targetNisnList.length)) {
         return res.status(400).json({ success: false, message: 'Judul, minimal 1 mapel, dan target kelas atau NISN siswa wajib diisi.' });
@@ -135,8 +178,8 @@ router.post('/tugas', authenticate, authorize(...STAFF), (req, res) => {
         const now = nowISO();
         const ids = [];
         const insertTask = db.prepare(`
-            INSERT INTO tugas_kelas (id,judul,deskripsi,mapel,kelas,deadline,assignment_group_id,target_nisn,created_by,is_active,created_at,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,1,?,?)
+            INSERT INTO tugas_kelas (id,judul,deskripsi,mapel,kelas,deadline,assignment_group_id,target_nisn,show_score,created_by,is_active,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?)
         `);
         const siswaStmt = db.prepare(`
             SELECT DISTINCT u.id FROM users u
@@ -159,7 +202,7 @@ router.post('/tugas', authenticate, authorize(...STAFF), (req, res) => {
                 for (const mapel of mapelList) {
                     const id = uuidv4();
                     ids.push(id);
-                    insertTask.run(id, judul, deskripsi, mapel, kelas, deadline, groupId, null, req.user.sub, now, now);
+                    insertTask.run(id, judul, deskripsi, mapel, kelas, deadline, groupId, null, showScore, req.user.sub, now, now);
                     for (const s of siswaStmt.all(kelas)) {
                         insertNotif.run(
                             uuidv4(), s.id,
@@ -177,7 +220,7 @@ router.post('/tugas', authenticate, authorize(...STAFF), (req, res) => {
                     const id = uuidv4();
                     ids.push(id);
                     const kelas = target.kelas || 'Individu';
-                    insertTask.run(id, judul, deskripsi, mapel, kelas, deadline, groupId, nisn, req.user.sub, now, now);
+                    insertTask.run(id, judul, deskripsi, mapel, kelas, deadline, groupId, nisn, showScore, req.user.sub, now, now);
                     insertNotif.run(
                         uuidv4(), target.id,
                         `Tugas Individu: ${judul}`,
@@ -203,24 +246,27 @@ router.get('/tugas/progress', authenticate, authorize(...STAFF), (req, res) => {
     const db = getDB();
     try {
         ensureLmsSchema(db);
+        const canSeeAllTasks = ['super_admin','kepala_sekolah','wakil_kepala_sekolah'].includes(req.user.role);
         const rows = db.prepare(`
-            SELECT t.id, t.assignment_group_id, t.judul, t.mapel, t.kelas, t.deadline, t.created_at,
+            SELECT t.id, t.assignment_group_id, t.judul, t.mapel, t.kelas, t.deadline, t.created_at, COALESCE(t.show_score, 1) as show_score,
                    COUNT(DISTINCT CASE WHEN t.target_nisn IS NOT NULL THEN target_user.nisn ELSE u.nisn END) as total_siswa,
                    COUNT(DISTINCT s.nisn) as total_selesai,
+                   COUNT(DISTINCT CASE WHEN s.status = 'dinilai' THEN s.nisn END) as total_direview,
                    GROUP_CONCAT(CASE WHEN COALESCE(t.target_nisn, u.nisn) IS NOT NULL AND s.id IS NULL THEN COALESCE(t.target_nisn, sp.nisn) || ' - ' || COALESCE(target_user.nama_lengkap, u.nama_lengkap, t.target_nisn, sp.nisn) END, '||') as belum_list
             FROM tugas_kelas t
             LEFT JOIN siswa_profil sp ON sp.kelas = t.kelas AND t.target_nisn IS NULL
             LEFT JOIN users u ON u.nisn = sp.nisn AND u.role = 'siswa' AND u.is_active = 1
             LEFT JOIN users target_user ON target_user.nisn = t.target_nisn AND target_user.role = 'siswa' AND target_user.is_active = 1
             LEFT JOIN submission_tugas s ON s.tugas_id = t.id AND s.nisn = COALESCE(t.target_nisn, sp.nisn)
-            WHERE t.created_by = ? AND t.is_active = 1
+            WHERE ${canSeeAllTasks ? '1=1' : 't.created_by = ?'} AND t.is_active = 1
             GROUP BY t.id
             ORDER BY t.created_at DESC, t.kelas ASC, t.mapel ASC
             LIMIT 200
-        `).all(req.user.sub).map(row => ({
+        `).all(...(canSeeAllTasks ? [] : [req.user.sub])).map(row => ({
             ...row,
             total_siswa: Number(row.total_siswa || 0),
             total_selesai: Number(row.total_selesai || 0),
+            total_direview: Number(row.total_direview || 0),
             belum: row.belum_list ? row.belum_list.split('||').filter(Boolean).slice(0, 12) : []
         }));
         return res.json({ success: true, data: rows });
@@ -235,7 +281,7 @@ router.get('/tugas/:id/submissions', authenticate, authorize(...STAFF), (req, re
     try {
         ensureLmsSchema(db);
         const task = db.prepare(`
-            SELECT t.id, t.judul, t.mapel, t.kelas, t.deadline, t.created_by
+            SELECT t.id, t.judul, t.mapel, t.kelas, t.deadline, t.created_by, COALESCE(t.show_score, 1) as show_score
             FROM tugas_kelas t
             WHERE t.id = ? AND t.is_active = 1
         `).get(req.params.id);
@@ -300,19 +346,38 @@ router.post('/tugas/:id/submit', authenticate, (req, res) => {
 // PATCH /api/lms/tugas/:tugasId/nilai/:nisn — guru beri nilai
 router.patch('/tugas/:tugasId/nilai/:nisn', authenticate, authorize(...STAFF), (req, res) => {
     const db = getDB();
-    const { nilai, feedback } = req.body;
+    const { nilai, feedback, semester = 'genap' } = req.body;
     if (nilai === undefined) return res.status(400).json({ success: false, message: 'nilai wajib ada.' });
     try {
-        const task = db.prepare('SELECT id, created_by FROM tugas_kelas WHERE id = ? AND is_active = 1').get(req.params.tugasId);
+        const task = db.prepare('SELECT id, mapel, created_by, COALESCE(show_score, 1) as show_score FROM tugas_kelas WHERE id = ? AND is_active = 1').get(req.params.tugasId);
         if (!task) return res.status(404).json({ success:false, message:'Tugas tidak ditemukan.' });
         if (task.created_by !== req.user.sub && !['super_admin','kepala_sekolah','wakil_kepala_sekolah'].includes(req.user.role)) {
             return res.status(403).json({ success:false, message:'Anda tidak punya akses menilai tugas ini.' });
         }
-        const info = db.prepare(`
-            UPDATE submission_tugas SET nilai = ?, feedback = ?, status = 'dinilai' WHERE tugas_id = ? AND nisn = ?
-        `).run(parseFloat(nilai), feedback || null, req.params.tugasId, req.params.nisn);
+        let syncedTaskAverage = null;
+        const info = db.transaction(() => {
+            const result = db.prepare(`
+                UPDATE submission_tugas SET nilai = ?, feedback = ?, status = 'dinilai' WHERE tugas_id = ? AND nisn = ?
+            `).run(parseFloat(nilai), feedback || null, req.params.tugasId, req.params.nisn);
+            if (result.changes && Number(task.show_score) !== 0) {
+                syncedTaskAverage = syncTaskAverageToGradebook(db, {
+                    nisn: req.params.nisn,
+                    mapel: task.mapel,
+                    semester: cleanText(semester, 20) || 'genap',
+                });
+            }
+            return result;
+        })();
         if (!info.changes) return res.status(404).json({ success:false, message:'Submission siswa belum ditemukan.' });
-        return res.json({ success: true, message: 'Nilai berhasil disimpan.' });
+        return res.json({
+            success: true,
+            message: Number(task.show_score) === 0
+                ? 'Review dan nilai tersimpan sebagai arsip guru. Nilai tidak ditampilkan ke siswa dan tidak masuk Nilai Saya.'
+                : syncedTaskAverage === null
+                ? 'Nilai berhasil disimpan.'
+                : `Nilai berhasil disimpan dan rekap Nilai Saya diperbarui. Rata-rata tugas ${task.mapel}: ${syncedTaskAverage}.`,
+            data: { synced_task_average: syncedTaskAverage, mapel: task.mapel, semester: cleanText(semester, 20) || 'genap', show_score: Number(task.show_score) !== 0 }
+        });
     } catch (err) {
         console.error('[LMS nilai tugas]', err.message);
         return res.status(500).json({ success: false, message: 'Gagal menyimpan nilai.' });
@@ -418,6 +483,11 @@ function getFileTipe(mime) {
    FORUM
    ══════════════════════════════════════════════ */
 
+router.use('/forum', requireEnabled(
+    ENV.FEATURE_FORUM_CHAT,
+    'Forum diskusi sedang dimatikan untuk mode hosting hemat. Admin bisa mengaktifkan FEATURE_FORUM_CHAT=true jika server siap.'
+));
+
 // GET /api/lms/forum?mapel=TKJ&scope=school|class
 router.get('/forum', authenticate, (req, res) => {
     const db = getDB();
@@ -511,7 +581,7 @@ router.post('/forum', authenticate, (req, res) => {
             mapel || null,
             postVisibility,
             postClass,
-            konten?.trim() || '',
+            cleanText(konten, parent_id ? ENV.FORUM_MAX_COMMENT_LENGTH : ENV.FORUM_MAX_POST_LENGTH) || '',
             parent_id || null,
             cleanUrl(attachment_url),
             cleanText(attachment_name, 180),
@@ -575,6 +645,15 @@ router.patch('/forum/:id/pin', authenticate, authorize(...STAFF), (req, res) => 
 /* ══════════════════════════════════════════════
    CHAT PRIBADI LMS
    ══════════════════════════════════════════════ */
+
+router.use('/contacts', requireEnabled(
+    ENV.FEATURE_FORUM_CHAT,
+    'Chat pribadi LMS sedang dimatikan untuk mode hosting hemat.'
+));
+router.use('/private-chat', requireEnabled(
+    ENV.FEATURE_FORUM_CHAT,
+    'Chat pribadi LMS sedang dimatikan untuk mode hosting hemat.'
+));
 
 router.get('/contacts', authenticate, (req, res) => {
     const db = getDB();

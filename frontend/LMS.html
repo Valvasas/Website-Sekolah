@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="LMS SMKN 1 Terisi — Platform Belajar Digital">
     <meta name="auth-required" content="true">
-    <meta name="auth-roles" content="siswa,wali_murid">
+    <meta name="auth-roles" content="siswa,wali_murid,guru,tata_usaha,kepala_sekolah,wakil_kepala_sekolah,super_admin">
     <title>LMS | SMK Negeri 1 Terisi</title>
     <link rel="icon" type="image/png" href="asset/Logo SMK.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -227,15 +227,34 @@
                     <div class="wb-illustration"><i class="fas fa-graduation-cap"></i></div>
                 </div>
 
+                <div class="dashboard-actions" aria-label="Aksi cepat LMS">
+                    <button type="button" class="dash-action primary" onclick="navigate('tugas', document.querySelector('[data-page=tugas]'))">
+                        <i class="fas fa-bolt"></i>
+                        <span><strong>Prioritas Hari Ini</strong><small>Lihat tugas yang harus dibereskan dulu</small></span>
+                    </button>
+                    <button type="button" class="dash-action" onclick="navigate('materi', document.querySelector('[data-page=materi]'))">
+                        <i class="fas fa-layer-group"></i>
+                        <span><strong>Materi Terbaru</strong><small>Buka repositori belajar</small></span>
+                    </button>
+                    <button type="button" class="dash-action" onclick="navigate('forum', document.querySelector('[data-page=forum]'))">
+                        <i class="fas fa-message"></i>
+                        <span><strong>Diskusi Kelas</strong><small>Tanya guru atau teman</small></span>
+                    </button>
+                    <button type="button" class="dash-action staff-only hidden" onclick="navigate('staff', document.querySelector('[data-page=staff]'))">
+                        <i class="fas fa-gauge-high"></i>
+                        <span><strong>Ruang Staff</strong><small>Kelola siswa dan aktivitas kelas</small></span>
+                    </button>
+                </div>
+
                 <!-- Stats Cards -->
                 <div class="stat-cards">
                     <div class="sc-card">
                         <div class="sc-icon blue"><i class="fas fa-book-open"></i></div>
-                        <div><span class="sc-val">4</span><label>Mata Pelajaran</label></div>
+                        <div><span class="sc-val" id="sc-mapel">0</span><label>Mata Pelajaran</label></div>
                     </div>
                     <div class="sc-card">
                         <div class="sc-icon orange"><i class="fas fa-tasks"></i></div>
-                        <div><span class="sc-val">3</span><label>Tugas Aktif</label></div>
+                        <div><span class="sc-val" id="sc-tugas">0</span><label>Tugas Aktif</label></div>
                     </div>
                     <div class="sc-card">
                         <div class="sc-icon green"><i class="fas fa-check-circle"></i></div>
@@ -306,34 +325,60 @@
 
             <!-- Page: KELAS -->
             <div class="page-content" id="page-kelas">
-                <h2 class="page-title">Kelas Saya</h2>
+                <div class="page-head">
+                    <div>
+                        <span class="page-kicker">Learning Space</span>
+                        <h2 class="page-title">Kelas Saya</h2>
+                        <p>Pilih mapel untuk melihat progress dan lanjut ke materi atau tugas terkait.</p>
+                    </div>
+                    <button class="page-head-action" onclick="fetchKelas()"><i class="fas fa-rotate"></i> Refresh</button>
+                </div>
                 <div class="kelas-grid" id="kelas-grid"></div>
             </div>
 
             <!-- Page: TUGAS -->
             <div class="page-content" id="page-tugas">
-                <h2 class="page-title">Daftar Tugas</h2>
-                <div class="tugas-filter">
-                    <button class="tf-btn active" data-filter="semua" onclick="filterTugas('semua',this)">Semua</button>
-                    <button class="tf-btn" data-filter="belum" onclick="filterTugas('belum',this)">Belum Dikumpul</button>
-                    <button class="tf-btn" data-filter="selesai" onclick="filterTugas('selesai',this)">Selesai</button>
+                <div class="page-head">
+                    <div>
+                        <span class="page-kicker">Task Board</span>
+                        <h2 class="page-title">Daftar Tugas</h2>
+                        <p>Filter tugas berdasarkan status, lalu kerjakan yang deadline-nya paling dekat.</p>
+                    </div>
+                    <div class="tugas-filter">
+                        <button class="tf-btn active" data-filter="semua" onclick="filterTugas('semua',this)">Semua</button>
+                        <button class="tf-btn" data-filter="belum" onclick="filterTugas('belum',this)">Belum Dikumpul</button>
+                        <button class="tf-btn" data-filter="selesai" onclick="filterTugas('selesai',this)">Selesai</button>
+                    </div>
                 </div>
                 <div class="tugas-list" id="tugas-list"></div>
             </div>
 
             <!-- Page: MATERI -->
             <div class="page-content" id="page-materi">
-                <h2 class="page-title">Repositori Materi</h2>
-                <div class="materi-search">
-                    <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Cari materi..." oninput="searchMateri(this.value)">
+                <div class="page-head">
+                    <div>
+                        <span class="page-kicker">Resource Library</span>
+                        <h2 class="page-title">Repositori Materi</h2>
+                        <p>Cari file belajar berdasarkan mapel, kelas, atau nama materi.</p>
+                    </div>
+                    <div class="materi-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Cari materi..." oninput="searchMateri(this.value)">
+                    </div>
                 </div>
                 <div class="materi-list" id="materi-list"></div>
             </div>
 
             <!-- Page: FORUM -->
             <div class="page-content" id="page-forum">
-                <h2 class="page-title">Forum Diskusi</h2>
+                <div class="page-head">
+                    <div>
+                        <span class="page-kicker">Class Conversation</span>
+                        <h2 class="page-title">Forum Diskusi</h2>
+                        <p>Ruang tanya jawab kelas dengan lampiran, chat pribadi, dan filter agar diskusi tidak berantakan.</p>
+                    </div>
+                    <button class="page-head-action" onclick="fetchForum()"><i class="fas fa-rotate"></i> Refresh</button>
+                </div>
                 <div class="forum-scope-tabs" role="tablist" aria-label="Filter forum diskusi">
                     <button type="button" class="active" data-forum-scope="school" onclick="setForumScope('school')"><i class="fas fa-globe"></i> Semua Siswa</button>
                     <button type="button" data-forum-scope="class" onclick="setForumScope('class')"><i class="fas fa-users"></i> Kelas Saya</button>
@@ -396,13 +441,27 @@
 
             <!-- Page: NILAI -->
             <div class="page-content" id="page-nilai">
-                <h2 class="page-title">Rekap Nilai</h2>
+                <div class="page-head">
+                    <div>
+                        <span class="page-kicker">Academic Score</span>
+                        <h2 class="page-title">Rekap Nilai</h2>
+                        <p>Lihat komponen nilai per mapel, status KKM, dan area yang perlu diperbaiki.</p>
+                    </div>
+                    <button class="page-head-action" onclick="fetchNilai()"><i class="fas fa-rotate"></i> Refresh</button>
+                </div>
                 <div class="nilai-grid" id="nilai-grid"></div>
             </div>
 
             <!-- Page: KANTIN KU -->
             <div class="page-content" id="page-kantin">
-                <h2 class="page-title">Kantin ku</h2>
+                <div class="page-head">
+                    <div>
+                        <span class="page-kicker">Student Marketplace</span>
+                        <h2 class="page-title">Kantin ku</h2>
+                        <p>Belanja, jual produk siswa, pantau pesanan, dan lanjut chat tanpa pindah aplikasi.</p>
+                    </div>
+                    <button class="page-head-action" onclick="fetchKantinProducts()"><i class="fas fa-rotate"></i> Refresh Produk</button>
+                </div>
                 <div class="kantin-layout">
                     <div class="kantin-tabs" role="tablist" aria-label="Navigasi Kantin ku">
                         <button class="active" type="button" data-kantin-tab="market" onclick="switchKantinTab('market')"><i class="fas fa-basket-shopping"></i> Pasar Jajanan</button>
@@ -619,7 +678,14 @@
 
             <!-- Page: PROFIL -->
             <div class="page-content" id="page-profil">
-                <h2 class="page-title">Profil & Biodata</h2>
+                <div class="page-head">
+                    <div>
+                        <span class="page-kicker">Student Identity</span>
+                        <h2 class="page-title">Profil & Biodata</h2>
+                        <p>Kelola data diri, kontak, keluarga, dan kelengkapan biodata sekolah.</p>
+                    </div>
+                    <button class="page-head-action" onclick="fetchProfil(lmsState.targetNisn || '')"><i class="fas fa-id-card"></i> Muat Biodata</button>
+                </div>
 
                 <div class="profile-layout">
                     <section class="profile-card">
@@ -794,24 +860,60 @@
                 </div>
 
                 <div class="staff-admin-grid">
-                    <section class="staff-panel">
-                        <div class="staff-panel-head"><h3><i class="fas fa-tasks"></i> Buat Tugas Kelas</h3></div>
-                        <div class="staff-form">
-                            <input id="staff-task-title" type="text" placeholder="Judul tugas">
+                    <section class="staff-panel staff-task-command">
+                        <div class="staff-panel-head">
+                            <div>
+                                <h3><i class="fas fa-paper-plane"></i> Terbitkan Tugas</h3>
+                                <p>Buat tugas untuk satu kelas, banyak kelas, siswa tertentu, atau remedial campuran.</p>
+                            </div>
+                        </div>
+                        <div class="staff-task-visual" aria-hidden="true">
+                            <span><i class="fas fa-pen-nib"></i> Instruksi</span>
+                            <span><i class="fas fa-users"></i> Target</span>
+                            <span><i class="fas fa-bell"></i> Notifikasi</span>
+                            <span><i class="fas fa-chart-simple"></i> Progress</span>
+                        </div>
+                        <div class="staff-form staff-task-form">
+                            <label class="staff-field wide">Judul tugas
+                                <input id="staff-task-title" type="text" maxlength="160" placeholder="Contoh: Analisis topologi jaringan sekolah">
+                            </label>
                             <div class="staff-target-mode" role="radiogroup" aria-label="Target tugas">
                                 <label><input type="radio" name="staff-task-target" value="class" checked onchange="syncStaffTaskTargetMode()"> Kelas</label>
                                 <label><input type="radio" name="staff-task-target" value="student" onchange="syncStaffTaskTargetMode()"> Siswa tertentu</label>
                                 <label><input type="radio" name="staff-task-target" value="mixed" onchange="syncStaffTaskTargetMode()"> Campuran</label>
                             </div>
                             <div class="staff-form-grid">
-                                <input id="staff-task-mapel" type="text" placeholder="Mapel, pisahkan koma jika banyak">
-                                <select id="staff-task-classes" multiple size="5" aria-label="Pilih kelas target"></select>
+                                <label class="staff-field">Mapel
+                                    <input id="staff-task-mapel" type="text" maxlength="200" placeholder="Produktif TKJ, Informatika">
+                                </label>
+                                <label class="staff-field">Kelas target
+                                    <select id="staff-task-classes" multiple size="5" aria-label="Pilih kelas target"></select>
+                                </label>
                             </div>
-                            <textarea id="staff-task-nisn-list" rows="2" placeholder="NISN siswa individu, pisahkan koma atau baris baru" style="display:none;"></textarea>
-                            <input id="staff-task-deadline" type="datetime-local">
-                            <textarea id="staff-task-desc" rows="3" placeholder="Instruksi tugas"></textarea>
+                            <label class="staff-field wide">NISN siswa individu
+                                <textarea id="staff-task-nisn-list" rows="2" placeholder="Pisahkan dengan koma atau baris baru, contoh: 1234567890, 0987654321" style="display:none;"></textarea>
+                            </label>
+                            <div class="staff-form-grid">
+                                <label class="staff-field">Deadline
+                                    <input id="staff-task-deadline" type="datetime-local">
+                                </label>
+                                <div class="staff-task-note">
+                                    <i class="fas fa-circle-info"></i>
+                                    <span>Siswa akan menerima notifikasi dan tugas otomatis masuk ke menu Tugas mereka.</span>
+                                </div>
+                            </div>
+                            <label class="staff-task-privacy-toggle">
+                                <input id="staff-task-show-score" type="checkbox" checked>
+                                <span>
+                                    <strong>Tampilkan nilai ke siswa & Nilai Saya</strong>
+                                    <small>Matikan untuk tugas yang nilainya hanya arsip internal guru.</small>
+                                </span>
+                            </label>
+                            <label class="staff-field wide">Instruksi
+                                <textarea id="staff-task-desc" rows="4" maxlength="2000" placeholder="Tuliskan output yang diminta, format file, rubrik singkat, dan cara pengumpulan."></textarea>
+                            </label>
                             <small class="staff-form-hint">Tahan Ctrl untuk pilih banyak kelas. Untuk remedial/khusus, pilih mode siswa tertentu dan isi NISN.</small>
-                            <button onclick="createStaffTask()"><i class="fas fa-paper-plane"></i> Terbitkan Tugas</button>
+                            <button class="staff-task-submit" onclick="createStaffTask()"><i class="fas fa-paper-plane"></i> Terbitkan Tugas ke Siswa</button>
                         </div>
                     </section>
 
@@ -916,8 +1018,8 @@
                         <div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()">
                             <i class="fas fa-cloud-upload-alt"></i>
                             <span>Klik untuk unggah atau drag & drop</span>
-                            <small>PDF, DOC, PPTX, XLS, foto, video, audio, ZIP — Maks. 50MB</small>
-                            <input type="file" id="file-input" style="display:none" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp,.gif,.mp4,.webm,.mov,.mp3,.wav,.ogg,.zip,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/wav,audio/ogg,audio/webm,application/zip" onchange="handleFileUpload(this)">
+                            <small>PDF, DOC, PPTX, XLS, atau foto — Maks. 3MB</small>
+                            <input type="file" id="file-input" style="display:none" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp,.gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,image/jpeg,image/png,image/webp,image/gif" onchange="handleFileUpload(this)">
                         </div>
                         <div id="file-preview" class="attachment-preview-area compact"></div>
                     </div>
