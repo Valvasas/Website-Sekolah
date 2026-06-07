@@ -31,6 +31,63 @@ function clampInt(value, fallback, min, max) {
     return Math.min(Math.max(n, min), max);
 }
 
+function clampScore(value, fallback = 0) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(100, Math.max(0, n));
+}
+
+function gradeFinal(row) {
+    return Number((
+        clampScore(row.uh) * 0.2 +
+        clampScore(row.uts) * 0.25 +
+        clampScore(row.uas) * 0.3 +
+        clampScore(row.tugas) * 0.25
+    ).toFixed(2));
+}
+
+function normalizeGradeRow(row) {
+    const normalized = {
+        ...row,
+        uh: clampScore(row.uh),
+        uts: clampScore(row.uts),
+        uas: clampScore(row.uas),
+        tugas: clampScore(row.tugas),
+        kkm: clampScore(row.kkm, 70),
+    };
+    const nilaiFinal = gradeFinal(normalized);
+    return {
+        ...normalized,
+        nilai_final: nilaiFinal,
+        lulus: nilaiFinal >= normalized.kkm,
+    };
+}
+
+function summarizeGrades(rows) {
+    const nilai = rows.map(normalizeGradeRow);
+    const values = nilai.map(row => row.nilai_final);
+    const total = values.reduce((sum, value) => sum + value, 0);
+    return {
+        rows: nilai,
+        stats: {
+            rata: values.length ? Number((total / values.length).toFixed(2)) : 0,
+            max: values.length ? Math.max(...values) : 0,
+            min: values.length ? Math.min(...values) : 0,
+            jumlah: values.length,
+            lulus: nilai.filter(row => row.lulus).length,
+        }
+    };
+}
+
+function getGradeRows(db, nisn, semester = null) {
+    if (semester) {
+        return db.prepare('SELECT * FROM nilai_siswa WHERE nisn = ? AND semester = ? ORDER BY mapel')
+            .all(nisn, semester);
+    }
+    return db.prepare('SELECT * FROM nilai_siswa WHERE nisn = ? ORDER BY semester DESC, mapel ASC')
+        .all(nisn);
+}
+
 /* ══════════════════════════════════════════
    PROFIL SISWA
    ══════════════════════════════════════════ */
@@ -118,12 +175,8 @@ router.get('/staff/:nisn/detail', authenticate, authorize(...STAFF), (req, res) 
 
         if (!student) return res.status(404).json({ success:false, message:'Siswa tidak ditemukan.' });
 
-        const nilai = db.prepare(`
-            SELECT *, ROUND((uh * 0.2 + uts * 0.25 + uas * 0.3 + tugas * 0.25), 2) as nilai_final
-            FROM nilai_siswa
-            WHERE nisn = ?
-            ORDER BY semester DESC, mapel ASC
-        `).all(nisn);
+        const gradeData = summarizeGrades(getGradeRows(db, nisn));
+        const nilai = gradeData.rows;
 
         const kehadiran = db.prepare(`
             SELECT * FROM kehadiran
@@ -162,7 +215,7 @@ router.get('/staff/:nisn/detail', authenticate, authorize(...STAFF), (req, res) 
 
         res.json({
             success: true,
-            data: { student, nilai, kehadiran, kehadiranSummary, tugas, cbt }
+            data: { student, nilai, nilaiSummary: gradeData.stats, kehadiran, kehadiranSummary, tugas, cbt }
         });
     } catch(e) {
         console.error('[Siswa staff detail]', e.message);
@@ -366,23 +419,8 @@ router.get('/nilai', authenticate, (req, res) => {
         const nisn     = getNisn(req);
         const semester = req.query.semester || 'genap';
 
-        const rows = db.prepare(
-            'SELECT * FROM nilai_siswa WHERE nisn = ? AND semester = ? ORDER BY mapel'
-        ).all(nisn, semester);
-
-        /* Hitung statistik */
-        let total = 0;
-        const data = rows.map(r => {
-            const final = parseFloat(((r.uh*0.2 + r.uts*0.25 + r.uas*0.3 + r.tugas*0.25)).toFixed(2));
-            total += final;
-            return { ...r, nilai_final: final, lulus: final >= r.kkm };
-        });
-
-        const rata = data.length ? parseFloat((total / data.length).toFixed(2)) : 0;
-        const max  = data.length ? Math.max(...data.map(d => d.nilai_final)) : 0;
-        const min  = data.length ? Math.min(...data.map(d => d.nilai_final)) : 0;
-
-        res.json({ success:true, data, stats: { rata, max, min, jumlah: data.length } });
+        const gradeData = summarizeGrades(getGradeRows(db, nisn, semester));
+        res.json({ success:true, data: gradeData.rows, stats: gradeData.stats });
     } catch(e) {
         res.status(500).json({ success:false, message:e.message });
     }
@@ -396,16 +434,25 @@ router.post('/nilai', authenticate, authorize(...STAFF), (req, res) => {
         const { nisn, semester, mapel, uh, uts, uas, tugas, kkm } = req.body;
         if (!nisn || !semester || !mapel) return res.status(400).json({ success:false, message:'nisn, semester, mapel wajib.' });
 
+        const scores = {
+            uh: clampScore(uh),
+            uts: clampScore(uts),
+            uas: clampScore(uas),
+            tugas: clampScore(tugas),
+            kkm: clampScore(kkm, 70),
+        };
+
         const exists = db.prepare('SELECT id FROM nilai_siswa WHERE nisn=? AND semester=? AND mapel=?').get(nisn,semester,mapel);
         if (exists) {
             db.prepare('UPDATE nilai_siswa SET uh=?,uts=?,uas=?,tugas=?,kkm=? WHERE id=?')
-              .run(uh||0,uts||0,uas||0,tugas||0,kkm||70,exists.id);
+              .run(scores.uh,scores.uts,scores.uas,scores.tugas,scores.kkm,exists.id);
         } else {
             db.prepare(`INSERT INTO nilai_siswa (id,nisn,semester,mapel,uh,uts,uas,tugas,kkm,created_at)
                 VALUES (?,?,?,?,?,?,?,?,?,?)`)
-              .run(uuidv4(),nisn,semester,mapel,uh||0,uts||0,uas||0,tugas||0,kkm||70,now);
+              .run(uuidv4(),nisn,semester,mapel,scores.uh,scores.uts,scores.uas,scores.tugas,scores.kkm,now);
         }
-        res.json({ success:true, message:'Nilai berhasil disimpan.' });
+        const saved = normalizeGradeRow({ nisn, semester, mapel, ...scores });
+        res.json({ success:true, message:'Nilai berhasil disimpan dan ringkasan dashboard diperbarui.', data: saved });
     } catch(e) {
         res.status(500).json({ success:false, message:e.message });
     }
@@ -510,15 +557,7 @@ router.get('/dashboard', authenticate, (req, res) => {
         if (!nisn) return res.status(400).json({ success:false, message:'NISN tidak ditemukan.' });
 
         /* Nilai rata-rata */
-        const nilaiRows = db.prepare(
-            'SELECT uh,uts,uas,tugas FROM nilai_siswa WHERE nisn=? AND semester=?'
-        ).all(nisn, 'genap');
-
-        let totalNilai = 0;
-        nilaiRows.forEach(r => {
-            totalNilai += r.uh*0.2 + r.uts*0.25 + r.uas*0.3 + r.tugas*0.25;
-        });
-        const rataRata = nilaiRows.length ? parseFloat((totalNilai/nilaiRows.length).toFixed(2)) : 0;
+        const gradeData = summarizeGrades(getGradeRows(db, nisn, 'genap'));
 
         /* Kehadiran */
         const khRows = db.prepare('SELECT status, COUNT(*) as cnt FROM kehadiran WHERE nisn=? GROUP BY status').all(nisn);
@@ -535,7 +574,8 @@ router.get('/dashboard', authenticate, (req, res) => {
                 nisn,
                 kelas    : profil?.kelas   || '-',
                 jurusan  : profil?.jurusan || '-',
-                nilai_rata: rataRata,
+                nilai_rata: gradeData.stats.rata,
+                nilai_stats: gradeData.stats,
                 kehadiran : kh.hadir,
                 absen_total: kh.sakit + kh.izin + kh.alpha,
                 persen_hadir: totalKh ? Math.round((kh.hadir/totalKh)*100) : 100,

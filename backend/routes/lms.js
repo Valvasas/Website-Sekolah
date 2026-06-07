@@ -16,6 +16,11 @@ const cleanText = (value, max = 500) => (
         ? null
         : String(value).replace(/[<>]/g, '').trim().slice(0, max) || null
 );
+const clampScore = (value, fallback = 0) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(100, Math.max(0, n));
+};
 const cleanUrl = value => {
     const text = cleanText(value, 500);
     if (!text) return null;
@@ -348,6 +353,8 @@ router.patch('/tugas/:tugasId/nilai/:nisn', authenticate, authorize(...STAFF), (
     const db = getDB();
     const { nilai, feedback, semester = 'genap' } = req.body;
     if (nilai === undefined) return res.status(400).json({ success: false, message: 'nilai wajib ada.' });
+    const safeNilai = clampScore(nilai, null);
+    if (safeNilai === null) return res.status(400).json({ success: false, message: 'Nilai harus berupa angka 0-100.' });
     try {
         const task = db.prepare('SELECT id, mapel, created_by, COALESCE(show_score, 1) as show_score FROM tugas_kelas WHERE id = ? AND is_active = 1').get(req.params.tugasId);
         if (!task) return res.status(404).json({ success:false, message:'Tugas tidak ditemukan.' });
@@ -358,7 +365,7 @@ router.patch('/tugas/:tugasId/nilai/:nisn', authenticate, authorize(...STAFF), (
         const info = db.transaction(() => {
             const result = db.prepare(`
                 UPDATE submission_tugas SET nilai = ?, feedback = ?, status = 'dinilai' WHERE tugas_id = ? AND nisn = ?
-            `).run(parseFloat(nilai), feedback || null, req.params.tugasId, req.params.nisn);
+            `).run(safeNilai, feedback || null, req.params.tugasId, req.params.nisn);
             if (result.changes && Number(task.show_score) !== 0) {
                 syncedTaskAverage = syncTaskAverageToGradebook(db, {
                     nisn: req.params.nisn,

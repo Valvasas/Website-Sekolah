@@ -2502,12 +2502,12 @@ async function loadStudentDetail(nisn) {
             panel.innerHTML = `<div class="empty-cell">${escapeHtml(data.message || 'Detail siswa tidak ditemukan.')}</div>`;
             return;
         }
-        const { student, nilai, kehadiranSummary, tugas, cbt } = data.data;
-        const nilaiValues = (nilai || []).map(n => Number(n.nilai_final || 0)).filter(v => !Number.isNaN(v));
-        const nilaiAvg = nilaiValues.length ? Math.round(nilaiValues.reduce((sum, v) => sum + v, 0) / nilaiValues.length) : '-';
-        const nilaiHigh = nilaiValues.length ? Math.max(...nilaiValues) : '-';
-        const nilaiLow = nilaiValues.length ? Math.min(...nilaiValues) : '-';
-        const nilaiPass = (nilai || []).filter(n => Number(n.nilai_final || 0) >= Number(n.kkm || 70)).length;
+        const { student, nilai, nilaiSummary, kehadiranSummary, tugas, cbt } = data.data;
+        const summary = nilaiSummary || {};
+        const nilaiAvg = Number(summary.jumlah || 0) ? Number(summary.rata || 0).toFixed(1) : '-';
+        const nilaiHigh = Number(summary.jumlah || 0) ? Number(summary.max || 0).toFixed(1) : '-';
+        const nilaiLow = Number(summary.jumlah || 0) ? Number(summary.min || 0).toFixed(1) : '-';
+        const nilaiPass = Number(summary.lulus || 0);
         panel.innerHTML = `
             <div class="student-detail-head">
                 <div>
@@ -2767,6 +2767,7 @@ async function saveAdminTaskReview(taskId, nisn) {
         if (data.success) {
             await loadAdminTaskSubmissions(taskId);
             await loadAdminTaskProgress();
+            if (selectedStudentNisn === nisn) await loadStudentDetail(nisn);
         }
     } catch (err) {
         showToast('Gagal menyimpan review tugas.', 'error');

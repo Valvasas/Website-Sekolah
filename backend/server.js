@@ -307,7 +307,7 @@ app.post('/api/storage/cleanup-orphans', (req, res) => {
 
 function dbFilePath() {
     const configured = ENV.DB_PATH.endsWith('.db') ? ENV.DB_PATH : `${ENV.DB_PATH}.db`;
-    return path.resolve(__dirname, configured);
+    return path.isAbsolute(configured) ? configured : path.resolve(__dirname, configured);
 }
 
 function backupDirPath() {

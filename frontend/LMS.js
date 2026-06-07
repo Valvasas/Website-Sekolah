@@ -304,8 +304,8 @@ async function fetchDashboardStats() {
 
         // Update stat cards
         const statMap = {
-            'sc-nilai':    d.nilai_rata ? d.nilai_rata.toFixed(0) : '-',
-            'sc-kehadiran': d.persen_hadir ? `${d.persen_hadir}%` : '-',
+            'sc-nilai':    d.nilai_stats?.jumlah ? Number(d.nilai_stats.rata || 0).toFixed(1) : '-',
+            'sc-kehadiran': d.persen_hadir !== undefined ? `${d.persen_hadir}%` : '-',
         };
         Object.entries(statMap).forEach(([id, val]) => {
             const el = document.getElementById(id);
@@ -675,17 +675,15 @@ function renderStaffStudentDetail(data) {
     const tugas = data.tugas || [];
     const cbt = data.cbt || [];
     const hadir = data.kehadiranSummary || {};
-    const avg = nilai.length
-        ? Math.round(nilai.reduce((sum, n) => sum + Number(n.nilai_final || 0), 0) / nilai.length)
-        : '-';
-    const gradeValues = nilai.map(n => Number(n.nilai_final || 0)).filter(v => !Number.isNaN(v));
-    const gradeSummary = gradeValues.length ? {
-        total: gradeValues.length,
-        avg: Math.round(gradeValues.reduce((sum, v) => sum + v, 0) / gradeValues.length),
-        high: Math.max(...gradeValues),
-        low: Math.min(...gradeValues),
-        pass: nilai.filter(n => Number(n.nilai_final || 0) >= Number(n.kkm || 70)).length,
+    const serverSummary = data.nilaiSummary || {};
+    const gradeSummary = Number(serverSummary.jumlah || 0) ? {
+        total: Number(serverSummary.jumlah || 0),
+        avg: Number(serverSummary.rata || 0).toFixed(1),
+        high: Number(serverSummary.max || 0).toFixed(1),
+        low: Number(serverSummary.min || 0).toFixed(1),
+        pass: Number(serverSummary.lulus || 0),
     } : null;
+    const avg = gradeSummary ? gradeSummary.avg : '-';
     setText('staff-detail-name', s.nama_lengkap || '-');
     setText('staff-detail-meta', `${s.nisn || '-'} · ${s.kelas || 'Kelas belum diisi'} · ${s.jurusan || '-'}`);
     document.getElementById('staff-detail-quick').innerHTML = `
@@ -899,6 +897,7 @@ async function saveTaskSubmissionGrade(taskId, nisn) {
         if (res.success) {
             await fetchTaskProgress();
             await fetchTaskSubmissions(taskId);
+            if (lmsState.staffSelectedNisn === nisn) await openStaffStudent(nisn);
         }
     } catch(e) {
         showToast('Gagal menyimpan nilai tugas.', 'red');
@@ -2987,7 +2986,7 @@ function clearTugasAttachment() {
 document.addEventListener('DOMContentLoaded', () => {
     // Cek apakah sudah login (dari auth-guard atau session sebelumnya)
     const existingUser = getUser();
-    const token        = localStorage.getItem('accessToken');
+    const token        = getToken();
 
     if (existingUser && token) {
         lmsState.user = existingUser;

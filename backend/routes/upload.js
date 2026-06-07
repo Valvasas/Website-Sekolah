@@ -215,7 +215,8 @@ function createUploader(category) {
 function saveFileRecord(db, { uploaderId, originalName, fileName, category, mimeType, size, entityType, entityId }) {
     ensureFileUploadSchema(db);
     const id      = uuidv4();
-    const fileUrl = `/uploads/${category}/${fileName}`;
+    const publicCategory = category === 'kantin_chat' ? 'kantin-chat' : category;
+    const fileUrl = `/uploads/${publicCategory}/${fileName}`;
     const filePath = path.join(CATEGORIES[category], fileName);
     db.prepare(`
         INSERT INTO file_uploads (id,uploader_id,original_name,file_name,file_path,file_url,mime_type,size_bytes,category,entity_type,entity_id,created_at)

@@ -3456,10 +3456,338 @@ body {
 }
 
 @media (max-width: 560px) {
+.staff-task-visual,
+.learning-facts,
+.learning-actions {
+        grid-template-columns:1fr;
+    }
+}
+
+/* =====================================================
+   MOBILE UX HARDENING: dashboard siswa dan ruang guru
+   ===================================================== */
+.lms-main,
+.page-content,
+.staff-panel,
+.card-section,
+.tugas-item,
+.nilai-card {
+    min-width:0;
+}
+
+.stat-cards {
+    grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+}
+
+.sc-card > div:last-child,
+.dash-action span,
+.ti-info,
+.mi-info,
+.staff-panel-head > div {
+    min-width:0;
+}
+
+.sc-card label,
+.dash-action small,
+.ti-info p,
+.staff-panel-head p {
+    overflow-wrap:anywhere;
+}
+
+.tugas-filter {
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+}
+
+.staff-panel button.staff-mini-btn,
+.staff-panel .small-action,
+.staff-panel .kantin-chat-file {
+    width:auto;
+}
+
+.staff-form select[multiple] {
+    min-height:138px;
+    overflow:auto;
+    padding:8px;
+}
+
+.staff-form select[multiple] option {
+    border-radius:10px;
+    margin-bottom:6px;
+    padding:10px 12px;
+    white-space:normal;
+}
+
+@media (max-width: 768px) {
+    .lms-topbar {
+        min-width:0;
+    }
+
+    .tb-breadcrumb {
+        min-width:0;
+    }
+
+    .tb-breadcrumb span {
+        display:block;
+        max-width:42vw;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
+    }
+
+    .welcome-banner {
+        grid-template-columns:1fr;
+        gap:14px;
+        padding:22px;
+    }
+
+    .wb-illustration {
+        display:none;
+    }
+
+    .dashboard-actions {
+        gap:10px;
+    }
+
+    .dash-action {
+        min-height:72px;
+        padding:12px;
+        border-radius:12px;
+    }
+
+    .dash-action i {
+        width:38px;
+        height:38px;
+        border-radius:10px;
+    }
+
+    .stat-cards {
+        grid-template-columns:1fr;
+        gap:10px;
+    }
+
+    .sc-card {
+        min-height:74px;
+        padding:14px;
+        align-items:center;
+    }
+
+    .sc-val {
+        font-size:1.25rem;
+    }
+
+    .service-tile {
+        min-height:70px;
+        padding:13px;
+    }
+
+    .card-section {
+        padding:16px;
+        border-radius:14px;
+    }
+
+    .cs-header {
+        align-items:flex-start;
+        gap:10px;
+    }
+
+    .cs-header button {
+        flex:0 0 auto;
+    }
+
+    .tugas-filter {
+        display:grid;
+        grid-template-columns:repeat(3,minmax(0,1fr));
+        width:100%;
+    }
+
+    .tugas-filter .tf-btn {
+        min-width:0;
+        padding-inline:8px;
+        white-space:normal;
+    }
+
+    .tugas-item {
+        grid-template-columns:40px minmax(0,1fr);
+        gap:11px;
+        padding:14px;
+        border-radius:14px;
+        transform:none!important;
+    }
+
+    .tugas-item:hover {
+        transform:none!important;
+    }
+
+    .ti-icon {
+        width:40px;
+        height:40px;
+    }
+
+    .ti-meta {
+        gap:6px;
+    }
+
+    .ti-meta span,
+    .mi-meta span {
+        max-width:100%;
+        white-space:normal;
+    }
+
+    .ti-deadline,
+    .task-submit-btn {
+        grid-column:1 / -1;
+        width:100%;
+        justify-content:center;
+    }
+
+    .nilai-grid {
+        grid-template-columns:1fr!important;
+    }
+
+    .nilai-card {
+        border-radius:14px;
+    }
+
+    .staff-hero {
+        align-items:stretch;
+        flex-direction:column;
+        padding:20px;
+        border-radius:18px;
+    }
+
+    .staff-primary {
+        width:100%;
+        justify-content:center;
+    }
+
+    .staff-insights {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:10px;
+    }
+
+    .staff-insight-card {
+        min-height:96px;
+        padding:13px;
+        border-radius:14px;
+    }
+
+    .staff-insight-card strong {
+        font-size:1.3rem;
+    }
+
+    .staff-workspace,
+    .staff-admin-grid {
+        gap:12px;
+    }
+
+    .staff-panel {
+        padding:15px;
+        border-radius:14px;
+    }
+
+    .staff-panel-head {
+        flex-direction:column;
+        align-items:stretch;
+    }
+
+    .staff-panel-head .staff-mini-btn {
+        align-self:flex-start;
+    }
+
+    .staff-filter-row,
+    .staff-form-grid,
+    .staff-form-grid.four,
+    .staff-target-mode {
+        grid-template-columns:1fr!important;
+    }
+
+    .staff-target-mode {
+        gap:7px;
+    }
+
+    .staff-target-mode label {
+        min-height:44px;
+    }
+
+    .staff-form select[multiple] {
+        min-height:168px;
+        touch-action:pan-y;
+    }
+
+    .staff-form-hint {
+        line-height:1.55;
+    }
+
+    .staff-task-submit,
+    .staff-form > button:not(.staff-mini-btn) {
+        width:100%;
+    }
+}
+
+@media (max-width: 430px) {
+    .page-content {
+        padding:14px 12px calc(82px + env(safe-area-inset-bottom));
+    }
+
+    .tb-breadcrumb span {
+        max-width:34vw;
+    }
+
+    .topbar-right {
+        gap:6px;
+    }
+
+    .tb-icon,
+    .tb-menu {
+        width:38px;
+        height:38px;
+    }
+
+    .welcome-banner {
+        padding:18px;
+        border-radius:16px;
+    }
+
+    .wb-text h2,
+    .page-title,
+    .staff-hero h2 {
+        font-size:1.25rem;
+        line-height:1.22;
+    }
+
+    .page-head p,
+    .welcome-banner p,
+    .staff-hero p {
+        font-size:.82rem;
+    }
+
+    .dash-action strong,
+    .sc-card label,
+    .service-tile strong,
+    .ti-info h4 {
+        font-size:.82rem;
+    }
+
+    .dash-action small,
+    .service-tile small,
+    .ti-info p {
+        font-size:.7rem;
+    }
+
+    .tugas-filter {
+        grid-template-columns:1fr;
+    }
+
+    .staff-insights {
+        grid-template-columns:1fr;
+    }
+
     .staff-task-visual,
     .learning-facts,
     .learning-actions {
-        grid-template-columns:1fr;
+        grid-template-columns:1fr!important;
     }
 }
 

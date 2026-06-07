@@ -34,9 +34,11 @@ async function run() {
     let db;
     await ok('Init database langsung', () => {
         const Database = require('better-sqlite3');
-        const DB_PATH = path.resolve(
-            (process.env.DB_PATH || './data/smkn1terisi').replace(/\.bin$/, '').replace(/\.db$/, '') + '.db'
-        );
+        const configuredDbPath = (process.env.DB_PATH || './data/smkn1terisi')
+            .replace(/\.bin$/, '').replace(/\.db$/, '') + '.db';
+        const DB_PATH = path.isAbsolute(configuredDbPath)
+            ? configuredDbPath
+            : path.resolve(__dirname, '..', configuredDbPath);
         if (!fs.existsSync(DB_PATH)) throw new Error('File DB tidak ditemukan. Jalankan setupDatabase.js dulu.');
         db = new Database(DB_PATH);
     });

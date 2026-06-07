@@ -18,9 +18,12 @@ try {
     process.exit(1);
 }
 
-const DB_PATH = path.resolve(
-    (process.env.DB_PATH || './data/smkn1terisi').replace(/\.bin$/, '').replace(/\.db$/, '') + '.db'
-);
+const configuredDbPath = (process.env.DB_PATH || './data/smkn1terisi')
+    .replace(/\.bin$/, '')
+    .replace(/\.db$/, '') + '.db';
+const DB_PATH = path.isAbsolute(configuredDbPath)
+    ? configuredDbPath
+    : path.resolve(__dirname, '..', configuredDbPath);
 const DB_DIR = path.dirname(DB_PATH);
 if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
 

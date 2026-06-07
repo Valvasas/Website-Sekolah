@@ -40,11 +40,11 @@
     </div>
 </a>
             
-            <div class="menu-toggle" id="mobile-menu">
+            <button class="menu-toggle" id="mobile-menu" type="button" aria-label="Buka menu navigasi">
                 <span class="bar"></span>
                 <span class="bar"></span>
                 <span class="bar"></span>
-            </div>
+            </button>
 
             <ul class="nav-menu">
                 <li><a href="index.html" class="nav-link active">Beranda</a></li>
@@ -117,8 +117,8 @@
 
             <div class="layanan-grid reveal">
                 <!-- 1. CBT Online -->
-                <a href="cbt.html" target="_blank" rel="noopener" class="l-card">
-                    <span class="l-badge live"><i class="fas fa-circle" style="font-size:0.5rem;"></i> Aktif</span>
+                <a href="cbt.html" target="_blank" rel="noopener" class="l-card" aria-label="Buka portal CBT Online">
+                    <span class="l-badge live"><i class="fas fa-circle l-badge-dot" aria-hidden="true"></i> Aktif</span>
                     <div class="l-card-icon">
                         <i class="fas fa-laptop-code"></i>
                     </div>
@@ -128,7 +128,7 @@
                 </a>
 
                 <!-- 2. LMS Belajar -->
-                <a href="LMS.html" target="_blank" rel="noopener" class="l-card">
+                <a href="LMS.html" target="_blank" rel="noopener" class="l-card" aria-label="Buka LMS Belajar">
                     <span class="l-badge new">Baru</span>
                     <div class="l-card-icon">
                         <i class="fas fa-graduation-cap"></i>
@@ -139,7 +139,7 @@
                 </a>
 
                 <!-- 3. Data Siswa -->
-                <a href="LMS.html" target="_blank" rel="noopener" class="l-card">
+                <a href="LMS.html#data-siswa" target="_blank" rel="noopener" class="l-card" aria-label="Buka portal data siswa">
                     <div class="l-card-icon">
                         <i class="fas fa-users-cog"></i>
                     </div>
@@ -149,7 +149,7 @@
                 </a>
 
                 <!-- 4. SKL & Surat -->
-                <a href="SKL.html" class="l-card" id="skl-card">
+                <a href="SKL.html" class="l-card" id="skl-card" aria-label="Buka pencarian SKL dan surat kelulusan">
                     <div class="l-card-icon">
                         <img src="asset/Logo SMK.png" alt="SKL Icon" class="icon-img">
                     </div>
@@ -159,7 +159,7 @@
                 </a>
 
                 <!-- 5. Drive Sekolah -->
-                <a href="https://drive.google.com" target="_blank" rel="noopener" class="l-card">
+                <a href="https://drive.google.com" target="_blank" rel="noopener" class="l-card" aria-label="Buka Drive Sekolah di tab baru">
                     <div class="l-card-icon">
                         <i class="fab fa-google-drive"></i>
                     </div>
@@ -172,31 +172,33 @@
     </section>
 
     <!-- MODAL SKL -->
-    <div class="skl-modal-overlay" id="sklModal" style="position:fixed; inset:0; background:rgba(0,15,30,0.8); backdrop-filter:blur(8px); z-index:3000; display:flex; justify-content:center; align-items:center; opacity:0; visibility:hidden; transition: opacity 0.4s ease, visibility 0.4s ease;">
-        <div class="skl-modal-box" style="background:#fff; width:100%; max-width:460px; padding:40px; border-radius:20px; position:relative; transform:translateY(-40px); transition: transform 0.4s cubic-bezier(0.25,1,0.5,1); border-top: 5px solid var(--secondary); box-shadow: 0 30px 60px rgba(0,0,0,0.3);">
-            <button onclick="closeSklModal()" style="position:absolute; top:14px; right:18px; background:transparent; border:none; font-size:1.4rem; color:#94a3b8; cursor:pointer; transition:0.3s;">✕</button>
+    <div class="skl-modal-overlay" id="sklModal" role="dialog" aria-modal="true" aria-labelledby="sklModalTitle" aria-describedby="sklModalDesc" aria-hidden="true">
+        <div class="skl-modal-box">
+            <button class="skl-modal-close" type="button" onclick="closeSklModal()" aria-label="Tutup modal SKL">✕</button>
 
-            <div style="text-align:center; margin-bottom:25px;">
-                <div style="width:64px;height:64px;background:rgba(212,175,55,0.12);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 15px;font-size:1.8rem;color:var(--secondary);">
+            <div class="skl-modal-head">
+                <div class="skl-modal-icon" aria-hidden="true">
                     <i class="fas fa-file-certificate"></i>
                 </div>
-                <h2 style="font-family:'Playfair Display',serif; color:var(--primary); font-size:1.6rem; margin-bottom:6px;">Unduh SKL</h2>
-                <p style="color:#64748b; font-size:0.9rem;">Masukkan NISN dan Tanggal Lahir untuk mengambil Surat Keterangan Lulus.</p>
+                <h2 id="sklModalTitle">Unduh SKL</h2>
+                <p id="sklModalDesc">Masukkan NISN dan tanggal lahir untuk mengambil Surat Keterangan Lulus.</p>
             </div>
 
-            <div style="margin-bottom:18px; position:relative;">
-                <i class="fas fa-id-card" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--secondary);"></i>
-                <input type="text" placeholder="Nomor Induk Siswa Nasional (NISN)" style="width:100%; padding:13px 14px 13px 42px; border:1.5px solid #e2e8f0; border-radius:10px; font-family:'Montserrat',sans-serif; font-size:0.9rem; transition:0.3s; outline:none;" onfocus="this.style.borderColor='var(--secondary)'" onblur="this.style.borderColor='#e2e8f0'">
+            <div class="skl-field">
+                <label for="sklNisn">NISN</label>
+                <i class="fas fa-id-card" aria-hidden="true"></i>
+                <input id="sklNisn" name="nisn" type="text" placeholder="Nomor Induk Siswa Nasional" maxlength="10" inputmode="numeric" autocomplete="off">
             </div>
-            <div style="margin-bottom:24px; position:relative;">
-                <i class="fas fa-calendar-alt" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--secondary);z-index:1;pointer-events:none;"></i>
-                <input type="date" style="width:100%; padding:13px 14px 13px 42px; border:1.5px solid #e2e8f0; border-radius:10px; font-family:'Montserrat',sans-serif; font-size:0.9rem; transition:0.3s; outline:none; color:#374151;" onfocus="this.style.borderColor='var(--secondary)'" onblur="this.style.borderColor='#e2e8f0'">
+            <div class="skl-field">
+                <label for="sklTanggalLahir">Tanggal Lahir</label>
+                <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+                <input id="sklTanggalLahir" name="tanggal_lahir" type="date" autocomplete="bday">
             </div>
-            <button onclick="cariSKL(this)" style="width:100%; padding:15px; background:var(--secondary); color:var(--primary); border:none; border-radius:10px; font-size:1rem; font-weight:700; cursor:pointer; font-family:'Montserrat',sans-serif; transition:0.3s; display:flex; align-items:center; justify-content:center; gap:10px;">
+            <button class="skl-submit" type="button" onclick="cariSKL(this)">
                 <i class="fas fa-search"></i> Cari & Unduh SKL
             </button>
 
-            <p style="text-align:center; margin-top:16px; font-size:0.75rem; color:#94a3b8;">
+            <p class="skl-help">
                 Butuh bantuan? Hubungi TU sekolah di <strong>(0234) 123456</strong>
             </p>
         </div>

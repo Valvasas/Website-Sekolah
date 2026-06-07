@@ -631,8 +631,12 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             sklModal.style.opacity = '1';
             sklModal.style.visibility = 'visible';
+            sklModal.setAttribute('aria-hidden', 'false');
             if (sklBox) sklBox.style.transform = 'translateY(0)';
             document.body.style.overflow = 'hidden';
+            window.setTimeout(() => {
+                sklModal.querySelector('#sklNisn, input')?.focus();
+            }, 80);
         });
 
         // Tutup modal saat klik overlay
@@ -651,6 +655,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!sklModal || !sklBox) return;
         sklModal.style.opacity = '0';
         sklModal.style.visibility = 'hidden';
+        sklModal.setAttribute('aria-hidden', 'true');
         sklBox.style.transform = 'translateY(-40px)';
         document.body.style.overflow = '';
     };
