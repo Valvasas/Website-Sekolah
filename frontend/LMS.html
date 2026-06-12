@@ -246,6 +246,25 @@
                     </button>
                 </div>
 
+                <section class="today-priority-panel" aria-labelledby="today-priority-title">
+                    <div class="priority-head">
+                        <div>
+                            <span class="page-kicker">Prioritas Hari Ini</span>
+                            <h2 id="today-priority-title">Yang perlu kamu bereskan dulu</h2>
+                        </div>
+                        <button type="button" onclick="navigate('tugas', document.querySelector('[data-page=tugas]'))">
+                            Lihat Tugas
+                        </button>
+                    </div>
+                    <div class="priority-list" id="today-priority-list" aria-live="polite">
+                        <div class="priority-empty">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <strong>Memuat prioritas...</strong>
+                            <span>Tugas, CBT, dan materi terbaru sedang dicek.</span>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Stats Cards -->
                 <div class="stat-cards">
                     <div class="sc-card">
@@ -443,13 +462,44 @@
             <div class="page-content" id="page-nilai">
                 <div class="page-head">
                     <div>
-                        <span class="page-kicker">Academic Score</span>
-                        <h2 class="page-title">Rekap Nilai</h2>
-                        <p>Lihat komponen nilai per mapel, status KKM, dan area yang perlu diperbaiki.</p>
+                        <span class="page-kicker">Academic Score & Report</span>
+                        <h2 class="page-title">Rapor & Rekap Nilai</h2>
+                        <p>Pantau rekapitulasi nilai harian, ujian, serta unduh E-Rapor resmi Anda.</p>
                     </div>
-                    <button class="page-head-action" onclick="fetchNilai()"><i class="fas fa-rotate"></i> Refresh</button>
+                    <div class="nilai-header-actions">
+                        <select id="nilai-semester-select" onchange="fetchRaporDanNilai()">
+                            <option value="ganjil">Semester Ganjil</option>
+                            <option value="genap" selected>Semester Genap</option>
+                        </select>
+                        <select id="nilai-tahun-select" onchange="fetchRaporDanNilai()">
+                            <option value="2024/2025">T.A. 2024/2025</option>
+                            <option value="2025/2026" selected>T.A. 2025/2026</option>
+                        </select>
+                        <button class="page-head-action" onclick="fetchRaporDanNilai()"><i class="fas fa-rotate"></i> Refresh</button>
+                    </div>
                 </div>
-                <div class="nilai-grid" id="nilai-grid"></div>
+
+                <div class="nilai-tabs-container">
+                    <div class="nilai-tabs" role="tablist">
+                        <button class="active" id="tab-btn-komponen" onclick="switchNilaiTab('komponen')"><i class="fas fa-chart-simple"></i> Komponen Nilai</button>
+                        <button id="tab-btn-rapor" onclick="switchNilaiTab('rapor')"><i class="fas fa-file-invoice"></i> E-Rapor Digital</button>
+                    </div>
+                </div>
+
+                <!-- Tab 1: Komponen Nilai -->
+                <div id="nilai-komponen-content" class="nilai-tab-content active">
+                    <div class="nilai-grid" id="nilai-grid"></div>
+                </div>
+
+                <!-- Tab 2: E-Rapor Digital -->
+                <div id="nilai-rapor-content" class="nilai-tab-content">
+                    <div class="rapor-actions">
+                        <button class="btn-print-rapor" onclick="printRapor()"><i class="fas fa-print"></i> Cetak E-Rapor Resmi</button>
+                    </div>
+                    <div class="rapor-paper" id="rapor-paper-area">
+                        <!-- Akan di-render via JS -->
+                    </div>
+                </div>
             </div>
 
             <!-- Page: KANTIN KU -->
@@ -964,6 +1014,26 @@
                             </div>
                             <input id="staff-grade-kkm" type="number" min="0" max="100" value="70" placeholder="KKM">
                             <button onclick="saveStaffGrade()"><i class="fas fa-save"></i> Simpan Nilai</button>
+                        </div>
+                    </section>
+
+                    <section class="staff-panel">
+                        <div class="staff-panel-head"><h3><i class="fas fa-file-signature"></i> Input Catatan E-Rapor</h3></div>
+                        <div class="staff-form">
+                            <input id="staff-rapor-nisn" type="text" maxlength="10" placeholder="NISN siswa">
+                            <div class="staff-form-grid">
+                                <select id="staff-rapor-semester">
+                                    <option value="ganjil">Ganjil</option>
+                                    <option value="genap" selected>Genap</option>
+                                </select>
+                                <select id="staff-rapor-tahun">
+                                    <option value="2024/2025">2024/2025</option>
+                                    <option value="2025/2026" selected>2025/2026</option>
+                                </select>
+                            </div>
+                            <textarea id="staff-rapor-catatan" placeholder="Catatan Wali Kelas (misal: Pertahankan prestasimu, tetap belajar dengan giat...)" rows="3" style="width: 100%; border: 1px solid var(--border); padding: 10px; border-radius: 8px; font-family: inherit; font-size: 0.85rem; resize: vertical; box-sizing: border-box; background: var(--bg-card); color: var(--navy);"></textarea>
+                            <input id="staff-rapor-kenaikan" type="text" placeholder="Kenaikan Kelas / Kelulusan (opsional)">
+                            <button onclick="saveStaffRaporMetadata()"><i class="fas fa-save"></i> Simpan Catatan Rapor</button>
                         </div>
                     </section>
 

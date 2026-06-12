@@ -7,6 +7,7 @@ const { authenticate } = require('../middleware/auth');
 const getDB = require('../config/database');
 const ENV = require('../config/env');
 const { log } = require('../middleware/auditLog');
+const { chatLimiter, orderLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 const STUDENT_ROLES = ['siswa', 'wali_murid'];
@@ -278,7 +279,7 @@ router.put('/profile', authenticate, (req, res) => {
     return res.json({ success: true, message: 'Profil Kantin ku tersimpan.' });
 });
 
-router.post('/products', authenticate, (req, res) => {
+router.post('/products', authenticate, orderLimiter, (req, res) => {
     if (!ensureStudent(req, res)) return;
     const db = getDB();
     const name = cleanText(req.body.name, 120);
@@ -372,7 +373,7 @@ router.delete('/products/:id', authenticate, (req, res) => {
     return res.json({ success: true, message: 'Produk diarsipkan.' });
 });
 
-router.post('/products/:id/reviews', authenticate, (req, res) => {
+router.post('/products/:id/reviews', authenticate, orderLimiter, (req, res) => {
     if (!ensureStudent(req, res)) return;
     const db = getDB();
     const rating = Math.max(1, Math.min(5, parseInt(req.body.rating) || 0));
@@ -444,7 +445,7 @@ router.get('/seller/dashboard', authenticate, (req, res) => {
     }
 });
 
-router.post('/products/:id/order', authenticate, (req, res) => {
+router.post('/products/:id/order', authenticate, orderLimiter, (req, res) => {
     if (!ensureStudent(req, res)) return;
     const db = getDB();
     const quantity = Math.max(1, Math.min(parseInt(req.body.quantity) || 1, 99));
@@ -629,7 +630,7 @@ router.get('/orders/:id/chat', authenticate, (req, res) => {
     }
 });
 
-router.post('/orders/:id/chat', authenticate, (req, res) => {
+router.post('/orders/:id/chat', authenticate, chatLimiter, (req, res) => {
     if (!ensureStudent(req, res)) return;
     const db = getDB();
     const message = cleanText(req.body.message, 700);

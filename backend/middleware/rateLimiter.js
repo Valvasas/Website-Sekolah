@@ -69,10 +69,58 @@ const apiLimiter = rateLimit({
     }
 });
 
+const uploadLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max:      parseInt(process.env.UPLOAD_MAX_REQUESTS_PER_10_MIN) || 30,
+    standardHeaders: true,
+    legacyHeaders:   false,
+    message: {
+        success: false,
+        message: 'Terlalu banyak upload dari koneksi ini. Tunggu sebentar sebelum mencoba lagi.'
+    }
+});
+
+const forumPostLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max:      parseInt(process.env.FORUM_POST_MAX_PER_MINUTE) || 8,
+    standardHeaders: true,
+    legacyHeaders:   false,
+    message: {
+        success: false,
+        message: 'Posting terlalu cepat. Beri jeda sebentar agar forum tetap nyaman.'
+    }
+});
+
+const chatLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max:      parseInt(process.env.CHAT_MAX_PER_MINUTE) || 20,
+    standardHeaders: true,
+    legacyHeaders:   false,
+    message: {
+        success: false,
+        message: 'Pesan terlalu cepat. Coba lagi sebentar.'
+    }
+});
+
+const orderLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max:      parseInt(process.env.ORDER_MAX_PER_MINUTE) || 10,
+    standardHeaders: true,
+    legacyHeaders:   false,
+    message: {
+        success: false,
+        message: 'Aksi kantin terlalu cepat. Coba lagi sebentar.'
+    }
+});
+
 module.exports = {
     loginLimiter,
     registerLimiter,
     passwordResetLimiter,
     sklSearchLimiter,
     apiLimiter,
+    uploadLimiter,
+    forumPostLimiter,
+    chatLimiter,
+    orderLimiter,
 };

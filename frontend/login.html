@@ -275,6 +275,51 @@
 
         .role-tab.active i { color: var(--teal); }
 
+        .staff-access-card {
+            margin-top: 14px;
+            padding: 14px;
+            border: 1px solid rgba(29,78,216,0.16);
+            border-radius: 8px;
+            background: #f8fbff;
+            display: grid;
+            gap: 10px;
+        }
+
+        .staff-access-copy {
+            display: flex;
+            gap: 10px;
+            color: var(--muted);
+            font-size: 0.8rem;
+            line-height: 1.55;
+        }
+
+        .staff-access-copy i {
+            color: var(--sky);
+            margin-top: 2px;
+        }
+
+        .staff-access-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 42px;
+            border-radius: 8px;
+            border: 1px solid rgba(29,78,216,0.22);
+            background: #ffffff;
+            color: var(--navy);
+            text-decoration: none;
+            font-size: 0.84rem;
+            font-weight: 900;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .staff-access-link:hover {
+            transform: translateY(-1px);
+            border-color: rgba(29,78,216,0.44);
+            box-shadow: 0 10px 22px rgba(16,32,51,0.1);
+        }
+
         .grid-2 {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -633,6 +678,17 @@
                                 <span class="btn-label"><i class="fas fa-right-to-bracket"></i> Masuk ke Portal</span>
                             </button>
                         </form>
+
+                        <div class="staff-access-card" aria-label="Akses admin dan staff">
+                            <div class="staff-access-copy">
+                                <i class="fas fa-circle-info" aria-hidden="true"></i>
+                                <span>Akun guru, tata usaha, kepala sekolah, dan admin masuk lewat panel staff khusus.</span>
+                            </div>
+                            <a class="staff-access-link" href="/admin-panel/login.html">
+                                <i class="fas fa-user-shield"></i>
+                                Masuk Admin / Staff
+                            </a>
+                        </div>
 
                         <div class="divider">atau masuk cepat</div>
                         <button class="btn btn-google" id="googleBtn" type="button">

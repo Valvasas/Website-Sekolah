@@ -649,7 +649,7 @@ function renderStaffStudents(pagination = {}) {
 async function openStaffStudent(nisn) {
     if (!nisn) return;
     lmsState.staffSelectedNisn = nisn;
-    ['staff-grade-nisn','staff-att-nisn','profile-target-nisn'].forEach(id => setVal(id, nisn));
+    ['staff-grade-nisn','staff-att-nisn','profile-target-nisn','staff-rapor-nisn'].forEach(id => setVal(id, nisn));
     renderStaffStudents();
     const empty = document.getElementById('staff-detail-empty');
     const panel = document.getElementById('staff-detail-panel');
@@ -712,6 +712,11 @@ function renderStaffStudentDetail(data) {
         <div class="staff-detail-section">
             <h4>Histori CBT</h4>
             ${cbt.slice(0, 5).map(c => `<div class="staff-mini-row"><span>${escHtml(c.exam_title || c.mapel || 'CBT')} · ${formatRelativeTime(c.selesai_at)}</span><strong>${escHtml(c.nilai ?? '-')}</strong></div>`).join('') || '<p class="staff-empty">Belum ada histori CBT.</p>'}
+        </div>
+        <div class="staff-detail-section" style="margin-top:15px; border-top:1px solid var(--border); padding-top:15px; display:flex; gap:10px;">
+            <button class="lms-btn compact" style="flex:1; background:linear-gradient(135deg, #4f46e5, #3b82f6); color:white; border:none; padding:10px 14px; border-radius:8px; font-weight:600; cursor:pointer;" onclick="openStaffStudentRapor('${escHtml(s.nisn)}')">
+                <i class="fas fa-file-invoice"></i> Lihat E-Rapor Siswa
+            </button>
         </div>
     `;
 }
@@ -991,6 +996,7 @@ async function fetchTugas() {
         lmsState.tugasData = data.data || [];
         renderTugas('semua');
         renderMiniTugas();
+        renderTodayPriorities();
         // Update badge
         const belum = canEditBiodata()
             ? lmsState.tugasData.length
@@ -1093,6 +1099,88 @@ function renderMiniTugas() {
             </span>
         </div>`;
     }).join('');
+}
+
+function renderTodayPriorities() {
+    const el = document.getElementById('today-priority-list');
+    if (!el) return;
+    const now = Date.now();
+    const pendingTasks = (lmsState.tugasData || [])
+        .filter(t => !t.submission_id)
+        .sort((a, b) => new Date(a.deadline || '2999-12-31') - new Date(b.deadline || '2999-12-31'))
+        .slice(0, 2);
+    const openCbt = (lmsState.cbtSessions || [])
+        .filter(s => s.status === 'open' && !s.used)
+        .slice(0, 1);
+    const latestMateri = (lmsState.allMateri || [])
+        .slice()
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        .slice(0, pendingTasks.length || openCbt.length ? 1 : 2);
+    const welcome = document.querySelector('.wb-text p');
+    if (welcome && !canEditBiodata()) {
+        const taskText = pendingTasks.length ? `${pendingTasks.length} tugas perlu dicek` : 'tidak ada tugas mendesak';
+        const cbtText = openCbt.length ? ` dan ${openCbt.length} CBT aktif` : '';
+        welcome.textContent = `Yuk lanjutkan belajar hari ini. Ada ${taskText}${cbtText}.`;
+    }
+
+    const rows = [];
+    pendingTasks.forEach(task => {
+        const deadlineTime = task.deadline ? new Date(task.deadline).getTime() : null;
+        const diffHours = deadlineTime ? Math.round((deadlineTime - now) / 3600000) : null;
+        const urgent = diffHours !== null && diffHours <= 24;
+        rows.push({
+            tone: urgent ? 'urgent' : 'warning',
+            icon: urgent ? 'fa-clock' : 'fa-list-check',
+            title: task.judul || 'Tugas belum dikerjakan',
+            desc: `${task.mapel || 'Mapel'} · ${task.deadline ? 'Deadline ' + new Date(task.deadline).toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : 'Tidak ada deadline'}`,
+            action: 'Kerjakan',
+            onclick: `bukaSubmitTugas('${escAttr(task.id)}')`
+        });
+    });
+    openCbt.forEach(session => {
+        rows.push({
+            tone:'urgent',
+            icon:'fa-laptop-code',
+            title: session.title || session.mapel || 'CBT sedang aktif',
+            desc: `${session.kelas || 'Kelas saya'} · buka halaman CBT untuk mulai dengan aman.`,
+            action:'Buka CBT',
+            onclick:"window.location.href='cbt.html'"
+        });
+    });
+    latestMateri.forEach(materi => {
+        rows.push({
+            tone:'success',
+            icon:'fa-folder-open',
+            title: materi.title || materi.original_name || 'Materi terbaru',
+            desc: `${materi.mapel || 'Materi'} · ${materi.ukuran || 'file belajar'}`,
+            action:'Buka',
+            onclick:"navigate('materi', document.querySelector('[data-page=materi]'))"
+        });
+    });
+
+    if (!rows.length) {
+        el.innerHTML = `
+            <div class="priority-empty">
+                <i class="fas fa-circle-check"></i>
+                <div>
+                    <strong>Hari ini aman.</strong>
+                    <span>Tidak ada tugas atau CBT mendesak dari data LMS yang tersedia. Kamu bisa lanjut baca materi atau cek forum kelas.</span>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    el.innerHTML = rows.slice(0, 3).map(item => `
+        <article class="priority-item ${escAttr(item.tone)}">
+            <i class="fas ${escAttr(item.icon)}"></i>
+            <div>
+                <strong>${escHtml(item.title)}</strong>
+                <span>${escHtml(item.desc)}</span>
+            </div>
+            <button type="button" class="priority-action" onclick="${escAttr(item.onclick)}">${escHtml(item.action)}</button>
+        </article>
+    `).join('');
 }
 
 async function fetchKelas() {
@@ -1266,6 +1354,7 @@ async function fetchMateri(query = '') {
         if (!data.success) return;
         lmsState.allMateri = data.data || [];
         renderMateri();
+        renderTodayPriorities();
     } catch(e) { console.warn('[Fetch materi]', e.message); }
 }
 
@@ -1784,13 +1873,242 @@ function formatRoleLabel(role) {
 }
 
 /* ── Fetch & Render: Nilai ──────────────────────────────────── */
+let lmsNilaiTab = 'komponen';
+
+function switchNilaiTab(tab) {
+    lmsNilaiTab = tab;
+    document.querySelectorAll('.nilai-tabs button').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.nilai-tab-content').forEach(cont => cont.classList.remove('active'));
+
+    if (tab === 'komponen') {
+        document.getElementById('tab-btn-komponen')?.classList.add('active');
+        document.getElementById('nilai-komponen-content')?.classList.add('active');
+    } else {
+        document.getElementById('tab-btn-rapor')?.classList.add('active');
+        document.getElementById('nilai-rapor-content')?.classList.add('active');
+        renderRaporPaper();
+    }
+}
+
 async function fetchNilai() {
+    await fetchRaporDanNilai();
+}
+
+async function fetchRaporDanNilai() {
+    const sem = document.getElementById('nilai-semester-select')?.value || 'genap';
+    const thn = document.getElementById('nilai-tahun-select')?.value || '2025/2026';
     try {
-        const data = await apiFetch('/siswa/nilai?semester=genap');
-        if (!data.success) return;
-        lmsState.nilaiData = data.data || [];
-        renderNilai();
-    } catch(e) { console.warn('[Fetch nilai]', e.message); }
+        const resNilai = await apiFetch(`/siswa/nilai?semester=${encodeURIComponent(sem)}`);
+        if (resNilai.success) {
+            lmsState.nilaiData = resNilai.data || [];
+            renderNilai();
+        }
+
+        const resRapor = await apiFetch(`/siswa/rapor?semester=${encodeURIComponent(sem)}&tahun_ajaran=${encodeURIComponent(thn)}`);
+        if (resRapor.success) {
+            lmsState.raporData = resRapor.data;
+            if (lmsNilaiTab === 'rapor') {
+                renderRaporPaper();
+            }
+        }
+    } catch(e) {
+        console.warn('[Fetch Rapor & Nilai error]', e.message);
+    }
+}
+
+function getPredicate(nilai) {
+    const n = Number(nilai);
+    if (n >= 85) return { grade: 'A', desc: 'Sangat Baik' };
+    if (n >= 75) return { grade: 'B', desc: 'Baik' };
+    if (n >= 70) return { grade: 'C', desc: 'Cukup' };
+    return { grade: 'D', desc: 'Kurang/Remedial' };
+}
+
+function getCompetencyDesc(mapel, nilai) {
+    const n = Number(nilai);
+    if (n >= 85) return `Sangat menonjol dalam pemahaman dan penerapan kompetensi dasar ${mapel}.`;
+    if (n >= 75) return `Menunjukkan pemahaman yang baik dalam pencapaian kompetensi dasar ${mapel}.`;
+    if (n >= 70) return `Memenuhi standar kompetensi dasar ${mapel}, perlu sedikit pemantapan.`;
+    return `Belum memenuhi kompetensi minimal untuk ${mapel}, sangat membutuhkan bimbingan dan perbaikan.`;
+}
+
+function renderRaporPaper() {
+    const el = document.getElementById('rapor-paper-area');
+    if (!el) return;
+
+    if (!lmsState.raporData) {
+        el.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><strong>Memuat E-Rapor...</strong></div>';
+        return;
+    }
+
+    const r = lmsState.raporData;
+    const s = r.student || {};
+    const grades = r.grades || [];
+    const kh = r.kehadiran || { hadir: 0, sakit: 0, izin: 0, alpha: 0 };
+    const meta = r.metadata || { catatan: '', kenaikan_kelas: '' };
+
+    const semesterLabel = r.semester === 'ganjil' ? '1 (Ganjil)' : '2 (Genap)';
+
+    let gradesRows = '';
+    if (!grades.length) {
+        gradesRows = `<tr><td colspan="6" style="text-align:center;padding:20px;font-style:italic;">Belum ada komponen nilai untuk semester ini.</td></tr>`;
+    } else {
+        gradesRows = grades.map((g, idx) => {
+            const finalVal = g.nilai_final ?? 0;
+            const pred = getPredicate(finalVal);
+            const comp = getCompetencyDesc(g.mapel, finalVal);
+            return `
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td class="text-left">${escHtml(g.mapel)}</td>
+                    <td>${g.kkm ?? 70}</td>
+                    <td><strong>${finalVal}</strong></td>
+                    <td>${pred.grade}</td>
+                    <td class="text-left" style="font-size:0.8rem;line-height:1.3;">${escHtml(comp)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    const decisionSection = r.semester === 'genap' ? `
+        <div class="rapor-decision-box">
+            KEPUTUSAN:<br>
+            Berdasarkan pencapaian kompetensi pada semester 1 dan 2, siswa dinyatakan: <br>
+            <span style="font-size:1.15rem;text-transform:uppercase;color:#1e3a8a;margin-top:5px;display:inline-block;">
+                ${escHtml(meta.kenaikan_kelas || '--- Belum Ditentukan ---')}
+            </span>
+        </div>
+    ` : '';
+
+    el.innerHTML = `
+        <div class="rapor-header">
+            <img class="rapor-logo" src="asset/Logo SMK.png" alt="Logo Sekolah" onerror="this.style.display='none'">
+            <div class="rapor-header-text">
+                <h1>Pemerintah Provinsi Jawa Barat</h1>
+                <h2>SMK Negeri 1 Terisi</h2>
+                <p>Jl. Raya Terisi-Cikedung, Kec. Terisi, Kab. Indramayu, Jawa Barat 45262</p>
+                <p>Website: www.smkn1terisi.sch.id · Email: info@smkn1terisi.sch.id</p>
+            </div>
+        </div>
+
+        <div class="rapor-title">Laporan Hasil Penilaian Belajar (E-Rapor)</div>
+
+        <div class="rapor-info-grid">
+            <div class="rapor-info-col">
+                <table>
+                    <tr><td>Nama Peserta Didik</td><td>:</td><td><strong>${escHtml(s.nama_lengkap)}</strong></td></tr>
+                    <tr><td>Nomor Induk / NISN</td><td>:</td><td>${escHtml(s.nisn)}</td></tr>
+                    <tr><td>Program Keahlian</td><td>:</td><td>${escHtml(s.jurusan || '-')}</td></tr>
+                </table>
+            </div>
+            <div class="rapor-info-col">
+                <table>
+                    <tr><td>Kelas</td><td>:</td><td>${escHtml(s.kelas || '-')}</td></tr>
+                    <tr><td>Semester</td><td>:</td><td>${semesterLabel}</td></tr>
+                    <tr><td>Tahun Pelajaran</td><td>:</td><td>${escHtml(r.tahun_ajaran)}</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <table class="rapor-table">
+            <thead>
+                <tr>
+                    <th style="width:5%;">No</th>
+                    <th style="width:30%;">Mata Pelajaran</th>
+                    <th style="width:10%;">KKM</th>
+                    <th style="width:12%;">Nilai Akhir</th>
+                    <th style="width:10%;">Predikat</th>
+                    <th style="width:33%;">Deskripsi Kemajuan Belajar</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${gradesRows}
+            </tbody>
+        </table>
+
+        <div class="rapor-bottom-grid">
+            <div class="rapor-box-border">
+                <h4>Ketidakhadiran</h4>
+                <table class="rapor-att-table">
+                    <tr><td>Sakit (S)</td><td>:</td><td>${kh.sakit || 0} hari</td></tr>
+                    <tr><td>Izin (I)</td><td>:</td><td>${kh.izin || 0} hari</td></tr>
+                    <tr><td>Tanpa Keterangan (A)</td><td>:</td><td>${kh.alpha || 0} hari</td></tr>
+                    <tr style="border:none;font-weight:bold;"><td>Total Absen</td><td>:</td><td>${(kh.sakit||0)+(kh.izin||0)+(kh.alpha||0)} hari</td></tr>
+                </table>
+            </div>
+            <div class="rapor-box-border">
+                <h4>Catatan Wali Kelas</h4>
+                <p>"${escHtml(meta.catatan || 'Belum ada catatan wali kelas.')}"</p>
+            </div>
+        </div>
+
+        ${decisionSection}
+
+        <div class="rapor-signatures">
+            <div>
+                <p>Mengetahui,<br>Orang Tua / Wali Siswa</p>
+                <div class="rapor-sig-space"></div>
+                <p>__________________________</p>
+            </div>
+            <div>
+                <p>Terisi, ${new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}<br>Wali Kelas</p>
+                <div class="rapor-sig-space"></div>
+                <p><strong>__________________________</strong><br>NIP. -</p>
+            </div>
+            <div class="rapor-sig-center">
+                <div class="rapor-sig-center-block">
+                    <p>Mengetahui,<br>Kepala Sekolah SMK Negeri 1 Terisi</p>
+                    <div class="rapor-sig-space"></div>
+                    <p><strong>H. Muhammad, M.Pd.</strong><br>NIP. 197508212002121003</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function printRapor() {
+    window.print();
+}
+
+async function saveStaffRaporMetadata() {
+    const payload = {
+        nisn: document.getElementById('staff-rapor-nisn')?.value.trim(),
+        semester: document.getElementById('staff-rapor-semester')?.value,
+        tahun_ajaran: document.getElementById('staff-rapor-tahun')?.value,
+        catatan: document.getElementById('staff-rapor-catatan')?.value.trim(),
+        kenaikan_kelas: document.getElementById('staff-rapor-kenaikan')?.value.trim()
+    };
+    if (!payload.nisn) return showToast('NISN wajib diisi.', 'red');
+    try {
+        const res = await apiFetch('/siswa/rapor/catatan', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        showToast(res.message || 'Catatan rapor tersimpan.', res.success ? 'green' : 'red');
+        if (res.success && payload.nisn === lmsState.staffSelectedNisn) await openStaffStudent(payload.nisn);
+    } catch(e) {
+        showToast('Gagal menyimpan catatan rapor.', 'red');
+    }
+}
+
+async function openStaffStudentRapor(nisn) {
+    if (!nisn) return;
+    const sem = document.getElementById('staff-rapor-semester')?.value || 'genap';
+    const thn = document.getElementById('staff-rapor-tahun')?.value || '2025/2026';
+    try {
+        const resRapor = await apiFetch(`/siswa/rapor?nisn=${encodeURIComponent(nisn)}&semester=${encodeURIComponent(sem)}&tahun_ajaran=${encodeURIComponent(thn)}`);
+        if (resRapor.success) {
+            lmsState.raporData = resRapor.data;
+            // Pindah ke tab Nilai dan tab E-Rapor
+            navigate('nilai');
+            switchNilaiTab('rapor');
+            renderRaporPaper();
+        } else {
+            showToast(resRapor.message || 'Gagal memuat rapor siswa.', 'red');
+        }
+    } catch(e) {
+        showToast('Gagal memuat rapor siswa.', 'red');
+    }
 }
 
 function renderNilai() {
@@ -1945,6 +2263,7 @@ function renderStudentCbtSessions() {
     const sessions = lmsState.cbtSessions || [];
     const openCount = sessions.filter(s => s.status === 'open' && !s.used).length;
     if (status) status.textContent = openCount ? `${openCount} sesi siap dikerjakan` : 'Cek sesi ujian aktif';
+    renderTodayPriorities();
     if (!sessions.length) {
         el.innerHTML = '<p style="text-align:center;color:#64748b;padding:20px 0;font-size:.85rem;">Belum ada sesi CBT untuk akun kamu.</p>';
         return;

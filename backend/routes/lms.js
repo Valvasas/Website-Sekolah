@@ -8,6 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 const { authenticate, authorize } = require('../middleware/auth');
 const getDB    = require('../config/database');
 const ENV      = require('../config/env');
+const { forumPostLimiter, chatLimiter } = require('../middleware/rateLimiter');
 
 const nowISO = () => new Date().toISOString();
 const STAFF  = ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'];
@@ -552,7 +553,7 @@ router.get('/forum', authenticate, (req, res) => {
 });
 
 // POST /api/lms/forum — buat post baru
-router.post('/forum', authenticate, (req, res) => {
+router.post('/forum', authenticate, forumPostLimiter, (req, res) => {
     const db = getDB();
     const { konten, mapel, parent_id, visibility = 'school', kelas, attachment_url, attachment_name, attachment_type } = req.body;
     if (!konten?.trim() && !attachment_url) return res.status(400).json({ success: false, message: 'Konten atau lampiran wajib diisi.' });
@@ -735,7 +736,7 @@ router.get('/private-chat/:userId', authenticate, (req, res) => {
     }
 });
 
-router.post('/private-chat/:userId', authenticate, (req, res) => {
+router.post('/private-chat/:userId', authenticate, chatLimiter, (req, res) => {
     const db = getDB();
     const peerId = req.params.userId;
     const message = cleanText(req.body.message, 1000);

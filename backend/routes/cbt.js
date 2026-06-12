@@ -176,6 +176,10 @@ function normalizeQuestionPayload(raw, index = 0) {
     return { ok: true, data: q };
 }
 
+function legacyRequiredText(value) {
+    return value === undefined || value === null ? '' : String(value);
+}
+
 function createAndAssignQuestions(db, exam, questions, userId) {
     if (!Array.isArray(questions) || !questions.length) return 0;
     const now = nowISO();
@@ -194,8 +198,8 @@ function createAndAssignQuestions(db, exam, questions, userId) {
         const questionId = uuidv4();
         insertQuestion.run(
             questionId, exam.mapel, item.jenis_ujian || 'CBT', item.question_type || 'multiple_choice', item.soal,
-            item.opsi_a, item.opsi_b, item.opsi_c, item.opsi_d, item.opsi_e || null,
-            item.jawaban || null, item.essay_keywords || null, item.essay_min_words || 0,
+            legacyRequiredText(item.opsi_a), legacyRequiredText(item.opsi_b), legacyRequiredText(item.opsi_c), legacyRequiredText(item.opsi_d), item.opsi_e || null,
+            legacyRequiredText(item.jawaban), item.essay_keywords || null, item.essay_min_words || 0,
             item.media_type || null, item.media_url || null, item.media_alt || null, item.canvas_data || null,
             item.tingkat || 'sedang', userId, now, now
         );
@@ -463,8 +467,8 @@ router.post('/bank-soal', authenticate, authorize(...STAFF), (req, res) => {
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
         `).run(
             id, mapel, q.jenis_ujian, q.question_type, q.soal,
-            q.opsi_a, q.opsi_b, q.opsi_c, q.opsi_d, q.opsi_e || null,
-            q.jawaban || null, q.essay_keywords || null, q.essay_min_words || 0,
+            legacyRequiredText(q.opsi_a), legacyRequiredText(q.opsi_b), legacyRequiredText(q.opsi_c), legacyRequiredText(q.opsi_d), q.opsi_e || null,
+            legacyRequiredText(q.jawaban), q.essay_keywords || null, q.essay_min_words || 0,
             q.media_type || null, q.media_url || null, q.media_alt || null, q.canvas_data || null,
             q.tingkat || 'sedang', req.user.sub, now, now
         );
@@ -494,7 +498,8 @@ router.put('/bank-soal/:id', authenticate, authorize(...STAFF), (req, res) => {
         if (key === 'jawaban' && req.body[key] !== null && req.body[key] !== '' && !['A','B','C','D','E'].includes(String(req.body[key]).toUpperCase())) {
             return res.status(400).json({ success: false, message: 'Jawaban harus A-E.' });
         }
-        if (key === 'jawaban') vals[key] = req.body[key] ? String(req.body[key]).toUpperCase() : null;
+        if (key === 'jawaban') vals[key] = req.body[key] ? String(req.body[key]).toUpperCase() : '';
+        else if (['opsi_a', 'opsi_b', 'opsi_c', 'opsi_d'].includes(key)) vals[key] = legacyRequiredText(req.body[key]);
         else if (key === 'essay_keywords') vals[key] = normalizeKeywordList(req.body[key]);
         else if (key === 'essay_min_words') vals[key] = Math.max(0, Math.min(parseInt(req.body[key]) || 0, 1000));
         else if (key === 'media_url') vals[key] = cleanUrl(req.body[key]);

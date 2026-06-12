@@ -1,0 +1,1 @@
+console.log('Hai, dunia! Program berjalan dengan sukses.');

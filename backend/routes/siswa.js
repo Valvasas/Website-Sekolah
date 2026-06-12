@@ -213,9 +213,11 @@ router.get('/staff/:nisn/detail', authenticate, authorize(...STAFF), (req, res) 
             LIMIT 80
         `).all(nisn);
 
+        const raporMetadata = db.prepare('SELECT * FROM rapor_metadata WHERE nisn = ?').all(nisn);
+
         res.json({
             success: true,
-            data: { student, nilai, nilaiSummary: gradeData.stats, kehadiran, kehadiranSummary, tugas, cbt }
+            data: { student, nilai, nilaiSummary: gradeData.stats, kehadiran, kehadiranSummary, tugas, cbt, raporMetadata }
         });
     } catch(e) {
         console.error('[Siswa staff detail]', e.message);
@@ -581,6 +583,81 @@ router.get('/dashboard', authenticate, (req, res) => {
                 persen_hadir: totalKh ? Math.round((kh.hadir/totalKh)*100) : 100,
             }
         });
+    } catch(e) {
+        res.status(500).json({ success:false, message:e.message });
+    }
+});
+
+/* GET /api/siswa/rapor — Ambil data E-Rapor lengkap */
+router.get('/rapor', authenticate, (req, res) => {
+    try {
+        const db   = getDB();
+        const nisn = getNisn(req);
+        if (!nisn) return res.status(400).json({ success:false, message:'NISN tidak ditemukan.' });
+
+        const semester = req.query.semester || 'genap';
+        const tahun_ajaran = req.query.tahun_ajaran || '2025/2026';
+
+        // 1. Ambil data profil siswa
+        const student = db.prepare(`
+            SELECT u.nama_lengkap, u.nisn, u.email, sp.kelas, sp.jurusan, sp.tempat_lahir, sp.tanggal_lahir, sp.jenis_kelamin, sp.agama, sp.alamat
+            FROM users u
+            LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
+            WHERE u.nisn = ?
+        `).get(nisn);
+
+        if (!student) return res.status(404).json({ success:false, message:'Data siswa tidak ditemukan.' });
+
+        // 2. Ambil nilai & rekap
+        const gradesData = summarizeGrades(getGradeRows(db, nisn, semester));
+
+        // 3. Ambil kehadiran
+        const khRows = db.prepare('SELECT status, COUNT(*) as cnt FROM kehadiran WHERE nisn=? GROUP BY status').all(nisn);
+        const kehadiran = { hadir:0, sakit:0, izin:0, alpha:0 };
+        khRows.forEach(r => { if (kehadiran[r.status] !== undefined) kehadiran[r.status] = r.cnt; });
+
+        // 4. Ambil rapor metadata (catatan & status kenaikan)
+        const metadata = db.prepare('SELECT catatan, kenaikan_kelas FROM rapor_metadata WHERE nisn = ? AND semester = ? AND tahun_ajaran = ?')
+            .get(nisn, semester, tahun_ajaran) || { catatan: '', kenaikan_kelas: '' };
+
+        res.json({
+            success: true,
+            data: {
+                student,
+                grades: gradesData.rows,
+                stats: gradesData.stats,
+                kehadiran,
+                metadata,
+                semester,
+                tahun_ajaran
+            }
+        });
+    } catch(e) {
+        res.status(500).json({ success:false, message:e.message });
+    }
+});
+
+/* POST /api/siswa/rapor/catatan — Input Catatan Wali Kelas & Kenaikan Kelas */
+router.post('/rapor/catatan', authenticate, authorize(...STAFF), (req, res) => {
+    try {
+        const db  = getDB();
+        const now = new Date().toISOString();
+        const { nisn, semester, tahun_ajaran, catatan, kenaikan_kelas } = req.body;
+
+        if (!nisn || !semester || !tahun_ajaran) {
+            return res.status(400).json({ success:false, message:'nisn, semester, dan tahun_ajaran wajib diisi.' });
+        }
+
+        const exists = db.prepare('SELECT id FROM rapor_metadata WHERE nisn = ? AND semester = ? AND tahun_ajaran = ?').get(nisn, semester, tahun_ajaran);
+        if (exists) {
+            db.prepare('UPDATE rapor_metadata SET catatan = ?, kenaikan_kelas = ? WHERE id = ?')
+              .run(cleanText(catatan, 1000), cleanText(kenaikan_kelas, 100), exists.id);
+        } else {
+            db.prepare('INSERT INTO rapor_metadata (id, nisn, semester, tahun_ajaran, catatan, kenaikan_kelas, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+              .run(uuidv4(), nisn, semester, cleanText(tahun_ajaran, 20), cleanText(catatan, 1000), cleanText(kenaikan_kelas, 100), now);
+        }
+
+        res.json({ success:true, message:'Catatan E-Rapor berhasil disimpan.' });
     } catch(e) {
         res.status(500).json({ success:false, message:e.message });
     }

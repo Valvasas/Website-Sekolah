@@ -12,6 +12,7 @@ const { v4: uuidv4 } = require('uuid');
 const { authenticate, isStaff, isContentAdmin } = require('../middleware/auth');
 const getDB    = require('../config/database');
 const ENV      = require('../config/env');
+const { uploadLimiter } = require('../middleware/rateLimiter');
 
 // ── Upload directory ───────────────────────────────────────────────
 const UPLOAD_DIR = path.join(__dirname, '../public/uploads');
@@ -31,6 +32,11 @@ Object.values(CATEGORIES).forEach(dir => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
+router.use((req, res, next) => {
+    if (req.method !== 'POST') return next();
+    return uploadLimiter(req, res, next);
+});
+
 const VIDEO_MIMES = ['video/mp4','video/webm','video/quicktime'];
 const FORUM_AUDIO_MIMES = ['audio/mpeg','audio/wav','audio/ogg','audio/webm'];
 
@@ -46,6 +52,19 @@ const BASE_ALLOWED_TYPES = {
     forum:  ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain','image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm','video/quicktime','audio/mpeg','audio/wav','audio/ogg','audio/webm'],
     kantin_chat:['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain','image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm','video/quicktime','audio/mpeg','audio/wav','audio/ogg','audio/webm'],
     general:['application/pdf','image/jpeg','image/png'],
+};
+
+const BASE_ALLOWED_EXTENSIONS = {
+    tugas:  ['.pdf','.doc','.docx','.ppt','.pptx','.xls','.xlsx','.txt','.jpg','.jpeg','.png','.webp','.gif'],
+    profil: ['.jpg','.jpeg','.png','.webp'],
+    ppdb:   ['.pdf','.jpg','.jpeg','.png'],
+    materi: ['.pdf','.doc','.docx','.ppt','.pptx','.xls','.xlsx','.txt','.mp4','.webm','.mov','.jpg','.jpeg','.png','.webp','.gif'],
+    website:['.jpg','.jpeg','.png','.webp'],
+    cbt:    ['.jpg','.jpeg','.png','.webp','.mp3','.wav','.ogg','.mp4','.webm'],
+    kantin: ['.jpg','.jpeg','.png','.webp'],
+    forum:  ['.pdf','.doc','.docx','.ppt','.pptx','.xls','.xlsx','.txt','.jpg','.jpeg','.png','.webp','.gif','.mp4','.webm','.mov','.mp3','.wav','.ogg'],
+    kantin_chat:['.pdf','.doc','.docx','.ppt','.pptx','.xls','.xlsx','.txt','.jpg','.jpeg','.png','.webp','.gif','.mp4','.webm','.mov','.mp3','.wav','.ogg'],
+    general:['.pdf','.jpg','.jpeg','.png'],
 };
 
 function buildAllowedTypes() {
@@ -66,6 +85,24 @@ function buildAllowedTypes() {
 }
 
 const ALLOWED_TYPES = buildAllowedTypes();
+const ALLOWED_EXTENSIONS = (() => {
+    const map = Object.fromEntries(Object.entries(BASE_ALLOWED_EXTENSIONS).map(([key, exts]) => [key, [...exts]]));
+    if (!ENV.FEATURE_FORUM_ATTACHMENT) {
+        map.forum = [];
+        map.kantin_chat = [];
+    }
+    if (!ENV.FEATURE_FORUM_VIDEO_ATTACHMENT) {
+        ['forum','kantin_chat'].forEach(key => {
+            map[key] = map[key].filter(ext => !['.mp4','.webm','.mov'].includes(ext));
+        });
+    }
+    if (!ENV.FEATURE_FORUM_AUDIO_ATTACHMENT) {
+        ['forum','kantin_chat'].forEach(key => {
+            map[key] = map[key].filter(ext => !['.mp3','.wav','.ogg'].includes(ext));
+        });
+    }
+    return map;
+})();
 
 const MAX_SIZE = {
     tugas:  ENV.UPLOAD_MAX_TUGAS_MB * 1024 * 1024,
@@ -84,6 +121,17 @@ const UPLOAD_QUOTA_BYTES = Math.round(ENV.UPLOAD_MAX_TOTAL_GB * 1024 * 1024 * 10
 
 function cleanText(value, max = 500) {
     return String(value || '').replace(/[<>]/g, '').trim().slice(0, max) || null;
+}
+
+function cleanFileName(value, max = 180) {
+    const base = path.basename(String(value || 'file')).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+    return base.replace(/\s+/g, ' ').trim().slice(0, max) || 'file';
+}
+
+function hasAllowedExtension(category, originalName) {
+    const ext = path.extname(String(originalName || '')).toLowerCase();
+    const allowed = ALLOWED_EXTENSIONS[category] || ALLOWED_EXTENSIONS.general;
+    return Boolean(ext && allowed.includes(ext));
 }
 
 function cleanNisn(value) {
@@ -165,6 +213,13 @@ function validateUploadedFilePolicy(req, res, next) {
     const file = req.file;
     if (!file) return next();
     const category = req.uploadCategory || 'general';
+    if (!hasAllowedExtension(category, file.originalname)) {
+        fs.unlink(file.path, () => {});
+        return res.status(415).json({
+            success: false,
+            message: `Ekstensi file tidak diizinkan untuk kategori ${category}.`
+        });
+    }
     const limit = maxSizeByMime(category, file.mimetype);
     if (file.size > limit) {
         fs.unlink(file.path, () => {});
@@ -202,7 +257,9 @@ function createUploader(category) {
             if (disabledMessage) return cb(new Error(disabledMessage));
             const pressureMessage = uploadPressureMessage(category, file.mimetype);
             if (pressureMessage) return cb(new Error(pressureMessage));
-            if (allowed.includes(file.mimetype)) {
+            if (!hasAllowedExtension(category, file.originalname)) {
+                cb(new Error(`Ekstensi file tidak diizinkan untuk kategori ${category}.`));
+            } else if (allowed.includes(file.mimetype)) {
                 cb(null, true);
             } else {
                 cb(new Error(`Tipe file '${file.mimetype}' tidak diizinkan untuk kategori ${category}.`));
@@ -222,7 +279,7 @@ function saveFileRecord(db, { uploaderId, originalName, fileName, category, mime
         INSERT INTO file_uploads (id,uploader_id,original_name,file_name,file_path,file_url,mime_type,size_bytes,category,entity_type,entity_id,created_at)
         VALUES (@id,@uploader_id,@original_name,@file_name,@file_path,@file_url,@mime_type,@size_bytes,@category,@entity_type,@entity_id,@created_at)
     `).run({
-        id, uploader_id: uploaderId, original_name: originalName,
+        id, uploader_id: uploaderId, original_name: cleanFileName(originalName),
         file_name: fileName, file_path: filePath, file_url: fileUrl,
         mime_type: mimeType, size_bytes: size, category,
         entity_type: entityType || null, entity_id: entityId || null,

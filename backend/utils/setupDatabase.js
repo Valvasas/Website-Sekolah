@@ -6,6 +6,7 @@ function setup() {
     const fs      = require('fs');
     const bcrypt  = require('bcryptjs');
     const { v4: uuidv4 } = require('uuid');
+    const { ensureCbtFoundationSchema } = require('../modules/cbt/schema');
     require('dotenv').config();
 
     const Database = require('better-sqlite3');
@@ -374,6 +375,16 @@ function setup() {
             link TEXT,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         );
+        CREATE TABLE IF NOT EXISTS rapor_metadata (
+            id TEXT PRIMARY KEY,
+            nisn TEXT NOT NULL,
+            semester TEXT NOT NULL,
+            tahun_ajaran TEXT NOT NULL,
+            catatan TEXT,
+            kenaikan_kelas TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            UNIQUE(nisn, semester, tahun_ajaran)
+        );
     `);
 
     console.log('✅ Semua tabel berhasil dibuat/diverifikasi');
@@ -458,6 +469,7 @@ function setup() {
         CREATE INDEX IF NOT EXISTS idx_audit_logs_created   ON audit_logs(created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_kehadiran_nisn       ON kehadiran(nisn, tanggal);
         CREATE INDEX IF NOT EXISTS idx_nilai_nisn           ON nilai_siswa(nisn, semester);
+        CREATE INDEX IF NOT EXISTS idx_rapor_metadata_nisn  ON rapor_metadata(nisn, semester);
         CREATE INDEX IF NOT EXISTS idx_notifikasi_user      ON notifikasi(user_id, is_read);
         CREATE INDEX IF NOT EXISTS idx_forum_user           ON forum_posts(user_id);
         CREATE INDEX IF NOT EXISTS idx_forum_scope          ON forum_posts(visibility, kelas, created_at DESC);
@@ -476,6 +488,8 @@ function setup() {
         CREATE INDEX IF NOT EXISTS idx_kantin_reviews_prod  ON kantin_reviews(product_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_kantin_reviews_seller ON kantin_reviews(seller_id, rating DESC);
     `);
+
+    ensureCbtFoundationSchema(db);
 
     console.log('✅ Database indexes created');
 

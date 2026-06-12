@@ -625,8 +625,9 @@
             display:inline-flex;margin-bottom:7px;color:#facc15;font-size:.7rem;font-weight:900;
             text-transform:uppercase;letter-spacing:.1em;
         }
-        .admin-command-hero h1{font-size:1.55rem;line-height:1.18;margin-bottom:8px;color:#fff;}
-        .admin-command-hero p{color:rgba(255,255,255,.72);line-height:1.6;max-width:720px;font-size:.88rem;}
+        .admin-command-hero{padding:18px 22px;min-height:0;align-items:center;}
+        .admin-command-hero h1{font-size:1.38rem;line-height:1.18;margin-bottom:6px;color:#fff;}
+        .admin-command-hero p{color:rgba(255,255,255,.72);line-height:1.5;max-width:680px;font-size:.84rem;}
         .admin-hero-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
         .admin-blue{background:var(--blue)!important;color:#fff!important;}
         .stats-row{gap:14px;}
@@ -654,6 +655,65 @@
         }
         #dashboardQuickActions .btn-primary,#dashboardQuickActions .btn-export{
             justify-content:center;min-height:42px;border-radius:11px;
+        }
+        .dashboard-decision-grid{
+            display:grid;
+            grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);
+            gap:16px;
+            align-items:start;
+        }
+        .attention-list{display:grid;gap:10px;}
+        .attention-item{
+            display:grid;
+            grid-template-columns:42px minmax(0,1fr) auto;
+            gap:12px;
+            align-items:center;
+            padding:12px;
+            border:1px solid var(--border);
+            border-radius:14px;
+            background:#fff;
+        }
+        .attention-item i{
+            width:42px;
+            height:42px;
+            border-radius:12px;
+            display:grid;
+            place-items:center;
+            background:#f8fafc;
+        }
+        .attention-item strong{display:block;font-size:.82rem;color:var(--navy);line-height:1.35;}
+        .attention-item span{display:block;font-size:.72rem;color:var(--muted);line-height:1.45;margin-top:2px;}
+        .attention-item.warning i{color:var(--orange);background:#fffbeb;}
+        .attention-item.danger i{color:var(--red);background:#fef2f2;}
+        .attention-item.info i{color:var(--blue);background:#eff6ff;}
+        .attention-item.success i{color:var(--green);background:#ecfdf5;}
+        .dashboard-action-primary{
+            border:2px solid rgba(212,175,55,.38);
+            box-shadow:0 16px 34px rgba(15,23,42,.08);
+        }
+        .action-tier-label{
+            grid-column:1/-1;
+            margin-top:4px;
+            color:var(--muted);
+            font-size:.68rem;
+            font-weight:900;
+            text-transform:uppercase;
+            letter-spacing:.08em;
+        }
+        .secondary-diagnostics{
+            display:grid;
+            grid-template-columns:repeat(2,minmax(0,1fr));
+            gap:16px;
+        }
+        .secondary-diagnostics #dashboardRoleCard,
+        .secondary-diagnostics #dashboardResourceCard{min-width:0;}
+        .secondary-diagnostics #dashboardRoleCard .card-body,
+        .secondary-diagnostics #dashboardResourceCard .card-body{max-height:260px;overflow:auto;}
+        @media(max-width:980px){
+            .dashboard-decision-grid,
+            .secondary-diagnostics{grid-template-columns:1fr;}
+            .attention-item{grid-template-columns:42px minmax(0,1fr);}
+            .attention-item .btn-act{grid-column:2;justify-self:start;}
         }
         .toolbar{
             background:#f8fafc;border:1px solid var(--border);border-radius:14px;padding:10px;
@@ -932,9 +992,6 @@
             </div>
             <div class="admin-hero-actions">
                 <button class="btn-primary" onclick="openCreateModal()"><i class="fas fa-user-plus"></i> User Baru</button>
-                <button class="btn-primary" style="background:var(--green);" onclick="switchPage('materials', null)"><i class="fas fa-clipboard-check"></i> Tugas LMS</button>
-                <button class="btn-primary admin-blue" onclick="switchPage('cbt-builder', null)"><i class="fas fa-laptop-code"></i> CBT</button>
-                <button class="btn-export" onclick="exportUsers()"><i class="fas fa-download"></i> Export</button>
             </div>
         </section>
 
@@ -947,38 +1004,63 @@
             <div class="stat-card red"><i class="fas fa-user-times stat-icon"></i><div class="stat-val" id="statNonaktif">-</div><div class="stat-lbl">Nonaktif</div></div>
         </div>
 
-        <!-- Quick actions -->
-        <div class="card" id="dashboardQuickActions">
-            <div class="card-header">
-                <div class="card-title"><i class="fas fa-bolt"></i> Aksi Cepat</div>
+        <div class="dashboard-decision-grid">
+            <div class="card" id="dashboardAttentionCard">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-triangle-exclamation"></i> Perlu Perhatian</div>
+                    <button class="btn-act" onclick="loadDashboard()"><i class="fas fa-sync"></i> Refresh</button>
+                </div>
+                <div class="card-body">
+                    <div class="attention-list" id="dashboardAttentionList">
+                        <div class="attention-item info">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <div>
+                                <strong>Memuat sinyal operasional...</strong>
+                                <span>Dashboard sedang mengecek user, CBT, storage, dan aktivitas terbaru.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;">
-                <button class="btn-primary" onclick="openCreateModal()"><i class="fas fa-user-plus"></i> Tambah User</button>
-                <button class="btn-export" onclick="exportUsers()"><i class="fas fa-download"></i> Export CSV</button>
-                <button class="btn-primary" style="background:var(--blue);" onclick="switchPage('auditlog', null)"><i class="fas fa-history"></i> Lihat Audit Log</button>
-            </div>
-        </div>
 
-        <!-- Statistik per role -->
-        <div class="card" id="dashboardRoleCard">
-            <div class="card-header">
-                <div class="card-title"><i class="fas fa-chart-bar"></i> Distribusi User per Role</div>
-            </div>
-            <div class="card-body">
-                <div id="roleDistribution" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;">
-                    <div style="text-align:center;color:var(--muted);padding:20px;">Memuat...</div>
+            <!-- Quick actions -->
+            <div class="card" id="dashboardQuickActions">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-bolt"></i> Aksi Cepat</div>
+                </div>
+                <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="btn-primary dashboard-action-primary" onclick="openCreateModal()"><i class="fas fa-user-plus"></i> Tambah User</button>
+                    <div class="action-tier-label">Aksi pendukung</div>
+                    <button class="btn-primary" style="background:var(--green);" onclick="switchPage('materials', null)"><i class="fas fa-clipboard-check"></i> Tugas LMS</button>
+                    <button class="btn-primary admin-blue" onclick="switchPage('cbt-builder', null)"><i class="fas fa-laptop-code"></i> CBT</button>
+                    <button class="btn-export" onclick="exportUsers()"><i class="fas fa-download"></i> Export Data</button>
+                    <button class="btn-act" onclick="switchPage('backup', null)"><i class="fas fa-database"></i> Backup</button>
                 </div>
             </div>
         </div>
 
-        <div class="card" id="dashboardResourceCard">
-            <div class="card-header">
-                <div class="card-title"><i class="fas fa-server"></i> Resource Hosting</div>
-                <button class="btn-act" onclick="loadResourceStatus()"><i class="fas fa-sync"></i> Refresh</button>
+        <div class="secondary-diagnostics">
+            <!-- Statistik per role -->
+            <div class="card" id="dashboardRoleCard">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-chart-bar"></i> Distribusi User per Role</div>
+                </div>
+                <div class="card-body">
+                    <div id="roleDistribution" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;">
+                        <div style="text-align:center;color:var(--muted);padding:20px;">Memuat...</div>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="resource-grid" id="resourceStatusGrid">
-                    <div class="empty-cell">Memuat status resource...</div>
+
+            <div class="card" id="dashboardResourceCard">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-hard-drive"></i> Status Sistem & Penyimpanan</div>
+                    <button class="btn-act" onclick="loadResourceStatus()"><i class="fas fa-sync"></i> Refresh</button>
+                </div>
+                <div class="card-body">
+                    <div class="resource-grid" id="resourceStatusGrid">
+                        <div class="empty-cell">Memuat status sistem...</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1902,6 +1984,8 @@ let adminMaterialRows = [];
 let cbtMonitorSocket = null;
 let cbtMonitorTimer = null;
 let schoolClasses = [];
+let dashboardAttentionItems = [];
+let dashboardResourceSignal = null;
 
 /* ══════════════════════════════════════════
    AUTH GUARD — redirect jika belum login
@@ -1968,11 +2052,11 @@ function initDashboard(user) {
 
 function rolePages(role) {
     const pages = {
-        super_admin: ['dashboard','users','students','materials','content','cbt','storage','backup','auditlog'],
+        super_admin: ['dashboard','users','students','materials','content','cbt','cbt-builder','cbt-sesi','cbt-kegiatan','storage','backup','auditlog'],
         content_admin: ['dashboard','content'],
-        kepala_sekolah: ['dashboard','students','materials','cbt'],
-        wakil_kepala_sekolah: ['dashboard','students','materials','cbt'],
-        guru: ['dashboard','students','materials','cbt'],
+        kepala_sekolah: ['dashboard','students','materials','cbt','cbt-builder','cbt-sesi','cbt-kegiatan'],
+        wakil_kepala_sekolah: ['dashboard','students','materials','cbt','cbt-builder','cbt-sesi','cbt-kegiatan'],
+        guru: ['dashboard','students','materials','cbt','cbt-builder','cbt-sesi','cbt-kegiatan'],
         tata_usaha: ['dashboard','students','materials','content']
     };
     return pages[role] || ['dashboard'];
@@ -1991,44 +2075,52 @@ function applyRoleDashboard(role) {
     if (quickActions && role === 'content_admin') {
         quickActions.querySelector('.card-title').innerHTML = '<i class="fas fa-bolt"></i> Aksi Cepat Admin Konten';
         quickActions.querySelector('.card-body').innerHTML = `
-            <button class="btn-primary" onclick="switchPage('content', null)"><i class="fas fa-pen-to-square"></i> Kelola Konten Website</button>
+            <button class="btn-primary dashboard-action-primary" onclick="switchPage('content', null)"><i class="fas fa-pen-to-square"></i> Kelola Konten Website</button>
+            <div class="action-tier-label">Aksi pendukung</div>
             <button class="btn-act" onclick="loadWebsiteContents()"><i class="fas fa-sync"></i> Refresh Konten</button>
         `;
     } else if (quickActions && role !== 'super_admin') {
         quickActions.querySelector('.card-title').innerHTML = '<i class="fas fa-bolt"></i> Aksi Cepat Akun Ini';
         const roleActions = {
             kepala_sekolah: `
-                <button class="btn-primary" onclick="switchPage('students', null)"><i class="fas fa-chart-line"></i> Lihat Ringkasan Siswa</button>
+                <button class="btn-primary dashboard-action-primary" onclick="switchPage('students', null)"><i class="fas fa-chart-line"></i> Lihat Ringkasan Siswa</button>
+                <div class="action-tier-label">Aksi pendukung</div>
                 <button class="btn-primary" style="background:var(--blue);" onclick="switchPage('cbt', null)"><i class="fas fa-square-poll-vertical"></i> Hasil CBT</button>
                 <button class="btn-primary" style="background:var(--green);" onclick="switchPage('materials', null)"><i class="fas fa-book-open"></i> Aktivitas LMS</button>
             `,
             wakil_kepala_sekolah: `
-                <button class="btn-primary" onclick="switchPage('students', null)"><i class="fas fa-user-graduate"></i> Monitoring Siswa</button>
+                <button class="btn-primary dashboard-action-primary" onclick="switchPage('students', null)"><i class="fas fa-user-graduate"></i> Monitoring Siswa</button>
+                <div class="action-tier-label">Aksi pendukung</div>
                 <button class="btn-primary" style="background:var(--blue);" onclick="switchPage('cbt', null)"><i class="fas fa-square-poll-vertical"></i> Hasil CBT</button>
                 <button class="btn-primary" style="background:var(--green);" onclick="switchPage('materials', null)"><i class="fas fa-book-open"></i> Aktivitas LMS</button>
             `,
             guru: `
-                <button class="btn-primary" onclick="switchPage('materials', null)"><i class="fas fa-cloud-arrow-up"></i> Upload Materi</button>
+                <button class="btn-primary dashboard-action-primary" onclick="switchPage('materials', null)"><i class="fas fa-clipboard-check"></i> Buat / Review Tugas</button>
+                <div class="action-tier-label">Aksi pendukung</div>
+                <button class="btn-act" onclick="switchPage('materials', null)"><i class="fas fa-cloud-arrow-up"></i> Upload Materi</button>
                 <button class="btn-primary" style="background:var(--green);" onclick="switchPage('materials', null)"><i class="fas fa-clipboard-check"></i> Buat Tugas</button>
                 <button class="btn-primary" style="background:var(--blue);" onclick="switchPage('cbt', null)"><i class="fas fa-laptop-code"></i> Kelola CBT</button>
             `,
             tata_usaha: `
-                <button class="btn-primary" onclick="switchPage('students', null)"><i class="fas fa-user-graduate"></i> Data Siswa</button>
+                <button class="btn-primary dashboard-action-primary" onclick="switchPage('students', null)"><i class="fas fa-user-graduate"></i> Data Siswa</button>
+                <div class="action-tier-label">Aksi pendukung</div>
                 <button class="btn-primary" style="background:var(--green);" onclick="switchPage('content', null)"><i class="fas fa-bullhorn"></i> Buat Pengumuman</button>
                 <button class="btn-export" onclick="exportStudentData()"><i class="fas fa-download"></i> Export Data</button>
             `
         };
         quickActions.querySelector('.card-body').innerHTML = `
-            ${roleActions[role] || '<button class="btn-primary" onclick="switchPage(\'students\', null)"><i class="fas fa-user-graduate"></i> Data Siswa</button>'}
+            ${roleActions[role] || '<button class="btn-primary dashboard-action-primary" onclick="switchPage(\'students\', null)"><i class="fas fa-user-graduate"></i> Data Siswa</button>'}
         `;
     } else if (quickActions && role === 'super_admin') {
         quickActions.querySelector('.card-body').innerHTML = `
-            <button class="btn-primary" onclick="openCreateModal()"><i class="fas fa-user-plus"></i> Tambah User</button>
+            <button class="btn-primary dashboard-action-primary" onclick="openCreateModal()"><i class="fas fa-user-plus"></i> Tambah User</button>
+            <div class="action-tier-label">Aksi pendukung</div>
             <button class="btn-primary" style="background:var(--green);" onclick="switchPage('materials', null)"><i class="fas fa-clipboard-check"></i> Tugas LMS</button>
             <button class="btn-primary" style="background:var(--blue);" onclick="switchPage('backup', null)"><i class="fas fa-database"></i> Backup Database</button>
-            <button class="btn-primary" style="background:var(--green);" onclick="switchPage('storage', null)"><i class="fas fa-broom"></i> Cleanup Storage</button>
             <button class="btn-primary" style="background:var(--orange);" onclick="switchPage('content', null)"><i class="fas fa-bullhorn"></i> Buat Pengumuman</button>
             <button class="btn-export" onclick="exportUsers()"><i class="fas fa-download"></i> Export Data</button>
+            <div class="action-tier-label">Butuh konfirmasi</div>
+            <button class="btn-danger" onclick="switchPage('storage', null)"><i class="fas fa-broom"></i> Cleanup Storage</button>
         `;
     }
 }
@@ -2073,6 +2165,110 @@ function loadCurrentPage() {
 /* ══════════════════════════════════════════
    DASHBOARD
 ══════════════════════════════════════════ */
+function renderDashboardAttention(items = dashboardAttentionItems) {
+    dashboardAttentionItems = Array.isArray(items) ? items.filter(Boolean) : [];
+    const list = document.getElementById('dashboardAttentionList');
+    if (!list) return;
+    const combined = [...dashboardAttentionItems];
+    if (dashboardResourceSignal) combined.push(dashboardResourceSignal);
+    const rows = combined.length ? combined : [{
+        level:'success',
+        icon:'fa-circle-check',
+        title:'Semua sistem berjalan normal.',
+        desc:'Tidak ada isu operasional dari data dashboard yang tersedia saat ini.'
+    }];
+    list.innerHTML = rows.slice(0, 6).map(item => `
+        <div class="attention-item ${escapeAttr(item.level || 'info')}">
+            <i class="fas ${escapeAttr(item.icon || 'fa-circle-info')}"></i>
+            <div>
+                <strong>${escapeHtml(item.title)}</strong>
+                <span>${escapeHtml(item.desc || '')}</span>
+            </div>
+            ${item.action && item.onclick ? `<button class="btn-act" onclick="${escapeAttr(item.onclick)}">${escapeHtml(item.action)}</button>` : ''}
+        </div>
+    `).join('');
+}
+
+function buildUserDashboardAttention({ total = 0, aktif = 0, nonaktif = 0, guru = 0, siswa = 0 } = {}) {
+    const items = [];
+    if (nonaktif > 0) {
+        items.push({
+            level:'warning',
+            icon:'fa-user-lock',
+            title:`${nonaktif} user nonaktif`,
+            desc:'Review akun nonaktif agar akses siswa/staff tidak tersendat.',
+            action:'Review',
+            onclick:"switchPage('users', null)"
+        });
+    }
+    if (total > 0 && aktif === 0) {
+        items.push({
+            level:'danger',
+            icon:'fa-user-slash',
+            title:'Tidak ada user aktif terbaca',
+            desc:'Ini tidak normal untuk operasional sekolah. Cek data user dan status akun.',
+            action:'Cek User',
+            onclick:"switchPage('users', null)"
+        });
+    }
+    if (guru === 0 || siswa === 0) {
+        items.push({
+            level:'info',
+            icon:'fa-users-gear',
+            title:'Komposisi role belum lengkap',
+            desc:'Data guru atau siswa belum terbaca lengkap dari statistik user.',
+            action:'Distribusi',
+            onclick:"switchPage('users', null)"
+        });
+    }
+    return items;
+}
+
+function buildRoleDashboardAttention({ totalStudents = 0, exams = [], open = 0, draft = 0, tokenTotal = 0 } = {}) {
+    const items = [];
+    if (open > 0) {
+        items.push({
+            level:'info',
+            icon:'fa-laptop-code',
+            title:`${open} sesi CBT sedang dibuka`,
+            desc:'Pantau token, peserta, dan hasil agar ujian tidak lepas kontrol.',
+            action:'Pantau',
+            onclick:"switchPage('cbt', null)"
+        });
+    }
+    if (draft > 0) {
+        items.push({
+            level:'warning',
+            icon:'fa-file-pen',
+            title:`${draft} CBT masih draft`,
+            desc:'Selesaikan setup bank soal, sesi, dan token sebelum jadwal ujian.',
+            action:'Kelola CBT',
+            onclick:"switchPage('cbt-builder', null)"
+        });
+    }
+    if (totalStudents === 0) {
+        items.push({
+            level:'warning',
+            icon:'fa-user-graduate',
+            title:'Data siswa belum terbaca',
+            desc:'Dashboard tidak menerima total siswa dari endpoint staff list.',
+            action:'Cek Data',
+            onclick:"switchPage('students', null)"
+        });
+    }
+    if (exams.length > 0 && tokenTotal === 0) {
+        items.push({
+            level:'info',
+            icon:'fa-key',
+            title:'Belum ada token CBT aktif/terbit',
+            desc:'Terbitkan token hanya saat sesi benar-benar siap untuk siswa.',
+            action:'Token',
+            onclick:"switchPage('cbt', null)"
+        });
+    }
+    return items;
+}
+
 async function loadDashboard() {
     loadResourceStatus().catch(() => {});
     if (userData.role === 'content_admin') {
@@ -2106,6 +2302,7 @@ async function loadDashboard() {
             document.getElementById('statNonaktif').textContent= nonaktif;
             document.getElementById('statGuru').textContent    = guru;
             document.getElementById('statSiswa').textContent   = siswa;
+            renderDashboardAttention(buildUserDashboardAttention({ total: stats.total, aktif, nonaktif, guru, siswa }));
 
             // Role distribution cards
             const roleIcons = {
@@ -2157,13 +2354,22 @@ async function loadResourceStatus() {
             high: 'Media dibatasi >85%',
             critical: 'Non-kritis diblokir >95%'
         }[pressure];
+        const storageAction = canAccessPage('storage')
+            ? { action:'Cek Storage', onclick:"switchPage('storage', null)" }
+            : { action:'Refresh', onclick:'loadResourceStatus()' };
+        dashboardResourceSignal = pct >= 85
+            ? { level:pct >= 95 ? 'danger' : 'warning', icon:'fa-hard-drive', title:`Penyimpanan terpakai ${pct}%`, desc:pct >= 95 ? 'Upload non-kritis berpotensi diblokir. Lakukan cleanup atau arsip file lama.' : 'Storage mulai tinggi. Batasi upload media besar dan cek file lama.', ...storageAction }
+            : null;
+        renderDashboardAttention();
         grid.innerHTML = `
-            <div class="stat-card blue"><i class="fas fa-microchip stat-icon"></i><div class="stat-val" style="font-size:1.2rem;">${escapeHtml(d.profile || '-')}</div><div class="stat-lbl">Profil Server</div></div>
-            <div class="stat-card green"><i class="fas fa-hard-drive stat-icon"></i><div class="stat-val">${pct}%</div><div class="stat-lbl">${usedMb} MB / ${maxGb} GB upload</div><div class="resource-meter"><span style="width:${pct}%"></span></div></div>
-            <div class="stat-card gold"><i class="fas fa-file-arrow-up stat-icon"></i><div class="stat-val" style="font-size:1.2rem;">${d.fileLimitsMb?.tugas || '-'}MB</div><div class="stat-lbl">Batas Tugas</div></div>
+            <div class="stat-card blue" title="${escapeAttr(d.profile || 'Detail server tidak tersedia')}"><i class="fas fa-circle-check stat-icon"></i><div class="stat-val" style="font-size:1.2rem;">${escapeHtml(d.status || 'OK')}</div><div class="stat-lbl">Status Sistem</div></div>
+            <div class="stat-card green"><i class="fas fa-hard-drive stat-icon"></i><div class="stat-val">${pct}%</div><div class="stat-lbl">Penyimpanan Terpakai · ${usedMb} MB / ${maxGb} GB</div><div class="resource-meter"><span style="width:${pct}%"></span></div></div>
+            <div class="stat-card gold"><i class="fas fa-file-arrow-up stat-icon"></i><div class="stat-val" style="font-size:1.2rem;">${d.fileLimitsMb?.tugas || '-'}MB</div><div class="stat-lbl">Batas Upload Tugas</div></div>
             <div class="stat-card purple"><i class="fas fa-triangle-exclamation stat-icon"></i><div class="stat-val" style="font-size:1.2rem;">${pressureText}</div><div class="stat-lbl">Storage Pressure</div></div>
         `;
     } catch (err) {
+        dashboardResourceSignal = { level:'warning', icon:'fa-server', title:'Status sistem belum terbaca', desc:'Endpoint resource belum bisa dimuat. Cek koneksi atau permission admin.', action:'Retry', onclick:'loadResourceStatus()' };
+        renderDashboardAttention();
         grid.innerHTML = '<div class="empty-cell">Status resource belum bisa dimuat.</div>';
     }
 }
@@ -2316,6 +2522,11 @@ async function loadContentAdminDashboard() {
             <div class="stat-card purple"><i class="fas fa-image stat-icon"></i><div class="stat-val">${gallery}</div><div class="stat-lbl">Galeri</div></div>
             <div class="stat-card blue"><i class="fas fa-newspaper stat-icon"></i><div class="stat-val">${news}</div><div class="stat-lbl">Berita</div></div>
         `;
+        renderDashboardAttention([
+            drafts > 0
+                ? { level:'warning', icon:'fa-file-pen', title:`${drafts} konten masih draft/nonaktif`, desc:'Review konten sebelum dipublish agar website tetap rapi dan aktual.', action:'Review', onclick:"switchPage('content', null)" }
+                : { level:'success', icon:'fa-circle-check', title:'Konten website terkendali', desc:'Tidak ada draft bermasalah dari data konten yang tersedia.' }
+        ]);
         document.querySelector('#dashboardRoleCard .card-title').innerHTML = '<i class="fas fa-chart-simple"></i> Konten Terbaru';
         document.getElementById('roleDistribution').innerHTML = rows.slice(0, 8).map(item => `
             <div style="background:var(--light);border-radius:12px;padding:16px;border:1px solid var(--border);">
@@ -2349,6 +2560,7 @@ async function loadRoleDashboard() {
             <div class="stat-card gold"><i class="fas fa-file-alt stat-icon"></i><div class="stat-val">${draft}</div><div class="stat-lbl">Draft</div></div>
             <div class="stat-card red"><i class="fas fa-key stat-icon"></i><div class="stat-val">${tokenTotal}</div><div class="stat-lbl">Token Aktif/Terbit</div></div>
         `;
+        renderDashboardAttention(buildRoleDashboardAttention({ totalStudents, exams, open, draft, tokenTotal }));
         document.getElementById('navUserCount').textContent = totalStudents;
         document.getElementById('roleDistribution').innerHTML = exams.slice(0, 8).map(e => `
             <div style="background:var(--light);border-radius:12px;padding:16px;border:1px solid var(--border);">
@@ -2502,12 +2714,15 @@ async function loadStudentDetail(nisn) {
             panel.innerHTML = `<div class="empty-cell">${escapeHtml(data.message || 'Detail siswa tidak ditemukan.')}</div>`;
             return;
         }
-        const { student, nilai, nilaiSummary, kehadiranSummary, tugas, cbt } = data.data;
+        const { student, nilai, nilaiSummary, kehadiranSummary, tugas, cbt, raporMetadata } = data.data;
         const summary = nilaiSummary || {};
         const nilaiAvg = Number(summary.jumlah || 0) ? Number(summary.rata || 0).toFixed(1) : '-';
         const nilaiHigh = Number(summary.jumlah || 0) ? Number(summary.max || 0).toFixed(1) : '-';
         const nilaiLow = Number(summary.jumlah || 0) ? Number(summary.min || 0).toFixed(1) : '-';
         const nilaiPass = Number(summary.lulus || 0);
+
+        selectedStudentRaporMetadata = raporMetadata || [];
+
         panel.innerHTML = `
             <div class="student-detail-head">
                 <div>
@@ -2531,15 +2746,277 @@ async function loadStudentDetail(nisn) {
                     <span><strong>${nilaiPass}/${(nilai || []).length}</strong><small>Lulus KKM</small></span>
                 </div>
             </section>
+
+            <!-- E-Rapor Management Card -->
+            <section class="student-rapor-section" style="margin: 15px 0; padding: 15px; background: rgba(79, 70, 229, 0.05); border: 1px solid rgba(79, 70, 229, 0.15); border-radius: 8px;">
+                <h4 style="color:var(--navy);font-size:0.85rem;margin:0 0 10px 0;display:flex;align-items:center;gap:6px;"><i class="fas fa-file-signature"></i> Input Catatan E-Rapor</h4>
+                <div style="display:flex;gap:10px;margin-bottom:8px;">
+                    <select id="admin-rapor-semester" onchange="syncAdminRaporFields()" style="padding:5px;border-radius:4px;border:1px solid #ccc;font-size:0.8rem;background:var(--color-surface);color:var(--navy);">
+                        <option value="ganjil">Ganjil</option>
+                        <option value="genap" selected>Genap</option>
+                    </select>
+                    <select id="admin-rapor-tahun" onchange="syncAdminRaporFields()" style="padding:5px;border-radius:4px;border:1px solid #ccc;font-size:0.8rem;background:var(--color-surface);color:var(--navy);">
+                        <option value="2024/2025">2024/2025</option>
+                        <option value="2025/2026" selected>2025/2026</option>
+                    </select>
+                </div>
+                <textarea id="admin-rapor-catatan" placeholder="Catatan Wali Kelas (misal: Tingkatkan belajarmu, pertahankan prestasi...)" rows="2" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;font-size:0.8rem;margin-bottom:8px;box-sizing:border-box;resize:vertical;background:var(--color-surface);color:var(--navy);"></textarea>
+                <input id="admin-rapor-kenaikan" type="text" placeholder="Status Kenaikan Kelas / Kelulusan (opsional)" style="width:100%;padding:6px;border-radius:6px;border:1px solid #ccc;font-size:0.8rem;margin-bottom:8px;box-sizing:border-box;background:var(--color-surface);color:var(--navy);">
+                <div style="display:flex;gap:10px;">
+                    <button class="btn-act" onclick="saveAdminRaporMetadata('${escapeAttr(student.nisn)}')" style="flex:1;background:#4f46e5;color:white;border:none;border-radius:6px;padding:6px 12px;font-size:0.8rem;font-weight:bold;cursor:pointer;"><i class="fas fa-save"></i> Simpan Catatan</button>
+                    <button class="btn-act" onclick="printStudentRapor('${escapeAttr(student.nisn)}')" style="flex:1;background:#0f172a;color:white;border:none;border-radius:6px;padding:6px 12px;font-size:0.8rem;font-weight:bold;cursor:pointer;"><i class="fas fa-print"></i> Cetak E-Rapor</button>
+                </div>
+            </section>
+
             <div class="student-history">
                 ${renderStudentHistoryTable('Histori Nilai', ['Semester','Mapel','UH','UTS','UAS','Tugas','Final'], nilai.map(n => [n.semester,n.mapel,n.uh,n.uts,n.uas,n.tugas,n.nilai_final]))}
                 ${renderStudentHistoryTable('Histori CBT', ['Ujian','Mapel','Nilai','Benar','Salah','Kosong','Pelanggaran'], cbt.map(r => [r.exam_title || '-', formatMapel(r.mapel), r.nilai, r.benar, r.salah, r.kosong, r.violation_count || 0]))}
                 ${renderStudentHistoryTable('Histori Tugas', ['Tugas','Mapel','Status','Nilai','Submit'], tugas.map(t => [t.judul || '-', formatMapel(t.mapel), t.status || '-', t.nilai ?? '-', formatTime(t.submitted_at)]))}
             </div>
         `;
+        syncAdminRaporFields();
         loadStudentDirectory(studentPage);
     } catch(e) {
         panel.innerHTML = '<div class="empty-cell">Gagal memuat detail siswa.</div>';
+    }
+}
+
+let selectedStudentRaporMetadata = [];
+
+function syncAdminRaporFields() {
+    const sem = document.getElementById('admin-rapor-semester')?.value;
+    const thn = document.getElementById('admin-rapor-tahun')?.value;
+    const meta = (selectedStudentRaporMetadata || []).find(m => m.semester === sem && m.tahun_ajaran === thn) || { catatan: '', kenaikan_kelas: '' };
+
+    const catatanEl = document.getElementById('admin-rapor-catatan');
+    const kenaikanEl = document.getElementById('admin-rapor-kenaikan');
+    if (catatanEl) catatanEl.value = meta.catatan || '';
+    if (kenaikanEl) kenaikanEl.value = meta.kenaikan_kelas || '';
+}
+
+async function saveAdminRaporMetadata(nisn) {
+    const sem = document.getElementById('admin-rapor-semester')?.value;
+    const thn = document.getElementById('admin-rapor-tahun')?.value;
+    const catatan = document.getElementById('admin-rapor-catatan')?.value.trim();
+    const kenaikan = document.getElementById('admin-rapor-kenaikan')?.value.trim();
+
+    if (!nisn) return showToast('NISN tidak valid.', 'error');
+
+    try {
+        const data = await apiFetch('/siswa/rapor/catatan', 'POST', {
+            nisn,
+            semester: sem,
+            tahun_ajaran: thn,
+            catatan,
+            kenaikan_kelas: kenaikan
+        });
+
+        if (data.success) {
+            showToast('Catatan E-Rapor berhasil disimpan.', 'success');
+            await loadStudentDetail(nisn);
+        } else {
+            showToast(data.message || 'Gagal menyimpan catatan.', 'error');
+        }
+    } catch(e) {
+        showToast('Gagal menyimpan catatan.', 'error');
+    }
+}
+
+async function printStudentRapor(nisn) {
+    const sem = document.getElementById('admin-rapor-semester')?.value || 'genap';
+    const thn = document.getElementById('admin-rapor-tahun')?.value || '2025/2026';
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write('<html><head><title>Cetak E-Rapor</title>');
+    printWindow.document.write('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">');
+    printWindow.document.write('<style>');
+    printWindow.document.write(`
+        body { font-family: 'Times New Roman', Times, serif; color: #000; padding: 40px; margin: 0; line-height: 1.5; background: white; }
+        .rapor-header { display: flex; align-items: center; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 20px; }
+        .rapor-logo { width: 70px; height: 70px; margin-right: 20px; object-fit: contain; }
+        .rapor-header-text { text-align: center; flex: 1; }
+        .rapor-header-text h1 { font-size: 1.15rem; margin: 0; font-weight: bold; text-transform: uppercase; }
+        .rapor-header-text h2 { font-size: 1.3rem; margin: 2px 0; font-weight: bold; text-transform: uppercase; }
+        .rapor-header-text p { font-size: 0.8rem; margin: 2px 0; font-style: italic; }
+        .rapor-title { text-align: center; font-weight: bold; font-size: 1.15rem; text-decoration: underline; text-transform: uppercase; margin: 15px 0 25px 0; }
+        .rapor-info-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; margin-bottom: 25px; font-size: 0.9rem; }
+        .rapor-info-col table { width: 100%; border-collapse: collapse; }
+        .rapor-info-col td { padding: 3px 5px; vertical-align: top; }
+        .rapor-info-col td:first-child { width: 130px; }
+        .rapor-info-col td:nth-child(2) { width: 10px; }
+        .rapor-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 0.9rem; }
+        .rapor-table th, .rapor-table td { border: 1px solid #000; padding: 8px 10px; text-align: center; }
+        .rapor-table th { background: #f3f4f6; font-weight: bold; }
+        .rapor-table td.text-left { text-align: left; }
+        .rapor-bottom-grid { display: grid; grid-template-columns: 1fr 1.8fr; gap: 20px; margin-bottom: 30px; font-size: 0.9rem; }
+        .rapor-box-border { border: 1px solid #000; padding: 12px; border-radius: 4px; box-sizing: border-box; }
+        .rapor-box-border h4 { margin: 0 0 10px 0; font-weight: bold; font-size: 0.95rem; }
+        .rapor-box-border p { margin: 0; font-style: italic; }
+        .rapor-att-table { width: 100%; border-collapse: collapse; }
+        .rapor-att-table td { padding: 4px 6px; border-bottom: 1px dashed #ccc; }
+        .rapor-att-table td:last-child { text-align: right; font-weight: bold; }
+        .rapor-decision-box { border: 2px solid #000; padding: 12px; margin-bottom: 40px; text-align: center; font-weight: bold; font-size: 0.95rem; }
+        .rapor-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; margin-top: 40px; font-size: 0.9rem; page-break-inside: avoid; }
+        .rapor-sig-space { height: 70px; }
+        .rapor-sig-center { grid-column: 1 / -1; display: flex; justify-content: center; margin-top: 20px; }
+        .rapor-sig-center-block { width: 300px; text-align: center; }
+        @media print {
+            body { padding: 0; }
+            @page { size: A4; margin: 1.5cm; }
+        }
+    `);
+    printWindow.document.write('</style></head><body>');
+    printWindow.document.write('<div style="text-align:center;padding:50px;" id="loading"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Menyiapkan E-Rapor...</p></div>');
+
+    try {
+        const res = await apiFetch(`/siswa/rapor?nisn=${encodeURIComponent(nisn)}&semester=${encodeURIComponent(sem)}&tahun_ajaran=${encodeURIComponent(thn)}`);
+
+        if (!res.success) {
+            printWindow.document.getElementById('loading').innerHTML = `<p style="color:red;font-weight:bold;">Gagal: ${res.message || 'Data tidak ditemukan.'}</p>`;
+            return;
+        }
+
+        const r = res.data;
+        const s = r.student || {};
+        const grades = r.grades || [];
+        const kh = r.kehadiran || { hadir: 0, sakit: 0, izin: 0, alpha: 0 };
+        const meta = r.metadata || { catatan: '', kenaikan_kelas: '' };
+
+        const semesterLabel = r.semester === 'ganjil' ? '1 (Ganjil)' : '2 (Genap)';
+
+        let gradesRows = '';
+        if (!grades.length) {
+            gradesRows = `<tr><td colspan="6" style="text-align:center;padding:20px;font-style:italic;">Belum ada komponen nilai untuk semester ini.</td></tr>`;
+        } else {
+            gradesRows = grades.map((g, idx) => {
+                const finalVal = g.nilai_final ?? 0;
+                let gradeLet = 'D';
+                if (finalVal >= 85) gradeLet = 'A';
+                else if (finalVal >= 75) gradeLet = 'B';
+                else if (finalVal >= 70) gradeLet = 'C';
+
+                let comp = '';
+                if (finalVal >= 85) comp = `Sangat menonjol dalam pemahaman dan penerapan kompetensi dasar ${g.mapel}.`;
+                else if (finalVal >= 75) comp = `Menunjukkan pemahaman yang baik dalam pencapaian kompetensi dasar ${g.mapel}.`;
+                else if (finalVal >= 70) comp = `Memenuhi standar kompetensi dasar ${g.mapel}, perlu sedikit pemantapan.`;
+                else comp = `Belum memenuhi kompetensi minimal untuk ${g.mapel}, sangat membutuhkan bimbingan dan perbaikan.`;
+
+                return `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td class="text-left">${g.mapel}</td>
+                        <td>${g.kkm ?? 70}</td>
+                        <td><strong>${finalVal}</strong></td>
+                        <td>${gradeLet}</td>
+                        <td class="text-left" style="font-size:0.8rem;line-height:1.3;">${comp}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        const decisionSection = r.semester === 'genap' ? `
+            <div class="rapor-decision-box">
+                KEPUTUSAN:<br>
+                Berdasarkan pencapaian kompetensi pada semester 1 dan 2, siswa dinyatakan: <br>
+                <span style="font-size:1.15rem;text-transform:uppercase;color:#1e3a8a;margin-top:5px;display:inline-block;">
+                    ${meta.kenaikan_kelas || '--- Belum Ditentukan ---'}
+                </span>
+            </div>
+        ` : '';
+
+        const content = `
+            <div class="rapor-header">
+                <img class="rapor-logo" src="/asset/Logo SMK.png" alt="Logo" onerror="this.style.display='none'">
+                <div class="rapor-header-text">
+                    <h1>Pemerintah Provinsi Jawa Barat</h1>
+                    <h2>SMK Negeri 1 Terisi</h2>
+                    <p>Jl. Raya Terisi-Cikedung, Kec. Terisi, Kab. Indramayu, Jawa Barat 45262</p>
+                    <p>Website: www.smkn1terisi.sch.id · Email: info@smkn1terisi.sch.id</p>
+                </div>
+            </div>
+
+            <div class="rapor-title">Laporan Hasil Penilaian Belajar (E-Rapor)</div>
+
+            <div class="rapor-info-grid">
+                <div class="rapor-info-col">
+                    <table>
+                        <tr><td>Nama Peserta Didik</td><td>:</td><td><strong>${s.nama_lengkap}</strong></td></tr>
+                        <tr><td>Nomor Induk / NISN</td><td>:</td><td>${s.nisn}</td></tr>
+                        <tr><td>Program Keahlian</td><td>:</td><td>${s.jurusan || '-'}</td></tr>
+                    </table>
+                </div>
+                <div class="rapor-info-col">
+                    <table>
+                        <tr><td>Kelas</td><td>:</td><td>${s.kelas || '-'}</td></tr>
+                        <tr><td>Semester</td><td>:</td><td>${semesterLabel}</td></tr>
+                        <tr><td>Tahun Pelajaran</td><td>:</td><td>${r.tahun_ajaran}</td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <table class="rapor-table">
+                <thead>
+                    <tr>
+                        <th style="width:5%;">No</th>
+                        <th style="width:30%;">Mata Pelajaran</th>
+                        <th style="width:10%;">KKM</th>
+                        <th style="width:12%;">Nilai Akhir</th>
+                        <th style="width:10%;">Predikat</th>
+                        <th style="width:33%;">Deskripsi Kemajuan Belajar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${gradesRows}
+                </tbody>
+            </table>
+
+            <div class="rapor-bottom-grid">
+                <div class="rapor-box-border">
+                    <h4>Ketidakhadiran</h4>
+                    <table class="rapor-att-table">
+                        <tr><td>Sakit (S)</td><td>:</td><td>${kh.sakit || 0} hari</td></tr>
+                        <tr><td>Izin (I)</td><td>:</td><td>${kh.izin || 0} hari</td></tr>
+                        <tr><td>Tanpa Keterangan (A)</td><td>:</td><td>${kh.alpha || 0} hari</td></tr>
+                        <tr style="border:none;font-weight:bold;"><td>Total Absen</td><td>:</td><td>${(kh.sakit||0)+(kh.izin||0)+(kh.alpha||0)} hari</td></tr>
+                    </table>
+                </div>
+                <div class="rapor-box-border">
+                    <h4>Catatan Wali Kelas</h4>
+                    <p>"${meta.catatan || 'Belum ada catatan wali kelas.'}"</p>
+                </div>
+            </div>
+
+            ${decisionSection}
+
+            <div class="rapor-signatures">
+                <div>
+                    <p>Mengetahui,<br>Orang Tua / Wali Siswa</p>
+                    <div class="rapor-sig-space"></div>
+                    <p>__________________________</p>
+                </div>
+                <div>
+                    <p>Terisi, ${new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}<br>Wali Kelas</p>
+                    <div class="rapor-sig-space"></div>
+                    <p><strong>__________________________</strong><br>NIP. -</p>
+                </div>
+                <div class="rapor-sig-center">
+                    <div class="rapor-sig-center-block">
+                        <p>Mengetahui,<br>Kepala Sekolah SMK Negeri 1 Terisi</p>
+                        <div class="rapor-sig-space"></div>
+                        <p><strong>H. Muhammad, M.Pd.</strong><br>NIP. 197508212002121003</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        printWindow.document.body.innerHTML = content;
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+        }, 500);
+    } catch(err) {
+        printWindow.document.getElementById('loading').innerHTML = `<p style="color:red;font-weight:bold;">Error: ${err.message}</p>`;
     }
 }
 

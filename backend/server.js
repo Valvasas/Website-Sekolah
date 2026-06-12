@@ -905,6 +905,7 @@ function setupRoutes() {
     app.use('/api/content', require('./routes/content'));
     app.use('/api/siswa',   require('./routes/siswa'));
     app.use('/api/ppdb',    require('./routes/ppdb'));
+    app.use('/api/cbt/foundation', require('./modules/cbt/routes'));
     app.use('/api/cbt',     require('./routes/cbt'));
     app.use('/api/lms',     require('./routes/lms'));      // NEW
     app.use('/api/kantin',  require('./routes/kantin'));
