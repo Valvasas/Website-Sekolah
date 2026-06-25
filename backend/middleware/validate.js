@@ -76,6 +76,25 @@ const registerRules = [
     body('jurusan')
         .optional({ nullable: true, checkFalsy: true })
         .isLength({ max: 100 }).withMessage('Jurusan maksimal 100 karakter.'),
+
+    body('verification_method')
+        .optional()
+        .isIn(['email', 'phone']).withMessage('Metode verifikasi tidak valid.'),
+];
+
+const verifyRegistrationRules = [
+    body('challengeId')
+        .trim()
+        .isUUID().withMessage('Sesi verifikasi tidak valid.'),
+    body('code')
+        .trim()
+        .matches(/^\d{6}$/).withMessage('Kode OTP harus 6 digit.'),
+];
+
+const resendRegistrationRules = [
+    body('challengeId')
+        .trim()
+        .isUUID().withMessage('Sesi verifikasi tidak valid.'),
 ];
 
 // ── Rules validasi Login ──────────────────────────────────
@@ -88,9 +107,13 @@ const loginRules = [
         .notEmpty().withMessage('Password wajib diisi.'),
 
     body('role')
-        .notEmpty().withMessage('Role wajib dipilih.')
+        .optional()
         .isIn(['siswa', 'guru', 'tata_usaha', 'kepala_sekolah', 'wakil_kepala_sekolah', 'super_admin', 'content_admin', 'wali_murid', 'calon_siswa'])
         .withMessage('Role tidak valid.'),
+
+    body('portal')
+        .optional()
+        .isIn(['staff']).withMessage('Portal login tidak valid.'),
 ];
 
 // ── Rules lupa password ───────────────────────────────────
@@ -139,6 +162,8 @@ const changePasswordRules = [
 module.exports = {
     handleValidation,
     registerRules,
+    verifyRegistrationRules,
+    resendRegistrationRules,
     loginRules,
     forgotPasswordRules,
     resetPasswordRules,

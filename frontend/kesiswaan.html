@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- FITUR TAMBAHAN: SEO & Open Graph -->
+    <!-- SEO and Open Graph metadata -->
     <meta name="description" content="Website Resmi SMK Negeri 1 Terisi Indramayu. Unggul, Kompeten, dan Berkarakter. Menyelenggarakan pendidikan modern berbasis Teaching Factory (TEFA).">
     <meta name="keywords" content="SMKN 1 Terisi, SMK Indramayu, TKJ, TBSM, ATPH, Akuntansi, Sekolah Kejuruan, PPDB SMK">
     <meta name="author" content="IT Club SMKN 1 Terisi">
@@ -20,7 +20,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
     
     <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     
     <!-- CSS -->
     <link rel="stylesheet" href="style.css">
@@ -31,20 +31,18 @@
     <nav class="navbar">
         <div class="container nav-container">
             <a href="index.html" class="brand">
-                 <a href="index.html" class="brand">
-               <a href="index.html" class="brand">
-    <img src="asset/Logo SMK.png" alt="Logo SMKN 1 Terisi" class="logo-sekolah">
-    <div class="brand-text">
+                <img src="asset/Logo SMK.png" alt="Logo SMKN 1 Terisi" class="logo-sekolah">
+                <div class="brand-text">
                     <span>SMK NEGERI 1 TERISI</span>
                     <small>TERISI - INDRAMAYU</small>
                 </div>
             </a>
             
-            <div class="menu-toggle" id="mobile-menu">
+            <button class="menu-toggle" id="mobile-menu" type="button" aria-label="Buka menu navigasi">
                 <span class="bar"></span>
                 <span class="bar"></span>
                 <span class="bar"></span>
-            </div>
+            </button>
 
             <ul class="nav-menu">
                 <li><a href="index.html" class="nav-link">Beranda</a></li>
@@ -53,10 +51,10 @@
                 <li><a href="fasilitas.html" class="nav-link">Fasilitas</a></li>
                 <li><a href="kesiswaan.html" class="nav-link active">Kesiswaan</a></li>
                 <li><a href="galeri.html" class="nav-link">Galeri</a></li>
-                <!-- FITUR TAMBAHAN: Tombol Login -->
+                <!-- Login action -->
                 <li><a href="login.html" class="nav-link"><i class="fas fa-sign-in-alt"></i> Login</a></li>
                 <li><a href="ppdb.html" class="btn-nav">PPDB Online</a></li>
-                <!-- FITUR TAMBAHAN: Dark Mode Toggle -->
+                <!-- Theme toggle -->
                 <li>
                     <button id="darkModeToggle" class="dark-mode-btn" aria-label="Aktifkan Dark Mode">
                         <i class="fas fa-moon"></i>
@@ -201,7 +199,7 @@
                 </div>
                 
                 <div class="split-image reveal" style="position: relative;">
-                    <img src="https://images.unsplash.com/photo-1577896851231-70ef18881754?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Layanan Siswa" style="border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.15);">
+                    <img src="asset/siswa akademik.jpg" alt="Layanan Siswa" style="border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.15);">
                     <div class="bkk-card">
                         <i class="fas fa-briefcase"></i>
                         <h4>BKK (Bursa Kerja Khusus)</h4>
@@ -250,7 +248,7 @@
                 <p>&copy; 2026 SMK Negeri 1 Terisi - Indramayu. Dikembangkan dengan <i class="fas fa-heart" style="color:red;"></i> oleh IT Club SMKN 1 Terisi.</p>
             </div>
         </div>
-        <!-- FITUR TAMBAHAN: MODAL LOGIN -->
+        <!-- Login modal -->
     <div class="login-modal-overlay" id="loginModal">
         <div class="login-modal-box">
             <button class="close-modal" id="closeLoginBtn"><i class="fas fa-times"></i></button>
@@ -307,6 +305,7 @@
     </div>
     </footer>
 
+    <script src="/security.js"></script>
     <script src="script.js"></script>
 
     <script>

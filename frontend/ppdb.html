@@ -8,12 +8,12 @@
     
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 
     <!-- CSS Khusus PPDB Multi-Step Wizard -->
     <style>
-        .ppdb-hero { background: linear-gradient(135deg, rgba(0,34,68,0.95), rgba(0,20,40,0.9)), url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3') center/cover; padding: 160px 0 80px; text-align: center; color: white; position: relative; }
+        .ppdb-hero { background: linear-gradient(135deg, rgba(0,34,68,0.95), rgba(0,20,40,0.9)), url('asset/barisan anak SMK.jpg') center/cover; padding: 160px 0 80px; text-align: center; color: white; position: relative; }
         
         /* Info Sekolah Ringkas */
         .info-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 40px; }
@@ -246,11 +246,11 @@
             <div class="brand-text">
                     <span>SMK NEGERI 1 TERISI</span><small>TERISI</small></div>
             </a>
-            <div class="menu-toggle" id="mobile-menu">
+            <button class="menu-toggle" id="mobile-menu" type="button" aria-label="Buka menu navigasi">
                 <span class="bar"></span>
                 <span class="bar"></span>
                 <span class="bar"></span>
-            </div>
+            </button>
             <ul class="nav-menu">
                 <li><a href="index.html" class="nav-link">Beranda</a></li>
                 <li><button id="darkModeToggle" class="dark-mode-btn"><i class="fas fa-moon"></i></button></li>
@@ -731,13 +731,6 @@
             window.scrollTo({ top: document.getElementById('wizardForm').offsetTop - 80, behavior: 'smooth' });
         }
 
-        // Penanganan Submit Form Pura-pura (Front-end Demo)
-        document.getElementById('ppdbMainForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            alert('Pendaftaran Berhasil! Ini adalah simulasi UI Front-End. Data belum masuk ke Database.');
-            window.location.reload();
-        });
-
         // ================= LOGIKA ZONASI (GPS) =================
         document.getElementById('btnLokasi').addEventListener('click', function() {
             const hasilDiv = document.getElementById('hasilZonasi');
@@ -784,6 +777,7 @@
     </script>
 
     <!-- Script Utama Tema Dark Mode & Navbar -->
+    <script src="/security.js"></script>
     <script src="script.js"></script>
 
     <script>
@@ -796,7 +790,7 @@
 
 <script>
 /* ── Integrasi PPDB ke Backend API ── */
-const PPDB_API = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+const PPDB_API = window.location.protocol === 'file:' ? 'http://localhost:3001' : '';
 
 // Override submit form PPDB
 document.addEventListener('DOMContentLoaded', function() {
@@ -888,18 +882,7 @@ Simpan nomor ini untuk cek status pendaftaran.`);
         window.currentStep = 1;
 
     } catch(e) {
-        // Jika backend offline, tetap tampilkan sukses simulasi
-        if (e.message.includes('fetch') || e.message.includes('Failed')) {
-            const nomorFallback = 'PPDB-' + new Date().getFullYear() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
-            alert(`✅ Pendaftaran diterima! (Mode Offline)
-
-Nomor Pendaftaran:
-${nomorFallback}
-
-Data akan disimpan saat koneksi tersedia.`);
-        } else {
-            alert('❌ ' + e.message);
-        }
+        alert('Pendaftaran belum terkirim: ' + (e.message || 'server tidak dapat dihubungi.'));
     } finally {
         if (btn) { btn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:8px;"></i> Kirim Pendaftaran'; btn.disabled = false; }
     }
@@ -932,6 +915,5 @@ async function cekStatusPPDB(nomor) {
     }
 }
 </script>
-
 </body>
 </html>

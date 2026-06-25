@@ -9,7 +9,7 @@ const { findSchoolClass } = require('../utils/schoolClasses');
 
 const nowISO = () => new Date().toISOString();
 
-// FIX: Whitelist ketat untuk ORDER BY — inject via template string tidak mungkin
+// ORDER BY values are restricted because identifiers cannot use SQL parameters.
 const VALID_SORT_FIELDS = new Set(['nama_lengkap','email','role','created_at','last_login']);
 const VALID_SORT_ORDERS = new Set(['ASC','DESC']);
 
@@ -24,7 +24,6 @@ function getAllUsers(req, res) {
         order = 'DESC'
     } = req.query;
 
-    // FIX: Validasi sort field pakai Set, bukan array includes
     // Jika tidak ada di whitelist, SELALU fallback ke created_at — tidak pakai nilai user
     const sortField = VALID_SORT_FIELDS.has(sort) ? sort : 'created_at';
     const sortOrder = VALID_SORT_ORDERS.has(order?.toUpperCase()) ? order.toUpperCase() : 'DESC';
@@ -37,7 +36,6 @@ function getAllUsers(req, res) {
     const params     = [];
 
     if (role) {
-        // FIX: Validasi role value sebelum masuk query
         const validRoles = ['super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha','siswa','wali_murid','calon_siswa'];
         if (!validRoles.includes(role)) {
             return res.status(400).json({ success: false, message: 'Role tidak valid.' });
@@ -50,7 +48,7 @@ function getAllUsers(req, res) {
         params.push(parseInt(is_active) === 1 ? 1 : 0);
     }
     if (search) {
-        // FIX: Sanitasi karakter khusus LIKE (%, _) agar tidak jadi wildcard yang tidak diinginkan
+        // Escape LIKE wildcards so search text is treated literally.
         const s = `%${search.replace(/[%_\\]/g, '\\$&')}%`;
         conditions.push('(nama_lengkap LIKE ? OR email LIKE ? OR nisn LIKE ? OR nip LIKE ? OR bidang LIKE ? OR jabatan_detail LIKE ?)');
         params.push(s, s, s, s, s, s);
@@ -58,7 +56,6 @@ function getAllUsers(req, res) {
 
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
 
-    // FIX: sortField dan sortOrder sudah divalidasi via whitelist Set di atas
     // Aman dipakai di template string karena nilainya tidak berasal dari input mentah
     const userSQL  = `SELECT id,nama_lengkap,email,role,nisn,nip,no_hp,foto_profil,bidang,jabatan_detail,is_active,is_verified,last_login,created_at FROM users ${where} ORDER BY ${sortField} ${sortOrder} LIMIT ? OFFSET ?`;
     const countSQL = `SELECT COUNT(*) as c FROM users ${where}`;
@@ -80,7 +77,6 @@ function getAllUsers(req, res) {
             }
         });
     } catch (err) {
-        // FIX: Log di server, generic message ke client
         console.error('[GetAllUsers]', err.message);
         return res.status(500).json({ success: false, message: 'Gagal mengambil data user.' });
     }
@@ -181,6 +177,18 @@ async function updateUser(req, res) {
         const user = db.prepare('SELECT * FROM users WHERE id=:id').get({ id });
         if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan.' });
 
+        const isSelfUpdate = req.user?.sub === id && req.user?.role !== 'super_admin';
+        if (isSelfUpdate) {
+            const forbiddenSelfFields = ['role','is_active','is_verified','nisn','nip','bidang','jabatan_detail','kelas','jurusan'];
+            const touched = forbiddenSelfFields.filter(field => req.body[field] !== undefined);
+            if (touched.length) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Field akun sensitif hanya boleh diubah oleh administrator.'
+                });
+            }
+        }
+
         const restrictedRoles = ['super_admin', 'content_admin', 'kepala_sekolah', 'wakil_kepala_sekolah'];
         if (role && restrictedRoles.includes(role) && req.user.role !== 'super_admin') {
             return res.status(403).json({ success: false, message: 'Tidak bisa assign role ini.' });
@@ -209,7 +217,6 @@ async function updateUser(req, res) {
         if (is_active !== undefined) { fields.push('is_active=:active');   vals.active = parseInt(is_active) === 1 ? 1 : 0; }
 
         if (password) {
-            // FIX: Validasi password minimal sebelum hash
             if (password.length < 8) {
                 return res.status(400).json({ success: false, message: 'Password minimal 8 karakter.' });
             }
@@ -356,7 +363,6 @@ function getAuditLogs(req, res) {
 
     if (userId) { conditions.push('al.user_id = ?'); params.push(userId); }
     if (action) {
-        // FIX: Sanitasi karakter LIKE
         const safeAction = `%${action.replace(/[%_\\]/g, '\\$&')}%`;
         conditions.push('al.action LIKE ?');
         params.push(safeAction);

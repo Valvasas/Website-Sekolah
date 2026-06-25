@@ -6,7 +6,7 @@
     <title>Panduan Penggunaan | SMKN 1 Terisi</title>
     <link rel="icon" type="image/png" href="/asset/Logo SMK.png">
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <style>
         :root {
             --navy:#002244; --navy-d:#001529; --gold:#D4AF37;
@@ -24,7 +24,7 @@
             position:sticky; top:0; z-index:100;
             box-shadow:0 2px 12px rgba(0,0,0,.3);
         }
-        .topnav-brand { display:flex; align-items:center; gap:10px; color:var(--gold); font-weight:700; font-size:.95rem; text-decoration:none; }
+        .topnav-brand { min-height:44px; display:flex; align-items:center; gap:10px; color:var(--gold); font-weight:700; font-size:.95rem; text-decoration:none; }
         .topnav-brand img { width:32px; height:32px; border-radius:50%; border:2px solid var(--gold); }
         .topnav-links { display:flex; gap:16px; }
         .topnav-links a { color:rgba(255,255,255,.6); font-size:.82rem; text-decoration:none; transition:color .2s; }
@@ -202,11 +202,11 @@
                     <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">1</div><div>Buka halaman <a href="/login.html" style="color:var(--blue);">login.html</a> atau klik tombol "Login" di navbar.</div></li>
                     <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">2</div><div>Pilih role <strong>"Siswa"</strong> di bagian atas form login.</div></li>
                     <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">3</div><div>Masukkan <strong>NISN</strong> kamu (10 digit) di kolom identifier.</div></li>
-                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">4</div><div>Masukkan password. Password default pertama kali: <code>Smkn1Terisi@2024</code></div></li>
+                    <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">4</div><div>Masukkan password yang diberikan sekolah atau password terakhir yang sudah kamu ubah.</div></li>
                     <li><div class="step-dot" style="background:#dbeafe;color:#1d4ed8;">5</div><div>Klik <strong>"Masuk ke Portal"</strong>. Kamu akan diarahkan ke halaman DATA siswa.</div></li>
                 </ul>
                 <div class="tip"><i class="fas fa-lightbulb"></i> Centang "Ingat saya" agar tidak perlu login ulang setiap kali buka halaman.</div>
-                <div class="warning"><i class="fas fa-exclamation-triangle"></i> Segera ganti password default setelah pertama kali login melalui menu Profil.</div>
+                <div class="warning"><i class="fas fa-exclamation-triangle"></i> Jangan bagikan password kepada siapa pun. Jika lupa password, gunakan menu lupa password atau hubungi Tata Usaha.</div>
             </div>
         </div>
 
@@ -430,8 +430,8 @@
         <h3>Masih Butuh Bantuan?</h3>
         <p>Tim IT dan Tata Usaha SMKN 1 Terisi siap membantu kamu.</p>
         <div class="contact-links">
-            <a href="https://wa.me/6281234567890" class="contact-btn cb-wa" target="_blank">
-                <i class="fab fa-whatsapp"></i> WhatsApp TU
+            <a href="mailto:info@smkn1terisi.sch.id" class="contact-btn cb-wa">
+                <i class="fas fa-headset"></i> Hubungi TU
             </a>
             <a href="mailto:info@smkn1terisi.sch.id" class="contact-btn cb-email">
                 <i class="fas fa-envelope"></i> Email Sekolah
@@ -475,6 +475,5 @@
         }
     }
 </script>
-
 </body>
 </html>

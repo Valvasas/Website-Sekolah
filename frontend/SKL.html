@@ -9,8 +9,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="skl.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="SKL.css">
 </head>
 <body>
 
@@ -33,7 +33,7 @@
         </div>
     </nav>
 
-    <!-- MAIN WRAPPER -->
+    <!-- Verification form and result -->
     <main class="skl-main">
 
         <!-- SCREEN 1: FORM PENCARIAN -->
@@ -41,7 +41,7 @@
             <div class="skl-hero">
                 <div class="hero-badge"><i class="fas fa-certificate"></i> Layanan Resmi</div>
                 <h1>Portal <em>Surat Keterangan</em> Lulus</h1>
-                <p>Unduh SKL digital resmi berformat PDF terenkripsi dengan tanda tangan elektronik kepala sekolah.</p>
+                <p>Verifikasi data kelulusan dan unduh dokumen cetak SKL yang bisa disimpan sebagai PDF dari browser.</p>
 
                 <!-- LANGKAH -->
                 <div class="steps-row">
@@ -128,25 +128,25 @@
                     <div class="btn-shine"></div>
                 </button>
 
-                <p class="disclaimer"><i class="fas fa-lock"></i> Data Anda dienkripsi dan tidak disimpan di server kami.</p>
+                <p class="disclaimer"><i class="fas fa-lock"></i> Data hanya digunakan untuk verifikasi SKL dan tidak disimpan dari form pencarian ini.</p>
             </div>
 
             <!-- INFO CARDS -->
             <div class="info-trio">
                 <div class="info-card">
-                    <i class="fas fa-file-pdf"></i>
-                    <h4>Format PDF</h4>
-                    <p>Dokumen dalam format PDF beresolusi tinggi, siap cetak A4.</p>
+                    <i class="fas fa-print"></i>
+                    <h4>Siap Cetak</h4>
+                    <p>Dokumen HTML rapi untuk dicetak A4 atau disimpan PDF melalui fitur print browser.</p>
                 </div>
                 <div class="info-card">
-                    <i class="fas fa-signature"></i>
-                    <h4>TTD Elektronik</h4>
-                    <p>Dilengkapi tanda tangan digital kepala sekolah yang sah.</p>
+                    <i class="fas fa-database"></i>
+                    <h4>Data Server</h4>
+                    <p>Hanya data yang cocok dengan basis data sekolah yang bisa membuka langkah unduhan.</p>
                 </div>
                 <div class="info-card">
-                    <i class="fas fa-qrcode"></i>
-                    <h4>QR Verifikasi</h4>
-                    <p>QR Code untuk verifikasi keaslian dokumen secara online.</p>
+                    <i class="fas fa-fingerprint"></i>
+                    <h4>Kode Verifikasi</h4>
+                    <p>Dokumen dapat menyertakan kode verifikasi unik untuk kebutuhan arsip sekolah.</p>
                 </div>
             </div>
         </div>
@@ -177,22 +177,22 @@
                     <h3><i class="fas fa-download"></i> Pilih Format Unduhan</h3>
                     <div class="dl-formats">
                         <label class="dl-format-card selected">
-                            <input type="radio" name="dl-format" value="pdf" checked>
-                            <i class="fas fa-file-pdf"></i>
-                            <span>PDF Resmi</span>
-                            <small>Lengkap + TTD</small>
+                            <input type="radio" name="dl-format" value="print" checked>
+                            <i class="fas fa-print"></i>
+                            <span>Dokumen Cetak</span>
+                            <small>Bisa simpan PDF</small>
                         </label>
                         <label class="dl-format-card">
-                            <input type="radio" name="dl-format" value="pdf-qr">
-                            <i class="fas fa-qrcode"></i>
-                            <span>PDF + QR</span>
+                            <input type="radio" name="dl-format" value="print-code">
+                            <i class="fas fa-fingerprint"></i>
+                            <span>Dengan Kode</span>
                             <small>Verifikasi Digital</small>
                         </label>
                         <label class="dl-format-card">
-                            <input type="radio" name="dl-format" value="jpg">
-                            <i class="fas fa-image"></i>
-                            <span>Gambar JPG</span>
-                            <small>Share ke sosmed</small>
+                            <input type="radio" name="dl-format" value="archive">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Arsip Teks</span>
+                            <small>Ringkas</small>
                         </label>
                     </div>
                 </div>
@@ -290,8 +290,8 @@
             <div class="loading-steps">
                 <div class="ls-item" id="ls1"><i class="fas fa-database"></i> Memeriksa database...</div>
                 <div class="ls-item" id="ls2"><i class="fas fa-file-alt"></i> Menyiapkan dokumen...</div>
-                <div class="ls-item" id="ls3"><i class="fas fa-signature"></i> Menambahkan TTD digital...</div>
-                <div class="ls-item" id="ls4"><i class="fas fa-shield-alt"></i> Enkripsi & finalisasi...</div>
+                <div class="ls-item" id="ls3"><i class="fas fa-fingerprint"></i> Membuat kode verifikasi...</div>
+                <div class="ls-item" id="ls4"><i class="fas fa-shield-alt"></i> Finalisasi dokumen...</div>
             </div>
         </div>
     </div>
@@ -299,6 +299,7 @@
     <!-- TOAST -->
     <div class="toast-container" id="toast-container"></div>
 
-    <script src="skl.js"></script>
+    <script src="/security.js"></script>
+    <script src="SKL.js"></script>
 </body>
 </html>

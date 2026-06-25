@@ -18,7 +18,7 @@ const BANK_SOAL = {
     produktif:  { nama: 'Kompetensi Keahlian', jenis: 'Ujian CBT', durasi: 120 },
 };
 // URL base API — sesuaikan jika backend di server berbeda
-const CBT_API = window.location.hostname === 'localhost'
+const CBT_API = window.location.protocol === 'file:'
     ? 'http://localhost:3001/api/cbt'
     : '/api/cbt';
 
@@ -28,8 +28,8 @@ const CBT_API = window.location.hostname === 'localhost'
 const state = {
     mapel:       null,
     siswa:       '',
-    nisn:        '',   // FIX: simpan NISN untuk WS handshake
-    token:       '',   // FIX: simpan CBT token untuk WS handshake
+    nisn:        '',   // Required when opening the exam WebSocket.
+    token:       '',   // Authorizes the exam WebSocket connection.
     sessionId:   null,
     examId:      null,
     examTitle:   null,
@@ -615,24 +615,42 @@ function renderResult(result) {
     const salah  = result.salah || 0;
     const kosong = result.kosong || 0;
     const nilai  = result.nilai || 0;
+    const total  = result.total || (benar + salah + kosong) || state.soalList.length || 0;
     const lulus = nilai >= 70;
+    const mapelInfo = BANK_SOAL[state.mapel] || {};
+    const predicate = getResultPredicate(nilai);
+    const finishedAt = new Date();
 
     // Update UI
     const iconEl = document.getElementById('result-icon');
     iconEl.className = 'result-icon ' + (lulus ? 'pass' : 'fail');
     iconEl.innerHTML = lulus ? '<i class="fas fa-trophy"></i>' : '<i class="fas fa-times-circle"></i>';
 
-    document.getElementById('result-title').textContent = lulus ? 'Selamat, Lulus!' : 'Belum Tuntas';
+    document.getElementById('result-status-label').textContent = lulus ? 'Status Tuntas' : 'Perlu Remedial';
+    document.getElementById('result-title').textContent = lulus ? 'Ujian Tuntas' : 'Belum Tuntas';
     document.getElementById('result-sub').textContent   = lulus
-        ? `Nilaimu ${nilai} — Di atas KKM. Kerja bagus!`
-        : `Nilaimu ${nilai} — Di bawah KKM (70). Tetap semangat!`;
+        ? `Nilai ${nilai} berada di atas KKM. Hasil sudah tersimpan di server panitia.`
+        : `Nilai ${nilai} masih di bawah KKM 70. Ikuti arahan guru untuk tindak lanjut.`;
     if (result.essay_pending) {
-        document.getElementById('result-sub').textContent += ` ${result.essay_pending} esai belum punya kata kunci koreksi dari guru.`;
+        document.getElementById('result-sub').textContent += ` ${result.essay_pending} jawaban esai masih menunggu pemeriksaan guru.`;
     }
 
     document.getElementById('res-correct').textContent = benar;
     document.getElementById('res-wrong').textContent   = salah;
     document.getElementById('res-skip').textContent    = kosong;
+    document.getElementById('res-total').textContent    = total;
+
+    document.getElementById('result-date').textContent = formatResultDate(finishedAt);
+    document.getElementById('result-student').textContent = state.siswa || '-';
+    document.getElementById('result-sign-student').textContent = state.siswa || '-';
+    document.getElementById('result-nisn').textContent = state.nisn || '-';
+    document.getElementById('result-mapel').textContent = mapelInfo.nama || state.mapel || '-';
+    document.getElementById('result-exam-title').textContent = state.examTitle || mapelInfo.jenis || 'Ujian CBT';
+    document.getElementById('result-predicate').textContent = `${predicate.label} (${predicate.code})`;
+    document.getElementById('result-duration').textContent = `${state.durasi || mapelInfo.durasi || '-'} menit`;
+    document.getElementById('result-note').textContent = result.essay_pending
+        ? 'Nilai otomatis sudah tersimpan, tetapi sebagian jawaban esai masih perlu validasi guru. Simpan lembar ini sebagai bukti pengumpulan.'
+        : 'Simpan atau cetak lembar ini sebagai bukti pengumpulan jawaban. Nilai final tetap mengacu pada rekap panitia/guru.';
 
     // Animate ring
     const circumference = 314;
@@ -645,6 +663,26 @@ function renderResult(result) {
 
     // Animate score counter
     animateCount('ring-score', 0, nilai, 1500);
+}
+
+function getResultPredicate(score) {
+    const nilai = Number(score || 0);
+    if (nilai >= 90) return { code: 'A', label: 'Sangat Baik' };
+    if (nilai >= 80) return { code: 'B', label: 'Baik' };
+    if (nilai >= 70) return { code: 'C', label: 'Cukup' };
+    return { code: 'D', label: 'Perlu Pembinaan' };
+}
+
+function formatResultDate(value) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleString('id-ID', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 }
 
 function animateCount(id, from, to, duration) {
@@ -789,12 +827,12 @@ function connectAdminSocket(studentData) {
     try {
         const wsUrl = window.location.protocol === 'https:'
             ? `wss://${window.location.host}`
-            : `ws://${window.location.hostname}:3001`;
+            : `ws://${window.location.host}`;
 
         adminSocket = new WebSocket(wsUrl);
 
         adminSocket.onopen = () => {
-            console.log('[CBT] Terhubung ke server admin');
+            if (window.CBT_DEBUG) console.info('[CBT] Terhubung ke server admin');
             sendToAdmin({
                 type:  'student_join',
                 nisn:  studentData.nisn || state.nisn,
@@ -1616,6 +1654,10 @@ async function proceedToExam() {
         loading.remove();
         if (state.started) examLock.activate();
     }
+}
+
+function startExam() {
+    proceedToExam();
 }
 
 async function requestScreenCapture() {

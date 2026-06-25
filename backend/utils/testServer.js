@@ -11,15 +11,15 @@ function ok(label, fn) {
     try {
         const r = fn();
         if (r instanceof Promise) {
-            return r.then(() => { console.log(`  ✅  ${label}`); passed++; })
-                    .catch(e  => { console.log(`  ❌  ${label}\n      Error: ${e.message}`); failed++; });
+            return r.then(() => { console.log(`  PASS  ${label}`); passed++; })
+                    .catch(e  => { console.log(`  FAIL  ${label}\n        ${e.message}`); failed++; });
         }
-        console.log(`  ✅  ${label}`); passed++;
-    } catch(e) { console.log(`  ❌  ${label}\n      Error: ${e.message}`); failed++; }
+        console.log(`  PASS  ${label}`); passed++;
+    } catch(e) { console.log(`  FAIL  ${label}\n        ${e.message}`); failed++; }
 }
 
 async function run() {
-    console.log('\n🧪 SMKN 1 Terisi — Test Suite\n');
+    console.log('\nSMKN 1 Terisi - Test Suite\n');
     console.log('─'.repeat(50));
 
     // 1-6: Dependencies
@@ -127,10 +127,10 @@ async function run() {
     console.log('─'.repeat(50));
     console.log(`\n  Hasil: ${passed} lulus, ${failed} gagal\n`);
     if (failed > 0) {
-        console.log('⚠️  Ada error. Perbaiki sebelum menjalankan server.\n');
+        console.log('Ada test gagal. Perbaiki sebelum menjalankan server.\n');
         process.exit(1);
     } else {
-        console.log('🎉 Semua test lulus! Server siap dijalankan.\n');
+        console.log('Semua test lulus. Server siap dijalankan.\n');
         console.log('  npm run dev    → development mode (nodemon)');
         console.log('  npm start      → production mode\n');
         process.exit(0);

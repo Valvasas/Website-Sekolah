@@ -2,8 +2,9 @@
 'use strict';
 
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
-// SECURITY FIX: Jangan izinkan fallback secret di production
+// Production must never use development fallback secrets.
 const SECRET = process.env.JWT_SECRET;
 if (!SECRET) {
     if (process.env.NODE_ENV === 'production') {
@@ -30,7 +31,11 @@ function generateAccessToken(payload) {
 }
 
 function generateRefreshToken(payload) {
-    return jwt.sign(payload, EFFECTIVE_REFRESH_SECRET, { expiresIn: REFRESH_EXPIRES });
+    // jti memastikan dua sesi yang dibuat pada detik yang sama tetap memiliki token unik.
+    return jwt.sign(payload, EFFECTIVE_REFRESH_SECRET, {
+        expiresIn: REFRESH_EXPIRES,
+        jwtid: crypto.randomUUID(),
+    });
 }
 
 function verifyToken(token, isRefresh = false) {

@@ -11,92 +11,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
+    <script src="/security.js"></script>
     <script src="/auth-guard.js"></script>
     <link rel="stylesheet" href="LMS.css">
 </head>
 <body>
 
     <!-- ============================
-         SCREEN: LOGIN
-         ============================ -->
-    <div id="lms-login" class="lms-screen active">
-        <div class="lms-login-bg">
-            <div class="login-shape s1"></div>
-            <div class="login-shape s2"></div>
-            <div class="login-shape s3"></div>
-        </div>
-
-        <div class="lms-login-container">
-            <div class="lms-brand-panel">
-                <div class="brand-logo-wrap">
-                    <img src="asset/Logo SMK.png" alt="Logo" class="brand-logo-img" onerror="this.style.display='none'">
-                    <div class="brand-logo-fallback"><i class="fas fa-school"></i></div>
-                </div>
-                <h2>SMK Negeri 1 Terisi</h2>
-                <p>Platform Pembelajaran Digital Terpadu</p>
-
-                <div class="brand-stats">
-                    <div class="bs-item"><span>750+</span><label>Siswa Aktif</label></div>
-                    <div class="bs-item"><span>40+</span><label>Mata Pelajaran</label></div>
-                    <div class="bs-item"><span>4</span><label>Jurusan</label></div>
-                </div>
-            </div>
-
-            <div class="lms-form-panel">
-                <a href="/login.html" class="lms-back"><i class="fas fa-arrow-left"></i> Kembali ke Login Siswa</a>
-                <h3>Selamat Datang</h3>
-                <p class="form-sub">Masuk ke portal belajarmu</p>
-
-                <!-- Role Tabs -->
-                <div class="role-selector">
-                    <button class="role-btn active" data-role="siswa" onclick="setRole('siswa',this)">
-                        <i class="fas fa-user-graduate"></i> Siswa
-                    </button>
-                    <button class="role-btn" data-role="guru" onclick="setRole('guru',this)">
-                        <i class="fas fa-chalkboard-teacher"></i> Guru
-                    </button>
-                    <button class="role-btn" data-role="tata_usaha" onclick="setRole('tata_usaha',this)">
-                        <i class="fas fa-briefcase"></i> Staff
-                    </button>
-                </div>
-
-                <div class="lms-form">
-                    <div class="lf-group">
-                        <label id="lf-label-user"><i class="fas fa-id-card"></i> NISN</label>
-                        <input type="text" id="lf-user" placeholder="Masukkan NISN kamu">
-                    </div>
-                    <div class="lf-group">
-                        <label><i class="fas fa-lock"></i> Password</label>
-                        <div class="lf-pw">
-                            <input type="password" id="lf-pass" placeholder="Masukkan password">
-                            <button type="button" id="lf-toggle"><i class="fas fa-eye"></i></button>
-                        </div>
-                    </div>
-                    <div class="lf-remember">
-                        <label><input type="checkbox" id="lf-remember"> Ingat saya</label>
-                        <button type="button" class="lf-forgot" onclick="showToast('Hubungi admin sekolah untuk reset password akun LMS.', 'blue')">Lupa password?</button>
-                    </div>
-                    <button class="lms-login-btn" onclick="lmsLogin()">
-                        <i class="fas fa-sign-in-alt"></i> Masuk ke LMS
-                    </button>
-                    <div id="lms-err" class="lms-err hidden">
-                        <i class="fas fa-circle-exclamation"></i>
-                        <span id="lms-err-msg">Username atau password salah.</span>
-                    </div>
-                </div>
-
-                <p class="lf-hint"><i class="fas fa-info-circle"></i>
-                    Gunakan akun EduGate yang sama dengan halaman Login utama.
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ============================
          SCREEN: DASHBOARD
          ============================ -->
-    <div id="lms-dashboard" class="lms-screen">
+    <div id="lms-dashboard" class="lms-screen active">
 
         <!-- Sidebar -->
         <aside class="lms-sidebar" id="lms-sidebar">
@@ -109,7 +34,7 @@
                 <button class="snav-item active" data-page="beranda" onclick="navigate('beranda',this)">
                     <i class="fas fa-home"></i><span>Beranda</span>
                 </button>
-                <button class="snav-item" data-page="kelas" onclick="navigate('kelas',this)">
+                <button class="snav-item student-only" data-page="kelas" onclick="navigate('kelas',this)">
                     <i class="fas fa-book-open"></i><span>Kelas Saya</span>
                     <span class="snav-badge">4</span>
                 </button>
@@ -129,16 +54,15 @@
                         <i class="fas fa-chevron-down snav-chevron"></i>
                     </button>
                     <div class="snav-submenu" id="snav-cbt-menu">
-                        <a href="cbt.html#ujian"><i class="fas fa-play"></i><span>Ujian Aktif</span></a>
-                        <a class="staff-only hidden" href="../backend/admin-panel/dashboard.html#cbt-builder"><i class="fas fa-pen-ruler"></i><span>Builder</span></a>
-                        <a class="staff-only hidden" href="../backend/admin-panel/dashboard.html#cbt-sesi"><i class="fas fa-list-check"></i><span>Sesi</span></a>
-                        <a class="staff-only hidden" href="../backend/admin-panel/dashboard.html#cbt-kegiatan"><i class="fas fa-chart-line"></i><span>Kegiatan</span></a>
+                        <a class="student-only" href="cbt.html#ujian"><i class="fas fa-play"></i><span>Ujian Aktif</span></a>
+                        <a class="staff-only hidden" href="/admin-panel/dashboard.html#cbt-builder"><i class="fas fa-pen-ruler"></i><span>Builder</span></a>
+                        <a class="staff-only hidden" href="/admin-panel/dashboard.html#cbt-sesi"><i class="fas fa-chart-line"></i><span>Sesi & Monitoring</span></a>
                     </div>
                 </div>
-                <button class="snav-item" data-page="nilai" onclick="navigate('nilai',this)">
-                    <i class="fas fa-chart-bar"></i><span>Nilai Saya</span>
+                <button class="snav-item hidden" data-page="nilai" onclick="navigate('nilai',this)">
+                    <i class="fas fa-chart-bar"></i><span>Nilai Siswa</span>
                 </button>
-                <button class="snav-item" data-page="kantin" onclick="navigate('kantin',this)">
+                <button class="snav-item student-only" data-page="kantin" onclick="navigate('kantin',this)">
                     <i class="fas fa-store"></i><span>Kantin ku</span>
                 </button>
                 <button class="snav-item" data-page="profil" onclick="navigate('profil',this)">
@@ -163,7 +87,9 @@
             <!-- Top Bar -->
             <header class="lms-topbar">
                 <div class="topbar-left">
-                    <button class="tb-menu" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                    <button class="tb-menu" type="button" onclick="toggleSidebar()" aria-label="Buka menu navigasi" aria-controls="lms-sidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
                     <div class="tb-breadcrumb">
                         <span id="tb-page-name">Beranda</span>
                     </div>
@@ -211,6 +137,7 @@
                     </div>
                     <hr>
                     <button class="pd-item" onclick="navigate('profil', document.querySelector('[data-page=profil]'));toggleProfile();"><i class="fas fa-user-edit"></i> Edit Profil</button>
+                    <button class="pd-item" onclick="document.getElementById('profile-photo-input').click();toggleProfile();"><i class="fas fa-camera"></i> Ganti Foto Profil</button>
                     <button class="pd-item" onclick="openModal('modal-password');toggleProfile();"><i class="fas fa-key"></i> Ganti Password</button>
                     <hr>
                     <button class="pd-item red" onclick="lmsLogout()"><i class="fas fa-sign-out-alt"></i> Keluar</button>
@@ -219,53 +146,18 @@
 
             <!-- Page: BERANDA -->
             <div class="page-content active" id="page-beranda">
-                <div class="welcome-banner">
+
+                <!-- Hero Banner -->
+                <div class="welcome-banner bg-gradient-primary">
                     <div class="wb-text">
+                        <span class="wb-kicker">Tahun Ajaran 2025/2026</span>
                         <h2 id="wb-greeting">Selamat Datang 👋</h2>
-                        <p>Yuk lanjutkan belajar hari ini. Kamu punya <strong>3 tugas</strong> yang menunggu!</p>
+                        <p>Yuk lanjutkan belajar hari ini. Cek prioritas tugas, CBT, dan materi terbaru tanpa scroll berantakan.</p>
                     </div>
-                    <div class="wb-illustration"><i class="fas fa-graduation-cap"></i></div>
+                    <div class="wb-illustration" aria-hidden="true"><i class="fas fa-graduation-cap"></i></div>
                 </div>
 
-                <div class="dashboard-actions" aria-label="Aksi cepat LMS">
-                    <button type="button" class="dash-action primary" onclick="navigate('tugas', document.querySelector('[data-page=tugas]'))">
-                        <i class="fas fa-bolt"></i>
-                        <span><strong>Prioritas Hari Ini</strong><small>Lihat tugas yang harus dibereskan dulu</small></span>
-                    </button>
-                    <button type="button" class="dash-action" onclick="navigate('materi', document.querySelector('[data-page=materi]'))">
-                        <i class="fas fa-layer-group"></i>
-                        <span><strong>Materi Terbaru</strong><small>Buka repositori belajar</small></span>
-                    </button>
-                    <button type="button" class="dash-action" onclick="navigate('forum', document.querySelector('[data-page=forum]'))">
-                        <i class="fas fa-message"></i>
-                        <span><strong>Diskusi Kelas</strong><small>Tanya guru atau teman</small></span>
-                    </button>
-                    <button type="button" class="dash-action staff-only hidden" onclick="navigate('staff', document.querySelector('[data-page=staff]'))">
-                        <i class="fas fa-gauge-high"></i>
-                        <span><strong>Ruang Staff</strong><small>Kelola siswa dan aktivitas kelas</small></span>
-                    </button>
-                </div>
-
-                <section class="today-priority-panel" aria-labelledby="today-priority-title">
-                    <div class="priority-head">
-                        <div>
-                            <span class="page-kicker">Prioritas Hari Ini</span>
-                            <h2 id="today-priority-title">Yang perlu kamu bereskan dulu</h2>
-                        </div>
-                        <button type="button" onclick="navigate('tugas', document.querySelector('[data-page=tugas]'))">
-                            Lihat Tugas
-                        </button>
-                    </div>
-                    <div class="priority-list" id="today-priority-list" aria-live="polite">
-                        <div class="priority-empty">
-                            <i class="fas fa-spinner fa-spin"></i>
-                            <strong>Memuat prioritas...</strong>
-                            <span>Tugas, CBT, dan materi terbaru sedang dicek.</span>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Stats Cards -->
+                <!-- Stats Overview -->
                 <div class="stat-cards">
                     <div class="sc-card">
                         <div class="sc-icon blue"><i class="fas fa-book-open"></i></div>
@@ -281,63 +173,101 @@
                     </div>
                     <div class="sc-card">
                         <div class="sc-icon purple"><i class="fas fa-star"></i></div>
-                        <div><span class="sc-val" id="sc-nilai">-</span><label>Rata-rata Nilai</label></div>
+                        <div><span class="sc-val" id="sc-nilai">-</span><label id="sc-nilai-label">CBT Siap</label></div>
                     </div>
                 </div>
 
-                <div class="student-services">
-                    <a class="service-tile" href="cbt.html">
-                        <span class="service-icon"><i class="fas fa-laptop-code"></i></span>
-                        <span><strong>CBT Online</strong><small id="svc-cbt-status">Cek sesi ujian aktif</small></span>
-                    </a>
-                    <a class="service-tile" href="SKL.html">
-                        <span class="service-icon green"><i class="fas fa-file-circle-check"></i></span>
-                        <span><strong>SKL Digital</strong><small>Cek surat kelulusan</small></span>
-                    </a>
-                    <a class="service-tile" href="ppdb.html">
-                        <span class="service-icon orange"><i class="fas fa-user-plus"></i></span>
-                        <span><strong>PPDB</strong><small>Informasi penerimaan siswa</small></span>
-                    </a>
-                    <button class="service-tile" type="button" onclick="navigate('kantin', document.querySelector('[data-page=kantin]'))">
-                        <span class="service-icon teal"><i class="fas fa-store"></i></span>
-                        <span><strong>Kantin ku</strong><small>Jual, pesan, dan bayar jajanan siswa</small></span>
-                    </button>
-                </div>
+                <!-- Main Layout Grid -->
+                <div class="beranda-layout">
 
-                <!-- Grid Beranda -->
-                <div class="beranda-grid">
-                    <div class="card-section">
-                        <div class="cs-header">
-                            <h3><i class="fas fa-bullhorn"></i> Pengumuman</h3>
-                            <button onclick="toggleNotif()">Lihat semua</button>
+                    <!-- Left Column: Core Activities -->
+                    <div class="beranda-main">
+                        <!-- Priority Tasks -->
+                        <section class="today-priority-panel">
+                            <div class="priority-head">
+                                <div>
+                                    <span class="page-kicker">Aksi Cepat</span>
+                                    <h2 id="today-priority-title">Prioritas Hari Ini</h2>
+                                </div>
+                                <button type="button" class="priority-more-btn" onclick="navigate('tugas', document.querySelector('[data-page=tugas]'))" aria-label="Buka daftar tugas">
+                                    <span>Lihat tugas</span>
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
+                            </div>
+                            <div class="priority-list" id="today-priority-list">
+                                <div class="priority-empty">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <div>Memuat prioritas...</div>
+                                    <span>Tugas, CBT, dan materi terbaru sedang dicek.</span>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Kelas & Tugas Mendatang Grid -->
+                        <div class="beranda-card-grid">
+                            <!-- Kelas Terbaru -->
+                            <div class="card-section">
+                                <div class="cs-header">
+                                    <h3><i class="fas fa-book-open"></i> Kelas Saya</h3>
+                                </div>
+                                <div class="mini-kelas-list" id="mini-kelas-list"></div>
+                            </div>
+
+                            <!-- Tugas Mendatang -->
+                            <div class="card-section">
+                                <div class="cs-header">
+                                    <h3><i class="fas fa-calendar-check"></i> Tugas Mendatang</h3>
+                                </div>
+                                <div class="mini-tugas-list" id="mini-tugas-list"></div>
+                            </div>
                         </div>
-                        <div class="announcement-list" id="student-announcements"></div>
                     </div>
 
-                    <div class="card-section">
-                        <div class="cs-header">
-                            <h3><i class="fas fa-laptop-code"></i> CBT Saya</h3>
-                            <button onclick="window.location.href='cbt.html'">Buka CBT</button>
-                        </div>
-                        <div class="cbt-session-list" id="student-cbt-sessions"></div>
-                    </div>
+                    <!-- Right Column: Sidebar Widgets -->
+                    <div class="beranda-side">
 
-                    <!-- Kelas Terbaru -->
-                    <div class="card-section">
-                        <div class="cs-header">
-                            <h3><i class="fas fa-book-open"></i> Kelas Saya</h3>
-                            <button onclick="navigate('kelas', document.querySelector('[data-page=kelas]'))">Lihat semua</button>
+                        <!-- Quick Services / Shortcuts -->
+                        <div class="card-section service-panel">
+                            <div class="cs-header">
+                                <h3><i class="fas fa-compass"></i> Portal Layanan</h3>
+                            </div>
+                            <div class="service-quick-grid">
+                                <a href="cbt.html" class="service-quick-item student-only">
+                                    <i class="fas fa-laptop-code"></i>
+                                    <div>CBT Online</div>
+                                    <small id="svc-cbt-status">Cek sesi ujian aktif</small>
+                                </a>
+                                <a href="SKL.html" class="service-quick-item success student-only">
+                                    <i class="fas fa-file-circle-check"></i>
+                                    <div>SKL Digital</div>
+                                </a>
+                                <a href="ppdb.html" class="service-quick-item warning student-only">
+                                    <i class="fas fa-user-plus"></i>
+                                    <div>Info PPDB</div>
+                                </a>
+                                <button type="button" class="service-quick-item info student-only" onclick="navigate('kantin', document.querySelector('[data-page=kantin]'))">
+                                    <i class="fas fa-store"></i>
+                                    <div>Kantin ku</div>
+                                </button>
+                            </div>
                         </div>
-                        <div class="mini-kelas-list" id="mini-kelas-list"></div>
-                    </div>
 
-                    <!-- Tugas Mendatang -->
-                    <div class="card-section">
-                        <div class="cs-header">
-                            <h3><i class="fas fa-calendar-check"></i> Tugas Mendatang</h3>
-                            <button onclick="navigate('tugas', document.querySelector('[data-page=tugas]'))">Lihat semua</button>
+                        <!-- Announcements -->
+                        <div class="card-section">
+                            <div class="cs-header">
+                                <h3><i class="fas fa-bullhorn"></i> Pengumuman</h3>
+                            </div>
+                            <div class="announcement-list" id="student-announcements"></div>
                         </div>
-                        <div class="mini-tugas-list" id="mini-tugas-list"></div>
+
+                        <!-- CBT Sessions -->
+                        <div class="card-section">
+                            <div class="cs-header">
+                                <h3><i class="fas fa-stopwatch"></i> Sesi Ujian</h3>
+                            </div>
+                            <div class="cbt-session-list" id="student-cbt-sessions"></div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -463,8 +393,8 @@
                 <div class="page-head">
                     <div>
                         <span class="page-kicker">Academic Score & Report</span>
-                        <h2 class="page-title">Rapor & Rekap Nilai</h2>
-                        <p>Pantau rekapitulasi nilai harian, ujian, serta unduh E-Rapor resmi Anda.</p>
+                        <h2 class="page-title" id="nilai-page-title">Rapor & Rekap Nilai</h2>
+                        <p id="nilai-page-copy">Pantau rekapitulasi nilai, validasi komponen penilaian, dan cetak E-Rapor siswa terpilih.</p>
                     </div>
                     <div class="nilai-header-actions">
                         <select id="nilai-semester-select" onchange="fetchRaporDanNilai()">
@@ -740,10 +670,17 @@
                 <div class="profile-layout">
                     <section class="profile-card">
                         <div class="profile-head">
-                            <div class="profile-avatar" id="profile-avatar">S</div>
+                            <div class="profile-photo-control">
+                                <div class="profile-avatar" id="profile-avatar">S</div>
+                                <button class="profile-photo-button" id="profile-photo-button" type="button" onclick="document.getElementById('profile-photo-input').click()" aria-label="Ganti foto profil">
+                                    <i class="fas fa-camera"></i>
+                                </button>
+                                <input class="visually-hidden-file" id="profile-photo-input" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onchange="uploadProfilePhoto(this)">
+                            </div>
                             <div>
                                 <h3 id="profile-name">Nama Siswa</h3>
                                 <p id="profile-meta">-</p>
+                                <small id="profile-photo-hint">JPG, PNG, atau WEBP maks. 1MB</small>
                             </div>
                         </div>
                         <dl class="profile-facts">
@@ -752,6 +689,10 @@
                             <div><dt>Jurusan</dt><dd id="profile-jurusan">-</dd></div>
                             <div><dt>No. HP</dt><dd id="profile-phone">-</dd></div>
                         </dl>
+                        <div class="profile-completeness">
+                            <div><span>Kelengkapan biodata</span><strong id="profile-complete-label">0%</strong></div>
+                            <div class="profile-complete-track"><span id="profile-complete-bar"></span></div>
+                        </div>
                     </section>
 
                     <section class="profile-panel">
@@ -853,14 +794,18 @@
             </div>
 
             <!-- Page: STAFF / GURU -->
-            <div class="page-content" id="page-staff">
+            <div class="page-content staff-only hidden" id="page-staff">
                 <div class="staff-hero">
                     <div>
                         <span class="staff-kicker">Ruang kerja guru & staff</span>
                         <h2>Administrasi Siswa Terpadu</h2>
                         <p>Kelola data akademik, tugas, materi, nilai, dan absensi dari satu tempat. Prioritas siswa otomatis dihitung dari kelengkapan data dan aktivitas akademik.</p>
                     </div>
-                    <button class="staff-primary" onclick="fetchStaffStudents()"><i class="fas fa-rotate"></i> Refresh Data</button>
+                    <div class="staff-hero-actions">
+                        <button class="staff-primary" onclick="fetchStaffStudents()"><i class="fas fa-rotate"></i> Refresh Data</button>
+                        <a class="staff-mini-btn" href="/admin-panel/dashboard.html#cbt-kegiatan"><i class="fas fa-chart-line"></i> Monitor CBT</a>
+                        <a class="staff-mini-btn" href="/admin-panel/dashboard.html#cbt-sesi"><i class="fas fa-list-check"></i> Kelola Sesi</a>
+                    </div>
                 </div>
 
                 <div class="staff-insights">
@@ -897,7 +842,8 @@
                         </div>
                         <div id="staff-detail-panel" class="hidden">
                             <div class="staff-detail-head">
-                                <div>
+                                <span class="staff-detail-avatar" id="staff-detail-avatar">S</span>
+                                <div class="staff-detail-identity">
                                     <h3 id="staff-detail-name">Nama Siswa</h3>
                                     <p id="staff-detail-meta">-</p>
                                 </div>

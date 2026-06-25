@@ -2,10 +2,16 @@
 'use strict';
 
 const { verifyToken } = require('../config/jwt');
+const { getCookie, ACCESS_COOKIE } = require('../utils/sessionCookies');
+
+function getRequestToken(req) {
+    const authHeader = req.headers['authorization'];
+    const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    return bearer || getCookie(req, ACCESS_COOKIE) || '';
+}
 
 function authenticate(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const token = getRequestToken(req);
 
     if (!token) {
         return res.status(401).json({ success:false, message:'Akses ditolak. Token tidak ditemukan.' });
@@ -37,8 +43,7 @@ function authenticate(req, res, next) {
 }
 
 function optionalAuth(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const token = getRequestToken(req);
     if (token) {
         const { valid, decoded } = verifyToken(token);
         if (valid) req.user = decoded;
@@ -79,5 +84,5 @@ const isTU     = authorize('super_admin','tata_usaha');
 module.exports = {
     authenticate, optionalAuth, authorize,
     isAdmin, isContentAdmin, isStaff, isGuru, isSiswa, isKepsek, isTU,
-    isSelfOrAdmin
+    isSelfOrAdmin, getRequestToken
 };

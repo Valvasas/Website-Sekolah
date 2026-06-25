@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teknik Bisnis Sepeda Motor | SMKN 1 Terisi</title>
+    <title>Agribisnis Tanaman Pangan dan Hortikultura | SMKN 1 Terisi</title>
     <link rel="icon" type="image/png" href="asset/Logo SMK.png">
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,11 +20,11 @@
             <div class="brand-text">
                     <span>SMK NEGERI 1 TERISI</span><small>TERISI</small></div>
             </a>
-            <div class="menu-toggle" id="mobile-menu">
+            <button class="menu-toggle" id="mobile-menu" type="button" aria-label="Buka menu navigasi">
                 <span class="bar"></span>
                 <span class="bar"></span>
                 <span class="bar"></span>
-            </div>
+            </button>
             <ul class="nav-menu">
                 <li><a href="index.html" class="nav-link">Beranda</a></li>
                 <li><a href="akademik.html" class="nav-link active">Akademik</a></li>
@@ -33,9 +33,9 @@
         </div>
     </nav>
 
-    <!-- HERO SECTION OUT OF THE BOX -->
+    <!-- Program hero -->
     <!-- HERO SECTION ATPH -->
-    <header class="major-hero hero-jurusan hero-atph" style="background-image: url('https://images.unsplash.com/photo-1592982537447-6f2a6a0a0913?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');">
+    <header class="major-hero hero-jurusan hero-atph" style="background-image: url('asset/atph.jpg');">
         <div class="major-title">Smart Farming</div>
         <div class="container relative">
             <div class="major-content reveal-text">
@@ -117,21 +117,21 @@
 
             <div class="gallery-4-grid reveal">
                 <div class="g4-item large">
-                    <img src="https://images.unsplash.com/photo-1530836369250-ef71a3616737?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="Greenhouse Hidroponik">
+                    <img src="asset/greenhouse.jpg" alt="Greenhouse Hidroponik">
                     <div class="g4-overlay">
                         <h3>Greenhouse Modern</h3>
                         <p style="color: #fff;">Fasilitas budidaya tanaman metode hidroponik</p>
                     </div>
                 </div>
                 <div class="g4-item">
-                    <img src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Lahan Pertanian">
+                    <img src="asset/atph.jpg" alt="Lahan Pertanian">
                     <div class="g4-overlay">
                         <h3>Lahan Terbuka</h3>
                         <p style="color: #fff;">Praktik olah tanah dan pemupukan</p>
                     </div>
                 </div>
                 <div class="g4-item">
-                    <img src="https://images.unsplash.com/photo-1574943320219-553eb213f72d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Kultur Jaringan">
+                    <img src="asset/alat-alat-web.jpg" alt="Kultur Jaringan">
                     <div class="g4-overlay">
                         <h3>Lab Kultur Jaringan</h3>
                         <p style="color: #fff;">Pengaplikasian pupuk organik dan teknik kultur jaringan</p>
@@ -165,7 +165,7 @@
                 <div class="footer-links">
                     <h3 style="color:#fff; margin-bottom: 20px;">Tautan Resmi</h3>
                     <ul>
-                        <!-- FITUR TAMBAHAN: Link EduGate -->
+                        <!-- EduGate link -->
                         <li><a href="https://edugate.smkn1terisi.sch.id" target="_blank" rel="noopener noreferrer">Portal Kedisiplinan (EduGate)</a></li>
                         <li><a href="https://kemdikbud.go.id" target="_blank">Kementerian Pendidikan</a></li>
                         <li><a href="https://dapo.kemdikbud.go.id/" target="_blank">Dapodikdasmen</a></li>
@@ -178,14 +178,14 @@
                 <p>&copy; 2026 SMK Negeri 1 Terisi - Indramayu. Dikembangkan dengan <i class="fas fa-heart" style="color:red;"></i> oleh IT Club SMKN 1 Terisi.</p>
             </div>
         </div>
+    <script src="/security.js"></script>
     <script src="script.js"></script>
     <script>
-        // JS Khusus Halaman Detail Jurusan: Efek Parallax Teks Raksasa
+        // Move the background title more slowly than the page.
         window.addEventListener('scroll', () => {
             const scroll = window.pageYOffset;
             const title = document.querySelector('.major-title');
             if(title) {
-                // Teks raksasa akan bergeser saat di scroll (Parallax effect out of the box)
                 title.style.transform = `rotate(-90deg) translateX(${scroll * 0.5}px)`;
             }
         });

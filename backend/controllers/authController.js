@@ -7,17 +7,134 @@ const { v4: uuidv4 } = require('uuid');
 const getDB   = require('../config/database');
 const jwtCfg  = require('../config/jwt');
 const mailer  = require('../config/mailer');
+const sms     = require('../config/sms');
 const { log } = require('../middleware/auditLog');
 const { getSchoolClasses, findSchoolClass } = require('../utils/schoolClasses');
+const { setAuthCookies, clearAuthCookies, getCookie, REFRESH_COOKIE } = require('../utils/sessionCookies');
+const ENV = require('../config/env');
 
 /* ── Helpers ─────────────────────────────────────────── */
 const generateToken = () => crypto.randomBytes(32).toString('hex');
 const generateOTP   = () => Math.floor(100000 + Math.random() * 900000).toString();
 const tokenExpiry   = (mins = 15) => new Date(Date.now() + mins * 60_000).toISOString();
 const nowISO        = () => new Date().toISOString();
+const OTP_EXPIRY_MINUTES = 10;
+const OTP_RESEND_SECONDS = 60;
+const OTP_MAX_ATTEMPTS = 5;
+const STAFF_ROLES = ['super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'];
+
+function ensureStaffProfileSchema(db) {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS staff_profiles (
+            user_id TEXT PRIMARY KEY,
+            tempat_lahir TEXT,
+            tanggal_lahir TEXT,
+            jenis_kelamin TEXT,
+            alamat TEXT,
+            pendidikan TEXT,
+            bio TEXT,
+            updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        )
+    `);
+}
+
+function cleanProfileText(value, max = 500) {
+    return String(value || '').replace(/[<>]/g, '').trim().slice(0, max);
+}
+
+function normalizedStaffName(value) {
+    return String(value || '')
+        .split(',')[0]
+        .normalize('NFKD')
+        .replace(/[^a-z0-9]/gi, '')
+        .toLowerCase();
+}
+
+function findOrganizationForUser(db, user) {
+    let organization = db.prepare('SELECT * FROM organization_staff WHERE user_id = ?').get(user.id);
+    if (organization) return organization;
+    if (user.nip) {
+        organization = db.prepare(`
+            SELECT * FROM organization_staff
+            WHERE REPLACE(REPLACE(REPLACE(COALESCE(nip,''),' ',''),'.',''),'-','') =
+                  REPLACE(REPLACE(REPLACE(?,' ',''),'.',''),'-','')
+            LIMIT 1
+        `).get(user.nip);
+    }
+    if (!organization) {
+        const targetName = normalizedStaffName(user.nama_lengkap);
+        organization = db.prepare('SELECT * FROM organization_staff WHERE user_id IS NULL').all()
+            .find(row => normalizedStaffName(row.nama) === targetName);
+    }
+    if (organization) {
+        db.prepare('UPDATE organization_staff SET user_id = ? WHERE id = ?').run(user.id, organization.id);
+    }
+    return organization || null;
+}
+
+function hashOTP(challengeId, otp) {
+    return crypto.createHmac('sha256', ENV.JWT_SECRET || 'development-only-otp-secret')
+        .update(`${challengeId}:${otp}`)
+        .digest('hex');
+}
+
+function safeEqualHex(left, right) {
+    const a = Buffer.from(String(left || ''), 'hex');
+    const b = Buffer.from(String(right || ''), 'hex');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+function maskDestination(channel, destination) {
+    if (channel === 'phone') {
+        const phone = String(destination);
+        return `${phone.slice(0, 4)}****${phone.slice(-3)}`;
+    }
+    const [name, domain] = String(destination).split('@');
+    return `${name.slice(0, 2)}***@${domain || ''}`;
+}
+
+async function sendRegistrationCode(channel, destination, name, otp) {
+    if (channel === 'phone') return sms.sendOTP(destination, otp);
+    if (!mailer.isConfigured()) throw new Error('Layanan email belum dikonfigurasi.');
+    return mailer.sendOTPEmail(destination, name, otp);
+}
 
 function identifierField(role) {
     return role === 'siswa' ? 'nisn' : 'email';
+}
+
+function findLoginUser(db, identifier, role) {
+    const normalized = String(identifier || '').trim();
+
+    // Kompatibilitas untuk form lama yang masih mengirim role.
+    if (role) {
+        const field = identifierField(role);
+        return {
+            field,
+            user: field === 'nisn'
+                ? db.prepare('SELECT * FROM users WHERE nisn = :id AND role = :role').get({ id: normalized, role })
+                : db.prepare('SELECT * FROM users WHERE email = :id AND role = :role').get({ id: normalized.toLowerCase(), role }),
+        };
+    }
+
+    // Form terpadu: akun dicari dari identitas, role tetap berasal dari database.
+    if (normalized.includes('@')) {
+        return {
+            field: 'email',
+            user: db.prepare('SELECT * FROM users WHERE email = :id').get({ id: normalized.toLowerCase() }),
+        };
+    }
+
+    const matches = db.prepare(`
+        SELECT * FROM users
+        WHERE nisn = :id OR nip = :id
+        LIMIT 2
+    `).all({ id: normalized });
+
+    return {
+        field: 'identifier',
+        user: matches.length === 1 ? matches[0] : null,
+    };
 }
 
 function getStudentProfile(db, nisn) {
@@ -43,6 +160,20 @@ function publicUserPayload(db, user) {
     };
 }
 
+function exposeTokens() {
+    return process.env.AUTH_RESPONSE_TOKENS === 'true' || process.env.NODE_ENV !== 'production';
+}
+
+function sessionResponseData({ accessToken, refreshToken, expiresIn, user, redirectTo }) {
+    return {
+        ...(exposeTokens() ? { accessToken, refreshToken } : {}),
+        sessionMode: 'httpOnlyCookie',
+        expiresIn,
+        user,
+        redirectTo,
+    };
+}
+
 /* ── REGISTER ────────────────────────────────────────── */
 async function register(req, res) {
     const db = getDB();
@@ -50,22 +181,32 @@ async function register(req, res) {
         nama_lengkap, email, password,
         role = 'siswa', nisn, nip, no_hp,
         bidang, jabatan_detail, mata_pelajaran,
-        kelas
+        kelas, verification_method = 'email'
     } = req.body;
 
     try {
-        const selfRegisterRoles = ['siswa', 'wali_murid', 'calon_siswa', 'guru', 'tata_usaha'];
-        if (!selfRegisterRoles.includes(role) && req.user?.role !== 'super_admin') {
+        const selfRegisterRoles = ['siswa', 'wali_murid', 'calon_siswa'];
+        if (!selfRegisterRoles.includes(role)) {
             return res.status(403).json({
                 success: false,
-                message: 'Pendaftaran role ini harus dilakukan oleh Administrator.'
+                message: 'Pendaftaran mandiri hanya tersedia untuk siswa, calon siswa, dan wali murid.'
             });
         }
 
-        if (email) {
-            const ex = db.prepare('SELECT id FROM users WHERE email = :e').get({ e: email.toLowerCase() });
-            if (ex) return res.status(409).json({ success: false, message: 'Email sudah terdaftar.' });
+        const normalizedEmail = email.toLowerCase().trim();
+        const normalizedPhone = no_hp ? sms.normalizePhone(no_hp) : null;
+        if (verification_method === 'phone' && !normalizedPhone) {
+            return res.status(422).json({ success: false, message: 'Nomor telepon wajib diisi untuk verifikasi telepon.' });
         }
+        if (verification_method === 'phone' && !sms.isConfigured()) {
+            return res.status(503).json({ success: false, message: 'Verifikasi nomor telepon belum tersedia. Gunakan verifikasi email.' });
+        }
+        if (verification_method === 'email' && !mailer.isConfigured()) {
+            return res.status(503).json({ success: false, message: 'Layanan email belum dikonfigurasi. Hubungi administrator.' });
+        }
+
+        const ex = db.prepare('SELECT id FROM users WHERE email = :e').get({ e: normalizedEmail });
+        if (ex) return res.status(409).json({ success: false, message: 'Email sudah terdaftar.' });
         if (nisn) {
             const ex = db.prepare('SELECT id FROM users WHERE nisn = :n').get({ n: nisn });
             if (ex) return res.status(409).json({ success: false, message: 'NISN sudah terdaftar.' });
@@ -80,93 +221,79 @@ async function register(req, res) {
         }
 
         const password_hash = await bcrypt.hash(password, 12);
-        const userId = uuidv4();
+        const challengeId = uuidv4();
+        const otp = generateOTP();
         const now = nowISO();
-
-        const isStaffRole = ['guru', 'tata_usaha'].includes(role);
-        const isActive = isStaffRole ? 0 : 1;
-        const isVerified = 0;
         const bidangFinal = bidang || jabatan_detail || mata_pelajaran || null;
+        const destination = verification_method === 'phone' ? normalizedPhone : normalizedEmail;
+        const payload = {
+            nama_lengkap: nama_lengkap.trim(),
+            email: normalizedEmail,
+            password_hash,
+            role,
+            nisn: nisn || null,
+            nip: nip || null,
+            no_hp: normalizedPhone,
+            bidang: bidangFinal,
+            jabatan_detail: jabatan_detail || null,
+            kelas: classInfo?.kelas || null,
+            jurusan: classInfo?.jurusan || null,
+        };
 
-        const createAccount = db.transaction(() => {
-            db.prepare(`
-                INSERT INTO users
-                (id,nama_lengkap,email,password_hash,role,nisn,nip,no_hp,bidang,jabatan_detail,is_active,is_verified,created_at,updated_at)
-                VALUES (:id,:nama,:email,:hash,:role,:nisn,:nip,:hp,:bidang,:jabatan,:active,:verified,:now,:now)
-            `).run({
-                id: userId,
-                nama: nama_lengkap.trim(),
-                email: email?.toLowerCase() || null,
-                hash: password_hash,
-                role,
-                nisn: nisn || null,
-                nip: nip || null,
-                hp: no_hp || null,
-                bidang: bidangFinal,
-                jabatan: jabatan_detail || null,
-                active: isActive,
-                verified: isVerified,
-                now
-            });
-
-            if (role === 'siswa' && nisn && classInfo) {
-                db.prepare(`
-                    INSERT INTO siswa_profil (id,user_id,nisn,kelas,jurusan,updated_at)
-                    VALUES (:id,:uid,:nisn,:kelas,:jurusan,:now)
-                    ON CONFLICT(nisn) DO UPDATE SET
-                        user_id = excluded.user_id,
-                        kelas = excluded.kelas,
-                        jurusan = excluded.jurusan,
-                        updated_at = excluded.updated_at
-                `).run({
-                    id: uuidv4(),
-                    uid: userId,
-                    nisn,
-                    kelas: classInfo.kelas,
-                    jurusan: classInfo.jurusan,
-                    now
-                });
-            }
+        db.prepare(`
+            UPDATE registration_verifications
+            SET consumed = 1, updated_at = :now
+            WHERE destination = :destination AND consumed = 0
+        `).run({ destination, now });
+        db.prepare(`
+            INSERT INTO registration_verifications
+            (id,email,phone,channel,destination,code_hash,payload_json,expires_at,resend_available_at,
+             attempts,max_attempts,send_count,consumed,ip_address,created_at,updated_at)
+            VALUES (:id,:email,:phone,:channel,:destination,:codeHash,:payload,:expiresAt,:resendAt,
+                    0,:maxAttempts,1,0,:ip,:now,:now)
+        `).run({
+            id: challengeId,
+            email: normalizedEmail,
+            phone: normalizedPhone,
+            channel: verification_method,
+            destination,
+            codeHash: hashOTP(challengeId, otp),
+            payload: JSON.stringify(payload),
+            expiresAt: tokenExpiry(OTP_EXPIRY_MINUTES),
+            resendAt: new Date(Date.now() + OTP_RESEND_SECONDS * 1000).toISOString(),
+            maxAttempts: OTP_MAX_ATTEMPTS,
+            ip: req.ip,
+            now,
         });
-        createAccount();
 
-        let verSent = false;
-        if (email) {
-            try {
-                const tok = generateToken();
-                db.prepare(`
-                    INSERT INTO email_verification_tokens (id,user_id,token,expires_at,used,created_at)
-                    VALUES (:id,:uid,:tok,:exp,0,:now)
-                `).run({ id: uuidv4(), uid: userId, tok, exp: tokenExpiry(24 * 60), now });
-                await mailer.sendVerificationEmail(email, nama_lengkap, tok);
-                verSent = true;
-            } catch (e) {
-                console.warn('[Register] Email gagal:', e.message);
-            }
+        try {
+            await sendRegistrationCode(verification_method, destination, nama_lengkap, otp);
+        } catch (sendError) {
+            db.prepare('DELETE FROM registration_verifications WHERE id = :id').run({ id: challengeId });
+            console.warn('[Register OTP]', sendError.message);
+            return res.status(503).json({
+                success: false,
+                message: 'Kode verifikasi gagal dikirim. Periksa konfigurasi layanan atau coba lagi nanti.'
+            });
         }
 
-        log(userId, 'USER_REGISTER', 'users', userId, { role, email }, req.ip);
+        log(null, 'REGISTRATION_OTP_SENT', 'registration_verifications', challengeId, {
+            role, channel: verification_method
+        }, req.ip);
+        db.prepare(`
+            DELETE FROM registration_verifications
+            WHERE (consumed = 1 OR expires_at < :old) AND created_at < :old
+        `).run({ old: new Date(Date.now() - 24 * 60 * 60_000).toISOString() });
 
-        const message = isStaffRole
-            ? `Akun ${role === 'guru' ? 'Guru' : 'Staff TU'} berhasil dibuat! Akun akan diaktifkan setelah disetujui administrator.`
-            : verSent
-                ? 'Akun berhasil dibuat! Cek email untuk verifikasi sebelum login.'
-                : 'Akun berhasil dibuat! Silakan login.';
-
-        return res.status(201).json({
+        return res.status(202).json({
             success: true,
-            message,
+            message: `Kode verifikasi telah dikirim ke ${maskDestination(verification_method, destination)}.`,
             data: {
-                id: userId,
-                nama: nama_lengkap,
-                role,
-                email: email || null,
-                nisn: nisn || null,
-                kelas: classInfo?.kelas || null,
-                jurusan: classInfo?.jurusan || null,
-                bidang: bidangFinal,
-                verificationRequired: !isVerified,
-                pendingAdminApproval: isStaffRole
+                challengeId,
+                channel: verification_method,
+                destination: maskDestination(verification_method, destination),
+                expiresIn: OTP_EXPIRY_MINUTES * 60,
+                resendAfter: OTP_RESEND_SECONDS,
             }
         });
     } catch (err) {
@@ -175,19 +302,183 @@ async function register(req, res) {
     }
 }
 
+async function verifyRegistration(req, res) {
+    const db = getDB();
+    const { challengeId, code } = req.body;
+    const now = nowISO();
+
+    try {
+        const challenge = db.prepare(`
+            SELECT * FROM registration_verifications
+            WHERE id = :id AND consumed = 0
+        `).get({ id: challengeId });
+        if (!challenge) {
+            return res.status(400).json({ success: false, message: 'Sesi verifikasi tidak valid atau sudah digunakan.' });
+        }
+        if (challenge.expires_at <= now) {
+            return res.status(410).json({ success: false, message: 'Kode telah kedaluwarsa. Kirim ulang kode untuk melanjutkan.' });
+        }
+        if (challenge.attempts >= challenge.max_attempts) {
+            return res.status(429).json({ success: false, message: 'Batas percobaan OTP tercapai. Mulai ulang pendaftaran.' });
+        }
+
+        const valid = safeEqualHex(challenge.code_hash, hashOTP(challengeId, code));
+        if (!valid) {
+            const attempts = challenge.attempts + 1;
+            db.prepare(`
+                UPDATE registration_verifications
+                SET attempts = :attempts, consumed = CASE WHEN :attempts >= max_attempts THEN 1 ELSE consumed END,
+                    updated_at = :now
+                WHERE id = :id
+            `).run({ attempts, now, id: challengeId });
+            const remaining = Math.max(0, challenge.max_attempts - attempts);
+            return res.status(400).json({
+                success: false,
+                message: remaining
+                    ? `Kode OTP salah. Sisa percobaan: ${remaining}.`
+                    : 'Kode OTP salah dan batas percobaan tercapai. Mulai ulang pendaftaran.'
+            });
+        }
+
+        const payload = JSON.parse(challenge.payload_json);
+        const userId = uuidv4();
+        const createAccount = db.transaction(() => {
+            const emailExists = db.prepare('SELECT id FROM users WHERE email = :email').get({ email: payload.email });
+            if (emailExists) throw Object.assign(new Error('Email sudah terdaftar.'), { code: 'DUPLICATE_ACCOUNT' });
+            if (payload.nisn) {
+                const nisnExists = db.prepare('SELECT id FROM users WHERE nisn = :nisn').get({ nisn: payload.nisn });
+                if (nisnExists) throw Object.assign(new Error('NISN sudah terdaftar.'), { code: 'DUPLICATE_ACCOUNT' });
+            }
+
+            db.prepare(`
+                INSERT INTO users
+                (id,nama_lengkap,email,password_hash,role,nisn,nip,no_hp,bidang,jabatan_detail,
+                 is_active,is_verified,created_at,updated_at)
+                VALUES (:id,:nama,:email,:hash,:role,:nisn,:nip,:phone,:bidang,:jabatan,1,1,:now,:now)
+            `).run({
+                id: userId,
+                nama: payload.nama_lengkap,
+                email: payload.email,
+                hash: payload.password_hash,
+                role: payload.role,
+                nisn: payload.nisn,
+                nip: payload.nip,
+                phone: payload.no_hp,
+                bidang: payload.bidang,
+                jabatan: payload.jabatan_detail,
+                now,
+            });
+
+            if (payload.role === 'siswa' && payload.nisn) {
+                db.prepare(`
+                    INSERT INTO siswa_profil (id,user_id,nisn,kelas,jurusan,updated_at)
+                    VALUES (:id,:uid,:nisn,:kelas,:jurusan,:now)
+                `).run({
+                    id: uuidv4(),
+                    uid: userId,
+                    nisn: payload.nisn,
+                    kelas: payload.kelas,
+                    jurusan: payload.jurusan,
+                    now,
+                });
+            }
+            db.prepare(`
+                UPDATE registration_verifications SET consumed = 1, updated_at = :now WHERE id = :id
+            `).run({ now, id: challengeId });
+        });
+        createAccount();
+
+        log(userId, 'USER_REGISTER_VERIFIED', 'users', userId, {
+            role: payload.role, channel: challenge.channel
+        }, req.ip);
+        return res.status(201).json({
+            success: true,
+            message: 'Verifikasi berhasil. Akun sudah dibuat dan siap digunakan.',
+            data: { id: userId, role: payload.role, email: payload.email }
+        });
+    } catch (err) {
+        if (err.code === 'DUPLICATE_ACCOUNT' || String(err.code || '').startsWith('SQLITE_CONSTRAINT')) {
+            db.prepare('UPDATE registration_verifications SET consumed = 1, updated_at = :now WHERE id = :id')
+                .run({ now, id: challengeId });
+            return res.status(409).json({ success: false, message: err.message || 'Akun sudah terdaftar.' });
+        }
+        console.error('[VerifyRegistration]', err);
+        return res.status(500).json({ success: false, message: 'Verifikasi gagal diproses.' });
+    }
+}
+
+async function resendRegistrationOTP(req, res) {
+    const db = getDB();
+    const { challengeId } = req.body;
+    const now = nowISO();
+
+    try {
+        const challenge = db.prepare(`
+            SELECT * FROM registration_verifications WHERE id = :id AND consumed = 0
+        `).get({ id: challengeId });
+        if (!challenge) {
+            return res.status(400).json({ success: false, message: 'Sesi verifikasi tidak valid.' });
+        }
+        if (challenge.resend_available_at > now) {
+            const wait = Math.ceil((new Date(challenge.resend_available_at) - Date.now()) / 1000);
+            return res.status(429).json({ success: false, message: `Tunggu ${wait} detik sebelum mengirim ulang kode.` });
+        }
+        if (challenge.send_count >= 5) {
+            return res.status(429).json({ success: false, message: 'Batas kirim ulang kode tercapai. Mulai ulang pendaftaran nanti.' });
+        }
+
+        const otp = generateOTP();
+        const payload = JSON.parse(challenge.payload_json);
+        const expiresAt = tokenExpiry(OTP_EXPIRY_MINUTES);
+        const resendAt = new Date(Date.now() + OTP_RESEND_SECONDS * 1000).toISOString();
+        db.prepare(`
+            UPDATE registration_verifications
+            SET code_hash = :hash, expires_at = :expiresAt, resend_available_at = :resendAt,
+                attempts = 0, send_count = send_count + 1, updated_at = :now
+            WHERE id = :id
+        `).run({ hash: hashOTP(challengeId, otp), expiresAt, resendAt, now, id: challengeId });
+
+        try {
+            await sendRegistrationCode(challenge.channel, challenge.destination, payload.nama_lengkap, otp);
+        } catch (sendError) {
+            db.prepare('UPDATE registration_verifications SET consumed = 1, updated_at = :now WHERE id = :id')
+                .run({ now: nowISO(), id: challengeId });
+            console.warn('[Resend OTP]', sendError.message);
+            return res.status(503).json({ success: false, message: 'Kode gagal dikirim. Mulai ulang pendaftaran.' });
+        }
+
+        return res.json({
+            success: true,
+            message: `Kode baru dikirim ke ${maskDestination(challenge.channel, challenge.destination)}.`,
+            data: { expiresIn: OTP_EXPIRY_MINUTES * 60, resendAfter: OTP_RESEND_SECONDS }
+        });
+    } catch (err) {
+        console.error('[ResendRegistrationOTP]', err);
+        return res.status(500).json({ success: false, message: 'Gagal mengirim ulang kode.' });
+    }
+}
+
+function getVerificationMethods(_req, res) {
+    return res.json({
+        success: true,
+        data: {
+            email: mailer.isConfigured(),
+            phone: sms.isConfigured(),
+        }
+    });
+}
+
 /* ── LOGIN ───────────────────────────────────────────── */
 async function login(req, res) {
     const db = getDB();
-    const { identifier, password, role, rememberMe = false } = req.body;
+    const { identifier, password, role, portal, rememberMe = false } = req.body;
 
     try {
-        const field = identifierField(role);
-        const user  = field === 'nisn'
-            ? db.prepare('SELECT * FROM users WHERE nisn = :id AND role = :role').get({ id: identifier.trim(), role })
-            : db.prepare('SELECT * FROM users WHERE email = :id AND role = :role').get({ id: identifier.toLowerCase().trim(), role });
+        const { field, user } = findLoginUser(db, identifier, role);
 
         if (!user) {
-            return res.status(401).json({ success:false, message:`${field==='nisn'?'NISN':'Email'} atau password salah.` });
+            const label = field === 'nisn' ? 'NISN' : field === 'email' ? 'Email' : 'Email, NISN, atau NIP';
+            return res.status(401).json({ success:false, message:`${label} atau password salah.` });
         }
 
         if (user.locked_until && new Date(user.locked_until) > new Date()) {
@@ -224,6 +515,21 @@ async function login(req, res) {
             return res.status(401).json({ success:false, message:`Password salah. Sisa percobaan: ${maxAttempts - attempts}.` });
         }
 
+        const staffRoles = ['guru', 'tata_usaha', 'kepala_sekolah', 'wakil_kepala_sekolah', 'super_admin', 'content_admin'];
+        if (portal === 'staff' && !staffRoles.includes(user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: 'Akun ini bukan akun staf. Silakan masuk melalui portal siswa.'
+            });
+        }
+
+        if (!user.is_verified) {
+            return res.status(403).json({
+                success: false,
+                message: 'Akun belum diverifikasi. Selesaikan verifikasi pendaftaran terlebih dahulu.'
+            });
+        }
+
         db.prepare('UPDATE users SET login_attempts=0, locked_until=NULL, last_login=:now, updated_at=:now WHERE id=:id')
           .run({ now:nowISO(), id:user.id });
 
@@ -237,6 +543,7 @@ async function login(req, res) {
             INSERT INTO refresh_tokens (id,user_id,token,expires_at,created_at)
             VALUES (:id,:uid,:tok,:exp,:now)
         `).run({ id:uuidv4(), uid:user.id, tok:refreshToken, exp:refreshExp, now:nowISO() });
+        setAuthCookies(req, res, { accessToken, refreshToken, refreshDays });
 
         log(user.id, 'USER_LOGIN', 'users', user.id, { role:user.role }, req.ip);
 
@@ -252,12 +559,13 @@ async function login(req, res) {
         return res.status(200).json({
             success: true,
             message: `Selamat datang, ${user.nama_lengkap}!`,
-            data: {
-                accessToken, refreshToken,
+            data: sessionResponseData({
+                accessToken,
+                refreshToken,
                 expiresIn: process.env.JWT_EXPIRES_IN || '8h',
                 user: publicUserPayload(db, user),
                 redirectTo: redirectMap[user.role] || '/'
-            }
+            })
         });
     } catch (err) {
         console.error('[Login]', err);
@@ -268,11 +576,12 @@ async function login(req, res) {
 /* ── LOGOUT ──────────────────────────────────────────── */
 function logout(req, res) {
     const db = getDB();
-    const { refreshToken } = req.body;
+    const refreshToken = req.body.refreshToken || getCookie(req, REFRESH_COOKIE);
     if (refreshToken) db.prepare('DELETE FROM refresh_tokens WHERE token = :t').run({ t:refreshToken });
     if (req.query.allDevices === 'true' && req.user?.sub) {
         db.prepare('DELETE FROM refresh_tokens WHERE user_id = :uid').run({ uid:req.user.sub });
     }
+    clearAuthCookies(req, res);
     log(req.user?.sub, 'USER_LOGOUT', 'users', req.user?.sub, null, req.ip);
     return res.status(200).json({ success:true, message:'Berhasil logout.' });
 }
@@ -280,7 +589,7 @@ function logout(req, res) {
 /* ── REFRESH TOKEN ───────────────────────────────────── */
 function refreshToken(req, res) {
     const db  = getDB();
-    const tok = req.body.refreshToken;
+    const tok = req.body.refreshToken || getCookie(req, REFRESH_COOKIE);
     if (!tok) return res.status(401).json({ success:false, message:'Refresh token tidak ditemukan.' });
 
     const { valid, decoded } = jwtCfg.verifyToken(tok, true);
@@ -300,7 +609,8 @@ function refreshToken(req, res) {
     if (!user) return res.status(401).json({ success:false, message:'User tidak ditemukan.' });
 
     const newToken = jwtCfg.generateAccessToken(jwtCfg.createPayload(user));
-    return res.status(200).json({ success:true, data:{ accessToken:newToken } });
+    setAuthCookies(req, res, { accessToken: newToken });
+    return res.status(200).json({ success:true, data:{ ...(exposeTokens() ? { accessToken:newToken } : {}), sessionMode:'httpOnlyCookie' } });
 }
 
 /* ── FORGOT PASSWORD ─────────────────────────────────── */
@@ -422,6 +732,7 @@ function verifyEmail(req, res) {
 /* ── GET PROFILE ─────────────────────────────────────── */
 function getProfile(req, res) {
     const db   = getDB();
+    ensureStaffProfileSchema(db);
     const user = db.prepare(`
         SELECT id,nama_lengkap,email,role,nisn,nip,no_hp,foto_profil,bidang,jabatan_detail,
                is_verified,last_login,created_at
@@ -429,7 +740,72 @@ function getProfile(req, res) {
     `).get({ id:req.user.sub });
 
     if (!user) return res.status(404).json({ success:false, message:'User tidak ditemukan.' });
-    return res.status(200).json({ success:true, data:{ ...user, ...getStudentProfile(db, user.nisn) } });
+    const staffProfile = STAFF_ROLES.includes(user.role)
+        ? db.prepare('SELECT tempat_lahir,tanggal_lahir,jenis_kelamin,alamat,pendidikan,bio,updated_at FROM staff_profiles WHERE user_id = ?').get(user.id)
+        : null;
+    const organization = STAFF_ROLES.includes(user.role) ? findOrganizationForUser(db, user) : null;
+    return res.status(200).json({ success:true, data:{ ...user, ...getStudentProfile(db, user.nisn), ...(staffProfile || {}), organization:organization || null } });
+}
+
+function updateOwnProfile(req, res) {
+    const db = getDB();
+    ensureStaffProfileSchema(db);
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.sub);
+    if (!user) return res.status(404).json({ success:false, message:'User tidak ditemukan.' });
+    if (!STAFF_ROLES.includes(user.role)) {
+        return res.status(403).json({ success:false, message:'Profil staff hanya tersedia untuk akun staff sekolah.' });
+    }
+
+    const nama = cleanProfileText(req.body.nama_lengkap ?? user.nama_lengkap, 160);
+    const noHp = cleanProfileText(req.body.no_hp ?? user.no_hp, 24);
+    const bidang = cleanProfileText(req.body.bidang ?? user.bidang, 140);
+    const jabatan = cleanProfileText(req.body.jabatan_detail ?? user.jabatan_detail, 140);
+    const tempatLahir = cleanProfileText(req.body.tempat_lahir, 120);
+    const tanggalLahir = cleanProfileText(req.body.tanggal_lahir, 10);
+    const jenisKelamin = cleanProfileText(req.body.jenis_kelamin, 20);
+    const alamat = cleanProfileText(req.body.alamat, 600);
+    const pendidikan = cleanProfileText(req.body.pendidikan, 140);
+    const bio = cleanProfileText(req.body.bio, 1600);
+
+    if (!nama) return res.status(400).json({ success:false, message:'Nama lengkap wajib diisi.' });
+    if (noHp && !/^[0-9+\-\s]{8,24}$/.test(noHp)) {
+        return res.status(400).json({ success:false, message:'Format nomor HP tidak valid.' });
+    }
+    if (tanggalLahir && !/^\d{4}-\d{2}-\d{2}$/.test(tanggalLahir)) {
+        return res.status(400).json({ success:false, message:'Format tanggal lahir tidak valid.' });
+    }
+    if (jenisKelamin && !['Laki-laki','Perempuan'].includes(jenisKelamin)) {
+        return res.status(400).json({ success:false, message:'Jenis kelamin tidak valid.' });
+    }
+
+    const now = nowISO();
+    const tx = db.transaction(() => {
+        db.prepare(`
+            UPDATE users SET nama_lengkap=?,no_hp=?,bidang=?,jabatan_detail=?,updated_at=? WHERE id=?
+        `).run(nama, noHp || null, bidang || null, jabatan || null, now, user.id);
+        db.prepare(`
+            INSERT INTO staff_profiles (user_id,tempat_lahir,tanggal_lahir,jenis_kelamin,alamat,pendidikan,bio,updated_at)
+            VALUES (?,?,?,?,?,?,?,?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                tempat_lahir=excluded.tempat_lahir,tanggal_lahir=excluded.tanggal_lahir,
+                jenis_kelamin=excluded.jenis_kelamin,alamat=excluded.alamat,
+                pendidikan=excluded.pendidikan,bio=excluded.bio,updated_at=excluded.updated_at
+        `).run(user.id, tempatLahir || null, tanggalLahir || null, jenisKelamin || null, alamat || null, pendidikan || null, bio || null, now);
+
+        const organization = findOrganizationForUser(db, user);
+        if (organization) {
+            db.prepare(`
+                UPDATE organization_staff
+                SET nama=?,jabatan=COALESCE(NULLIF(?,''),jabatan),mapel=COALESCE(NULLIF(?,''),mapel),
+                    nip=COALESCE(NULLIF(?,''),nip),pendidikan=COALESCE(NULLIF(?,''),pendidikan),
+                    foto=COALESCE(NULLIF(?,''),foto),updated_at=?
+                WHERE id=?
+            `).run(nama, jabatan, bidang, user.nip || '', pendidikan, user.foto_profil || '', now, organization.id);
+        }
+    });
+    tx();
+    log(user.id, 'STAFF_PROFILE_UPDATED', 'users', user.id, { syncedOrganization:true }, req.ip);
+    return getProfile(req, res);
 }
 
 async function activateStaffAccount(req, res) {
@@ -477,6 +853,9 @@ async function googleCallback(req, res) {
             if (user) {
                 db.prepare('UPDATE users SET google_id=:gid WHERE id=:id').run({ gid:gUser.id, id:user.id });
             } else {
+                if (!ENV.GOOGLE_AUTO_PROVISION) {
+                    return res.redirect('/login.html?error=google_account_not_registered');
+                }
                 const newId = uuidv4();
                 const now   = nowISO();
                 db.prepare(`
@@ -487,7 +866,7 @@ async function googleCallback(req, res) {
             }
         }
 
-        if (!user || !user.is_active) return res.redirect('/admin-panel/login.html?error=account_disabled');
+        if (!user || !user.is_active) return res.redirect('/login.html?error=account_disabled');
 
         const payload      = jwtCfg.createPayload(user);
         const accessToken  = jwtCfg.generateAccessToken(payload);
@@ -498,13 +877,14 @@ async function googleCallback(req, res) {
             INSERT INTO refresh_tokens (id,user_id,token,expires_at,created_at)
             VALUES (:id,:uid,:tok,:exp,:now)
         `).run({ id:uuidv4(), uid:user.id, tok:refreshToken, exp:refreshExp, now:nowISO() });
+        setAuthCookies(req, res, { accessToken, refreshToken, refreshDays: 7 });
 
         log(user.id, 'GOOGLE_LOGIN', 'users', user.id, null, req.ip);
 
-        return res.redirect(`/login.html?token=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(refreshToken)}&role=${encodeURIComponent(user.role)}`);
+        return res.redirect(`/login.html?oauth=success&role=${encodeURIComponent(user.role)}`);
     } catch (err) {
         console.error('[GoogleOAuth]', err);
-        return res.redirect('/admin-panel/login.html?error=oauth_failed');
+        return res.redirect('/login.html?error=oauth_failed');
     }
 }
 
@@ -514,8 +894,9 @@ function getClasses(_req, res) {
 
 module.exports = {
     register, login, logout, refreshToken,
+    verifyRegistration, resendRegistrationOTP, getVerificationMethods,
     forgotPassword, resetPassword, changePassword,
-    verifyEmail, getProfile, checkAuth, googleCallback,
+    verifyEmail, getProfile, updateOwnProfile, checkAuth, googleCallback,
     activateStaffAccount,
     getClasses
 };

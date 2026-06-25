@@ -16,7 +16,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_ID !== 'your_googl
         return done(null, profile);
     }));
 } else {
-    console.warn('⚠️  Google OAuth tidak dikonfigurasi (opsional).');
+    console.warn('Google OAuth tidak dikonfigurasi.');
 }
 
 module.exports = passport;

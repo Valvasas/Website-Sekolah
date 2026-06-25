@@ -11,6 +11,7 @@ const { chatLimiter, orderLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 const STUDENT_ROLES = ['siswa', 'wali_murid'];
+const STAFF_ROLES = ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','content_admin','super_admin'];
 const PAYMENT_METHODS = ['DANA', 'OVO', 'GoPay', 'ShopeePay', 'QRIS', 'Tunai', 'e-money'];
 
 const nowISO = () => new Date().toISOString();
@@ -130,8 +131,20 @@ function ensureStudent(req, res) {
     return false;
 }
 
+function ensureMarketplaceViewer(req, res) {
+    if (STUDENT_ROLES.includes(req.user?.role) || STAFF_ROLES.includes(req.user?.role)) return true;
+    res.status(403).json({ success: false, message: 'Anda tidak punya akses melihat marketplace Kantin ku.' });
+    return false;
+}
+
+function ensureMarketplaceBuyer(req, res) {
+    if (STUDENT_ROLES.includes(req.user?.role) || STAFF_ROLES.includes(req.user?.role)) return true;
+    res.status(403).json({ success: false, message: 'Anda tidak punya akses transaksi Kantin ku.' });
+    return false;
+}
+
 router.get('/products', authenticate, (req, res) => {
-    if (!ensureStudent(req, res)) return;
+    if (!ensureMarketplaceViewer(req, res)) return;
     const db = getDB();
     const search = cleanText(req.query.search, 80);
     const category = cleanText(req.query.category, 80);
@@ -147,7 +160,7 @@ router.get('/products', authenticate, (req, res) => {
     }
     try {
         const rows = db.prepare(`
-            SELECT p.*, u.nama_lengkap as seller_name, sp.kelas as seller_class
+            SELECT p.*, u.nama_lengkap as seller_name, u.foto_profil as seller_photo, sp.kelas as seller_class
             FROM kantin_products p
             JOIN users u ON u.id = p.seller_id
             LEFT JOIN siswa_profil sp ON sp.nisn = p.seller_nisn
@@ -155,7 +168,9 @@ router.get('/products', authenticate, (req, res) => {
             ORDER BY p.created_at DESC
             LIMIT 80
         `).all(...params);
-        const profile = db.prepare('SELECT * FROM kantin_profiles WHERE user_id = ?').get(req.user.sub);
+        const profile = STUDENT_ROLES.includes(req.user?.role)
+            ? db.prepare('SELECT * FROM kantin_profiles WHERE user_id = ?').get(req.user.sub)
+            : null;
         const reviewStats = getProductReviewStats(db, rows.map(row => row.id));
         const achievements = getWeeklyAchievements(db);
         const scored = rows
@@ -190,11 +205,11 @@ router.get('/profile', authenticate, (req, res) => {
 });
 
 router.get('/products/:id', authenticate, (req, res) => {
-    if (!ensureStudent(req, res)) return;
+    if (!ensureMarketplaceViewer(req, res)) return;
     const db = getDB();
     try {
         const product = db.prepare(`
-            SELECT p.*, u.nama_lengkap as seller_name, sp.kelas as seller_class, kp.selling_focus,
+            SELECT p.*, u.nama_lengkap as seller_name, u.foto_profil as seller_photo, sp.kelas as seller_class, kp.selling_focus,
                    kp.payment_methods, kp.target_market, kp.hobbies, kp.preferences
             FROM kantin_products p
             JOIN users u ON u.id = p.seller_id
@@ -206,7 +221,8 @@ router.get('/products/:id', authenticate, (req, res) => {
         const stats = getProductReviewStats(db, [product.id])[product.id] || { avg_rating: 0, review_count: 0 };
         const achievements = getWeeklyAchievements(db)[product.id] || [];
         const reviews = db.prepare(`
-            SELECT r.id, r.rating, r.comment, r.created_at, u.nama_lengkap as reviewer_name, sp.kelas as reviewer_class
+            SELECT r.id, r.rating, r.comment, r.created_at, u.nama_lengkap as reviewer_name,
+                   u.foto_profil as reviewer_photo, sp.kelas as reviewer_class
             FROM kantin_reviews r
             JOIN users u ON u.id = r.reviewer_id
             LEFT JOIN siswa_profil sp ON sp.nisn = r.reviewer_nisn
@@ -374,7 +390,7 @@ router.delete('/products/:id', authenticate, (req, res) => {
 });
 
 router.post('/products/:id/reviews', authenticate, orderLimiter, (req, res) => {
-    if (!ensureStudent(req, res)) return;
+    if (!ensureMarketplaceBuyer(req, res)) return;
     const db = getDB();
     const rating = Math.max(1, Math.min(5, parseInt(req.body.rating) || 0));
     const comment = cleanText(req.body.comment, ENV.KANTIN_REVIEW_MAX_LENGTH);
@@ -383,8 +399,8 @@ router.post('/products/:id/reviews', authenticate, orderLimiter, (req, res) => {
         const product = db.prepare('SELECT * FROM kantin_products WHERE id = ? AND status != ?').get(req.params.id, 'archived');
         if (!product) return res.status(404).json({ success: false, message: 'Produk tidak ditemukan.' });
         if (product.seller_id === req.user.sub) return res.status(400).json({ success: false, message: 'Tidak bisa memberi review pada produk sendiri.' });
-        const ordered = db.prepare('SELECT id FROM kantin_orders WHERE product_id = ? AND buyer_id = ? LIMIT 1').get(product.id, req.user.sub);
-        if (!ordered) return res.status(403).json({ success: false, message: 'Review hanya bisa diberikan setelah kamu pernah memesan produk ini.' });
+        const ordered = db.prepare("SELECT id FROM kantin_orders WHERE product_id = ? AND buyer_id = ? AND status = 'completed' LIMIT 1").get(product.id, req.user.sub);
+        if (!ordered) return res.status(403).json({ success: false, message: 'Review hanya bisa diberikan setelah pesanan selesai.' });
         const existing = db.prepare('SELECT * FROM kantin_reviews WHERE product_id = ? AND reviewer_id = ?').get(product.id, req.user.sub);
         if (existing && Date.now() - new Date(existing.updated_at || existing.created_at).getTime() < 10 * 60 * 1000) {
             return res.status(429).json({ success: false, message: 'Tunggu beberapa menit sebelum mengubah review lagi.' });
@@ -420,7 +436,7 @@ router.get('/seller/dashboard', authenticate, (req, res) => {
         `).all(req.user.sub);
         const orders = db.prepare(`
             SELECT o.*, p.name as product_name, p.image_url, buyer.nama_lengkap as buyer_name,
-                   sp.kelas as buyer_class
+                   buyer.foto_profil as buyer_photo, sp.kelas as buyer_class
             FROM kantin_orders o
             JOIN kantin_products p ON p.id = o.product_id
             JOIN users buyer ON buyer.id = o.buyer_id
@@ -446,7 +462,7 @@ router.get('/seller/dashboard', authenticate, (req, res) => {
 });
 
 router.post('/products/:id/order', authenticate, orderLimiter, (req, res) => {
-    if (!ensureStudent(req, res)) return;
+    if (!ensureMarketplaceBuyer(req, res)) return;
     const db = getDB();
     const quantity = Math.max(1, Math.min(parseInt(req.body.quantity) || 1, 99));
     const payment = PAYMENT_METHODS.includes(req.body.payment_method) ? req.body.payment_method : 'e-money';
@@ -465,6 +481,11 @@ router.post('/products/:id/order', authenticate, orderLimiter, (req, res) => {
         const id = uuidv4();
         const total = product.price * quantity;
         const tx = db.transaction(() => {
+            const stockInfo = db.prepare('UPDATE kantin_products SET stock = stock - ?, updated_at = ? WHERE id = ? AND stock >= ?')
+                .run(quantity, nowISO(), product.id, quantity);
+            if (!stockInfo.changes) {
+                throw new Error('Stok produk tidak cukup.');
+            }
             db.prepare(`
                 INSERT INTO kantin_orders
                 (id,product_id,buyer_id,buyer_nisn,seller_id,quantity,total_price,note,payment_method,payment_reference,status,created_at,updated_at)
@@ -474,19 +495,20 @@ router.post('/products/:id/order', authenticate, orderLimiter, (req, res) => {
                 quantity, total, cleanText(req.body.note, 400), payment,
                 cleanText(req.body.payment_reference, 120), nowISO(), nowISO()
             );
-            db.prepare('UPDATE kantin_products SET stock = stock - ?, updated_at = ? WHERE id = ?')
-                .run(quantity, nowISO(), product.id);
         });
         tx();
         return res.status(201).json({ success: true, message: 'Pesanan dibuat. Hubungi penjual untuk konfirmasi pembayaran.', data: { id, total_price: total } });
     } catch (err) {
+        if (err.message === 'Stok produk tidak cukup.') {
+            return res.status(409).json({ success: false, message: err.message });
+        }
         console.error('[Kantin order POST]', err.message);
         return res.status(500).json({ success: false, message: 'Gagal membuat pesanan.' });
     }
 });
 
 router.get('/orders', authenticate, (req, res) => {
-    if (!ensureStudent(req, res)) return;
+    if (!ensureMarketplaceBuyer(req, res)) return;
     const db = getDB();
     try {
         const rows = db.prepare(`
@@ -599,7 +621,7 @@ router.patch('/orders/:id/status', authenticate, (req, res) => {
 });
 
 router.get('/orders/:id/chat', authenticate, (req, res) => {
-    if (!ensureStudent(req, res)) return;
+    if (!ensureMarketplaceBuyer(req, res)) return;
     const db = getDB();
     try {
         const order = db.prepare(`
@@ -631,7 +653,7 @@ router.get('/orders/:id/chat', authenticate, (req, res) => {
 });
 
 router.post('/orders/:id/chat', authenticate, chatLimiter, (req, res) => {
-    if (!ensureStudent(req, res)) return;
+    if (!ensureMarketplaceBuyer(req, res)) return;
     const db = getDB();
     const message = cleanText(req.body.message, 700);
     const attachmentUrl = cleanUrl(req.body.attachment_url);

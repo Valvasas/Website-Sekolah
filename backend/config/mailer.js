@@ -12,11 +12,25 @@ const transporter = nodemailer.createTransport({
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
     },
-    tls: { rejectUnauthorized: false },
+    tls: {
+        rejectUnauthorized: process.env.EMAIL_TLS_REJECT_UNAUTHORIZED === 'false'
+            ? false
+            : true,
+    },
 });
 
 const FROM = process.env.EMAIL_FROM || '"SMK Negeri 1 Terisi" <noreply@smkn1terisi.sch.id>';
 const BASE = process.env.BASE_URL || 'http://localhost:3001';
+
+function isConfigured() {
+    return Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+}
+
+function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[char]);
+}
 
 async function sendPasswordResetEmail(toEmail, namaUser, token) {
     const resetUrl = `${BASE}/reset-password?token=${token}`;
@@ -69,6 +83,8 @@ async function sendVerificationEmail(toEmail, namaUser, token) {
 }
 
 async function sendOTPEmail(toEmail, namaUser, otp) {
+    const safeName = escapeHtml(namaUser);
+    const safeOtp = escapeHtml(otp);
     await transporter.sendMail({
         from: FROM,
         to: toEmail,
@@ -76,11 +92,11 @@ async function sendOTPEmail(toEmail, namaUser, otp) {
         html: `
         <div style="max-width:420px;margin:40px auto;background:#fff;border-radius:16px;padding:34px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.10);font-family:Segoe UI,sans-serif;">
             <h2 style="color:#002244;">Kode OTP Anda</h2>
-            <p style="color:#475569;">Halo <strong>${namaUser}</strong>, gunakan kode berikut:</p>
+            <p style="color:#475569;">Halo <strong>${safeName}</strong>, gunakan kode berikut untuk menyelesaikan pendaftaran:</p>
             <div style="background:#f0f4f8;border-radius:12px;padding:22px;margin:24px 0;">
-                <span style="font-size:2.5rem;font-weight:900;letter-spacing:10px;color:#D4AF37;">${otp}</span>
+                <span style="font-size:2.5rem;font-weight:900;letter-spacing:10px;color:#D4AF37;">${safeOtp}</span>
             </div>
-            <p style="color:#94a3b8;font-size:.82rem;">Berlaku 15 menit.</p>
+            <p style="color:#94a3b8;font-size:.82rem;line-height:1.6;">Kode berlaku 10 menit dan hanya dapat digunakan sekali. Abaikan email ini jika Anda tidak melakukan pendaftaran.</p>
         </div>`,
     });
 }
@@ -112,10 +128,10 @@ async function sendStaffActivatedEmail(toEmail, namaUser) {
 async function verifyConnection() {
     try {
         await transporter.verify();
-        console.log('✅ Email server terhubung');
+        console.log('Email server terhubung.');
         return true;
     } catch (err) {
-        console.warn('⚠️  Email server tidak terhubung:', err.message);
+        console.warn('Email server tidak terhubung:', err.message);
         return false;
     }
 }
@@ -126,4 +142,5 @@ module.exports = {
     sendOTPEmail,
     sendStaffActivatedEmail,
     verifyConnection,
+    isConfigured,
 };

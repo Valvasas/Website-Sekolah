@@ -20,6 +20,16 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Runtime/generated uploads
+backend/public/uploads/
+
+# Local QA / browser artifacts
+.sixth/
+
+# Local one-off cleanup scripts
+fix_ui.py
+overhaul*.py
+
 # OS
 .DS_Store
 ._*

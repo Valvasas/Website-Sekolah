@@ -26,10 +26,40 @@ const loginLimiter = rateLimit({
 // ── Register rate limiter — 3 akun per IP per jam ─────────
 const registerLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 jam
-    max:      3,
+    max:      parseInt(process.env.REGISTER_MAX_PER_HOUR) || 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => {
+        const destination = String(req.body?.email || req.body?.no_hp || 'unknown').trim().toLowerCase();
+        return `${req.ip}_${destination}`;
+    },
     message: {
         success: false,
-        message: 'Terlalu banyak pendaftaran dari IP ini. Coba lagi dalam 1 jam.'
+        message: 'Terlalu banyak permintaan verifikasi untuk tujuan ini. Coba lagi dalam 1 jam.'
+    }
+});
+
+const verificationLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: parseInt(process.env.OTP_VERIFY_MAX_PER_15_MIN) || 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: req => `${req.ip}_${String(req.body?.challengeId || 'unknown').slice(0, 64)}`,
+    message: {
+        success: false,
+        message: 'Terlalu banyak percobaan verifikasi. Minta kode baru dan coba lagi nanti.'
+    }
+});
+
+const resendVerificationLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: parseInt(process.env.OTP_RESEND_MAX_PER_HOUR) || 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: req => `${req.ip}_${String(req.body?.challengeId || 'unknown').slice(0, 64)}`,
+    message: {
+        success: false,
+        message: 'Batas kirim ulang kode tercapai. Coba lagi dalam 1 jam.'
     }
 });
 
@@ -59,10 +89,12 @@ const sklSearchLimiter = rateLimit({
     }
 });
 
-// ── API umum — 100 request per menit ──────────────────────
+// ── API umum — configurable untuk jaringan sekolah/proxy bersama ──
 const apiLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max:      100,
+    max:      parseInt(process.env.API_MAX_REQUESTS_PER_MINUTE) || 300,
+    standardHeaders: true,
+    legacyHeaders: false,
     message: {
         success: false,
         message: 'Terlalu banyak request. Coba lagi sebentar lagi.'
@@ -113,9 +145,27 @@ const orderLimiter = rateLimit({
     }
 });
 
+const cbtPublicLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max:      parseInt(process.env.CBT_PUBLIC_MAX_PER_MINUTE) || 20,
+    standardHeaders: true,
+    legacyHeaders:   false,
+    message: {
+        success: false,
+        message: 'Terlalu banyak percobaan CBT. Coba lagi sebentar.'
+    },
+    keyGenerator: (req) => {
+        const nisn = String(req.body?.nisn || req.query?.nisn || 'unknown').replace(/\D/g, '').slice(0, 10);
+        const token = String(req.body?.token || req.query?.token || 'no-token').slice(0, 16);
+        return `${req.ip}_${nisn}_${token}`;
+    }
+});
+
 module.exports = {
     loginLimiter,
     registerLimiter,
+    verificationLimiter,
+    resendVerificationLimiter,
     passwordResetLimiter,
     sklSearchLimiter,
     apiLimiter,
@@ -123,4 +173,5 @@ module.exports = {
     forumPostLimiter,
     chatLimiter,
     orderLimiter,
+    cbtPublicLimiter,
 };

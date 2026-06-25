@@ -99,6 +99,14 @@ body {
 .nav-back-btn:hover { background: var(--gold); color: var(--navy); border-color: var(--gold); }
 .nav-back-btn span { display: none; }
 @media (min-width:600px) { .nav-back-btn span { display:inline; } }
+@media (max-width:599px) {
+    .nav-back-btn {
+        min-width: 44px;
+        min-height: 40px;
+        justify-content: center;
+        padding: 8px 14px;
+    }
+}
 
 /* ===== MAIN ===== */
 .skl-main {
@@ -581,4 +589,14 @@ body {
     .confirm-actions .btn-back { width:100%; justify-content:center; }
     .dl-formats { flex-direction:column; }
     .done-actions { flex-direction:column; align-items:center; }
+}
+
+@media (max-width: 640px) {
+    .captcha-refresh {
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        min-height: 44px;
+        padding: 0;
+    }
 }

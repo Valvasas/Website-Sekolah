@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teknik Bisnis Sepeda Motor | SMKN 1 Terisi</title>
+    <title>Akuntansi dan Keuangan Lembaga | SMKN 1 Terisi</title>
     <link rel="icon" type="image/png" href="asset/Logo SMK.png">
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,11 +20,11 @@
             <div class="brand-text">
                     <span>SMK NEGERI 1 TERISI</span><small>TERISI</small></div>
             </a>
-            <div class="menu-toggle" id="mobile-menu">
+            <button class="menu-toggle" id="mobile-menu" type="button" aria-label="Buka menu navigasi">
                 <span class="bar"></span>
                 <span class="bar"></span>
                 <span class="bar"></span>
-            </div>
+            </button>
             <ul class="nav-menu">
                 <li><a href="index.html" class="nav-link">Beranda</a></li>
                 <li><a href="akademik.html" class="nav-link active">Akademik</a></li>
@@ -33,9 +33,8 @@
         </div>
     </nav>
 
-    <!-- HERO SECTION OUT OF THE BOX -->
-   <!-- HERO SECTION AKL -->
-    <header class="major-hero hero-jurusan hero-akl" style="background-image: url('asset/Bank\ Mini\ \(1\).jpg');">
+    <!-- Program hero -->
+    <header class="major-hero hero-jurusan hero-akl" style="background-image: url('asset/Bank Mini (1).jpg');">
         <div class="major-title">Bank Mini & Accurate</div>
         <div class="container relative">
             <div class="major-content reveal-text">
@@ -166,7 +165,7 @@
                 <div class="footer-links">
                     <h3 style="color:#fff; margin-bottom: 20px;">Tautan Resmi</h3>
                     <ul>
-                        <!-- FITUR TAMBAHAN: Link EduGate -->
+                        <!-- EduGate link -->
                         <li><a href="https://edugate.smkn1terisi.sch.id" target="_blank" rel="noopener noreferrer">Portal Kedisiplinan (EduGate)</a></li>
                         <li><a href="https://kemdikbud.go.id" target="_blank">Kementerian Pendidikan</a></li>
                         <li><a href="https://dapo.kemdikbud.go.id/" target="_blank">Dapodikdasmen</a></li>
@@ -180,14 +179,14 @@
             </div>
         </div>
 
+    <script src="/security.js"></script>
     <script src="script.js"></script>
     <script>
-        // JS Khusus Halaman Detail Jurusan: Efek Parallax Teks Raksasa
+        // Move the background title more slowly than the page.
         window.addEventListener('scroll', () => {
             const scroll = window.pageYOffset;
             const title = document.querySelector('.major-title');
             if(title) {
-                // Teks raksasa akan bergeser saat di scroll (Parallax effect out of the box)
                 title.style.transform = `rotate(-90deg) translateX(${scroll * 0.5}px)`;
             }
         });

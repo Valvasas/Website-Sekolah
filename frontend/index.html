@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
     
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     
     <link rel="stylesheet" href="style.css">
 </head>
@@ -158,14 +158,14 @@
                     <span class="l-card-arrow">Unduh SKL <i class="fas fa-arrow-right"></i></span>
                 </a>
 
-                <!-- 5. Drive Sekolah -->
-                <a href="https://drive.google.com" target="_blank" rel="noopener" class="l-card" aria-label="Buka Drive Sekolah di tab baru">
+                <!-- 5. Bank Materi -->
+                <a href="LMS.html#materi" target="_blank" rel="noopener" class="l-card" aria-label="Buka bank materi sekolah">
                     <div class="l-card-icon">
-                        <i class="fab fa-google-drive"></i>
+                        <i class="fas fa-folder-open"></i>
                     </div>
-                    <h3>Drive Sekolah</h3>
-                    <p>Repositori berkas, modul, & arsip dokumen resmi sekolah</p>
-                    <span class="l-card-arrow">Buka Drive <i class="fas fa-arrow-right"></i></span>
+                    <h3>Bank Materi</h3>
+                    <p>Repositori berkas, modul, dan arsip pembelajaran sekolah</p>
+                    <span class="l-card-arrow">Buka Materi <i class="fas fa-arrow-right"></i></span>
                 </a>
             </div>
         </div>
@@ -181,7 +181,7 @@
                     <i class="fas fa-file-certificate"></i>
                 </div>
                 <h2 id="sklModalTitle">Unduh SKL</h2>
-                <p id="sklModalDesc">Masukkan NISN dan tanggal lahir untuk mengambil Surat Keterangan Lulus.</p>
+                <p id="sklModalDesc">Masukkan data sesuai dokumen sekolah untuk memverifikasi Surat Keterangan Lulus.</p>
             </div>
 
             <div class="skl-field">
@@ -190,16 +190,33 @@
                 <input id="sklNisn" name="nisn" type="text" placeholder="Nomor Induk Siswa Nasional" maxlength="10" inputmode="numeric" autocomplete="off">
             </div>
             <div class="skl-field">
+                <label for="sklNama">Nama Lengkap</label>
+                <i class="fas fa-user" aria-hidden="true"></i>
+                <input id="sklNama" name="nama" type="text" placeholder="Sesuai ijazah / dokumen sekolah" autocomplete="name">
+            </div>
+            <div class="skl-field">
                 <label for="sklTanggalLahir">Tanggal Lahir</label>
                 <i class="fas fa-calendar-alt" aria-hidden="true"></i>
                 <input id="sklTanggalLahir" name="tanggal_lahir" type="date" autocomplete="bday">
             </div>
+            <div class="skl-field">
+                <label for="sklTahun">Tahun Lulus</label>
+                <i class="fas fa-graduation-cap" aria-hidden="true"></i>
+                <select id="sklTahun" name="tahun_lulus" aria-label="Tahun lulus">
+                    <option value="">Pilih Tahun</option>
+                    <option value="2026">2025/2026</option>
+                    <option value="2025">2024/2025</option>
+                    <option value="2024">2023/2024</option>
+                    <option value="2023">2022/2023</option>
+                </select>
+            </div>
+            <p class="skl-inline-message" id="sklInlineMessage" role="status" aria-live="polite"></p>
             <button class="skl-submit" type="button" onclick="cariSKL(this)">
                 <i class="fas fa-search"></i> Cari & Unduh SKL
             </button>
 
             <p class="skl-help">
-                Butuh bantuan? Hubungi TU sekolah di <strong>(0234) 123456</strong>
+                Butuh bantuan? Hubungi TU sekolah melalui <strong>info@smkn1terisi.sch.id</strong>
             </p>
         </div>
     </div>
@@ -374,43 +391,48 @@
                 </div>
                 
                 <div class="tab-content-wrapper">
-                    <div class="tab-content active" style="background-image: url('asset/tkj.jpg');">
+                    <div class="tab-content active">
+                        <img class="facility-feature-image" src="asset/tkj.jpg" alt="Laboratorium komputer dan jaringan">
                         <div class="content-overlay">
                             <h3>Laboratorium Komputer Alat jaringan & PC</h3>
                             <p>Tersedia puluhan unit PC berspesifikasi Standar yang terhubung jaringan ethernet eksklusif untuk kenyamanan praktik siswa TKJ dan umum.</p>
-                            <a href="fasilitas.html" class="btn btn-primary" style="margin-top: 15px;">Lihat Semua Fasilitas</a>
+                            <a href="fasilitas.html" class="btn btn-primary">Lihat Semua Fasilitas</a>
                         </div>
                     </div>
                     <!-- 1 -->
-                    <div class="tab-content" style="background-image: url('asset/bengkel.jpg');">
+                    <div class="tab-content">
+                        <img class="facility-feature-image" src="asset/bengkel.jpg" alt="Bengkel praktik sepeda motor">
                         <div class="content-overlay">
                             <h3>Bengkel Standar Resmi (AHASS)</h3>
                             <p>Area workshop yang luas dilengkapi hydraulic lift dan special tools standar industri manufaktur Astra Honda Motor.</p>
-                            <a href="fasilitas.html" class="btn btn-primary" style="margin-top: 15px;">Lihat Semua Fasilitas</a>
+                            <a href="fasilitas.html" class="btn btn-primary">Lihat Semua Fasilitas</a>
                         </div>
                     </div>
                     <!-- 2 -->
-                    <div class="tab-content" style="background-image: url('asset/greenhouse.jpg');">
+                    <div class="tab-content">
+                        <img class="facility-feature-image" src="asset/greenhouse.jpg" alt="Greenhouse sekolah">
                         <div class="content-overlay">
                             <h3>Green House Modern dan Nyaman</h3>
                             <p>Sarana budidaya tanaman metode hidroponik dengan ruangan yang luas dan fasilitas yang mendukung kegiatan Praktikum.</p>
-                            <a href="fasilitas.html" class="btn btn-primary" style="margin-top: 15px;">Lihat Semua Fasilitas</a>
+                            <a href="fasilitas.html" class="btn btn-primary">Lihat Semua Fasilitas</a>
                         </div>
                     </div>
                     <!-- 3 -->
-                    <div class="tab-content" style="background-image: url('asset/perpus.jpg');">
+                    <div class="tab-content">
+                        <img class="facility-feature-image" src="asset/perpus.jpg" alt="Perpustakaan sekolah">
                         <div class="content-overlay">
                             <h3>Perpustakaan Digital Terpadu</h3>
                             <p>Sistem manajemen literatur digital yang terhubung langsung dengan pusat perbukuan nasional untuk mendukung riset siswa.</p>
-                            <a href="fasilitas.html" class="btn btn-primary" style="margin-top: 15px;">Lihat Semua Fasilitas</a>
+                            <a href="fasilitas.html" class="btn btn-primary">Lihat Semua Fasilitas</a>
                         </div>
                     </div>
                     <!-- 4 -->
-                    <div class="tab-content" style="background-image: url('asset/Bank\ Mini\ \(1\).jpg');">
+                    <div class="tab-content">
+                        <img class="facility-feature-image" src="asset/Bank Mini (1).jpg" alt="Laboratorium bank mini">
                         <div class="content-overlay">
                             <h3>Bank Mini Edutainment</h3>
                             <p>Pusat simulasi transaksi finansial dan perbankan yang dikelola langsung oleh program keahlian Akuntansi secara profesional.</p>
-                            <a href="fasilitas.html" class="btn btn-primary" style="margin-top: 15px;">Lihat Semua Fasilitas</a>
+                            <a href="fasilitas.html" class="btn btn-primary">Lihat Semua Fasilitas</a>
                         </div>
                     </div>
                 </div>
@@ -418,54 +440,44 @@
         </div>
     </section>
 
-    <!-- EKSTRAKULIKULER (Persistant Hover & Neumorphic Card) -->
+    <!-- EKSTRAKURIKULER -->
     <section class="section eskul-section" id="eskul">
-        <div class="eskul-bg" id="eskul-bg"></div>
-        <div class="eskul-overlay"></div>
-
-        <div class="container" style="position: relative; z-index: 2;">
-            <div class="section-header center reveal light-text">
-                <h4 class="sub-title" style="color: var(--secondary);">Membangun Karakter</h4>
-                <h2 style="color:white;">Ekstrakurikuler</h2>
-                <p style="color: #cbd5e1;">Pusat pengembangan minat dan bakat generasi muda SMK Negeri 1 Terisi.</p>
+        <div class="container">
+            <div class="section-header center reveal">
+                <h4 class="sub-title">Membangun Karakter</h4>
+                <h2>Ekstrakurikuler</h2>
+                <p>Pilih kegiatan yang sesuai dengan minat, karakter, dan potensi siswa.</p>
             </div>
-            
-            <div class="bubble-container reveal">
-                <!-- BUBBLE TENGAH (OSIS) -->
-                <div class="bubble-center" 
-                     data-bg="asset/OSIS.jpg" 
-                     data-title="OSIS & MPK" 
-                     data-desc="Organisasi Induk Siswa yang menaungi seluruh kegiatan aspiratif, kepemimpinan, dan event sekolah tingkat nasional.">
-                    <span>OSIS</span>
-                </div>
-                
-                <!-- BUBBLES MENGELILINGI -->
-                <div class="bubble-item b1" data-bg="asset/PRAMUKA.jpg" data-title="Pramuka Ambalan" data-desc="Membentuk karakter mandiri, cinta alam, tangguh, dan jiwa kepemimpinan yang berlandaskan Trisatya dan Dasadarma.">
-                    <i class="fas fa-campground"></i><span>Pramuka</span>
-                </div>
-                <div class="bubble-item b2" data-bg="asset/PMR.jpeg" data-title="PMR Wira" data-desc="Wadah pembinaan relawan muda Palang Merah tanggap darurat, berjiwa sosial tinggi, dan ahli pertolongan pertama.">
-                    <i class="fas fa-first-aid"></i><span>PMR</span>
-                </div>
-                <div class="bubble-item b3" data-bg="asset/paskibra 3.jpg" data-title="Paskibra Pasukan" data-desc="Pasukan elit pengibar bendera pusaka yang melatih disiplin fisik, mental baja, kekompakan, dan jiwa patriotisme.">
-                    <i class="fas fa-flag"></i><span>Paskibra</span>
-                </div>
-                <div class="bubble-item b4" data-bg="asset/silat-web.jpg" data-title="Pencak Silat" data-desc="Melestarikan bela diri warisan leluhur bangsa, melatih ketangkasan fisik, seni pertahanan diri, dan mental ksatria.">
-                    <i class="fas fa-fist-raised"></i><span>Silat</span>
-                </div>
-                <div class="bubble-item b5" data-bg="asset/tari 2.jpg" data-title="Seni Tari Budaya" data-desc="Ruang berekspresi seni koreografi, melatih kelenturan, kreativitas, dan pelestarian tarian tradisional nusantara.">
-                    <i class="fas fa-theater-masks"></i><span>Tari</span>
-                </div>
 
-                <!-- CARD DESKRIPSI (Persistent Neumorphic Futuristik) -->
-                <div class="eskul-info-card" id="eskul-card">
-                    <div class="glow-line"></div>
-                    <h3 id="eskul-title"></h3>
-                    <p id="eskul-desc"></p>
-                </div>
+            <div class="eskul-grid reveal">
+                <article class="eskul-card featured">
+                    <img src="asset/OSIS.jpg" alt="Kegiatan OSIS dan MPK" loading="lazy">
+                    <div><span>Organisasi Siswa</span><h3>OSIS & MPK</h3><p>Ruang kepemimpinan, aspirasi siswa, dan pengelolaan kegiatan sekolah.</p></div>
+                </article>
+                <article class="eskul-card">
+                    <img src="asset/PRAMUKA.jpg" alt="Kegiatan Pramuka" loading="lazy">
+                    <div><span>Kepanduan</span><h3>Pramuka</h3><p>Melatih kemandirian, kepemimpinan, kerja sama, dan kepedulian terhadap alam.</p></div>
+                </article>
+                <article class="eskul-card">
+                    <img src="asset/PMR.jpeg" alt="Kegiatan PMR" loading="lazy">
+                    <div><span>Kemanusiaan</span><h3>PMR Wira</h3><p>Membentuk relawan muda yang tanggap, peduli, dan terampil dalam pertolongan pertama.</p></div>
+                </article>
+                <article class="eskul-card">
+                    <img src="asset/paskibra 3.jpg" alt="Kegiatan Paskibra" loading="lazy">
+                    <div><span>Kedisiplinan</span><h3>Paskibra</h3><p>Menguatkan disiplin, ketahanan fisik, kekompakan, dan jiwa kebangsaan.</p></div>
+                </article>
+                <article class="eskul-card">
+                    <img src="asset/silat-web.jpg" alt="Kegiatan pencak silat" loading="lazy">
+                    <div><span>Olahraga</span><h3>Pencak Silat</h3><p>Mengembangkan kebugaran, ketangkasan, pengendalian diri, dan sportivitas.</p></div>
+                </article>
+                <article class="eskul-card">
+                    <img src="asset/tari 2.jpg" alt="Kegiatan seni tari" loading="lazy">
+                    <div><span>Seni Budaya</span><h3>Seni Tari</h3><p>Wadah kreativitas sekaligus pelestarian seni pertunjukan tradisional Nusantara.</p></div>
+                </article>
             </div>
         </div>
     </section>
-    <!-- MAPS & LOKASI (Kembalikan Fitur) -->
+    <!-- MAPS & LOKASI -->
     <section class="section bg-light" id="kontak">
         <div class="container">
             <div class="section-header center reveal">
@@ -474,17 +486,20 @@
                 <div class="line"></div>
             </div>
             <div class="map-wrapper reveal">
-                <div class="map-text" style="background: var(--primary); color: white; padding: 40px; border-radius: 12px 0 0 12px;">
-                    <h3 style="color: var(--secondary); margin-bottom: 20px;">Kontak Sekolah</h3>
-                    <ul class="contact-list" style="list-style: none;">
-                        <li style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px;"><i class="fas fa-map-marker-alt" style="color: var(--secondary); font-size: 1.2rem;"></i> Jl. Raya Terisi, Kec. Terisi, Indramayu</li>
-                        <li style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px;"><i class="fas fa-phone" style="color: var(--secondary); font-size: 1.2rem;"></i> (0234) 123456</li>
-                        <li style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px;"><i class="fas fa-envelope" style="color: var(--secondary); font-size: 1.2rem;"></i> info@smkn1terisi.sch.id</li>
+                <div class="map-text">
+                    <span class="map-kicker">Alamat & Kontak</span>
+                    <h3>SMK Negeri 1 Terisi</h3>
+                    <ul class="contact-list">
+                        <li><i class="fas fa-map-marker-alt"></i><span>Jl. Raya Terisi, Kec. Terisi, Kabupaten Indramayu</span></li>
+                        <li><i class="fas fa-globe"></i><span>www.smkn1terisi.sch.id</span></li>
+                        <li><i class="fas fa-envelope"></i><span>info@smkn1terisi.sch.id</span></li>
                     </ul>
-                    <a href="https://goo.gl/maps/placeholder" target="_blank" class="btn btn-primary" style="margin-top:20px;">Buka Google Maps</a>
+                    <a href="https://www.google.com/maps/search/?api=1&query=SMK%20Negeri%201%20Terisi" target="_blank" rel="noopener" class="btn btn-primary">
+                        <i class="fas fa-diamond-turn-right"></i> Buka Petunjuk Arah
+                    </a>
                 </div>
-                <div class="map-frame" style="flex: 2; min-height: 400px; border-radius: 0 12px 12px 0; overflow: hidden;">
-                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1460.014529313824!2d108.161750076449!3d-6.458883424038156!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e6ec975bc21245d%3A0x60d8e4d8bdd0569d!2sSMK%20Negeri%201%20Terisi!5e0!3m2!1sid!2sid!4v1775533789650!5m2!1sid!2sid" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                <div class="map-frame">
+                    <iframe title="Peta lokasi SMK Negeri 1 Terisi" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1460.014529313824!2d108.161750076449!3d-6.458883424038156!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e6ec975bc21245d%3A0x60d8e4d8bdd0569d!2sSMK%20Negeri%201%20Terisi!5e0!3m2!1sid!2sid!4v1775533789650!5m2!1sid!2sid" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
                 </div>
             </div>
         </div>
@@ -547,6 +562,7 @@
     </div>
     </footer>
 
+    <script src="/security.js"></script>
     <script src="script.js"></script>
 
     <script>

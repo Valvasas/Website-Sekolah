@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <style>
         :root {
             --ink: #102033;
@@ -27,6 +27,17 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
 
         body {
             min-height: 100vh;
@@ -104,7 +115,7 @@
         }
 
         .brand-metrics {
-            display: grid;
+            display: none;
             grid-template-columns: repeat(3, 1fr);
             gap: 12px;
             margin-top: 28px;
@@ -146,7 +157,7 @@
         }
 
         .auth-shell {
-            width: min(100%, 760px);
+            width: min(100%, 620px);
             background: var(--white);
             border: 1px solid rgba(16,32,51,0.1);
             border-radius: 8px;
@@ -242,12 +253,33 @@
         .panel { display: none; }
         .panel.active { display: block; }
 
-        .role-tabs {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-bottom: 18px;
+        .access-context {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 13px 14px;
+            border: 1px solid var(--line);
+            border-left: 4px solid var(--teal);
+            border-radius: 8px;
+            background: #f8fbfd;
         }
+
+        .access-context i {
+            display: grid;
+            place-items: center;
+            width: 36px;
+            height: 36px;
+            flex: 0 0 auto;
+            border-radius: 8px;
+            background: rgba(15,159,143,0.1);
+            color: var(--teal);
+        }
+
+        .access-context strong,
+        .access-context span { display: block; }
+        .access-context strong { color: var(--navy); font-size: .88rem; }
+        .access-context span { margin-top: 2px; color: var(--muted); font-size: .76rem; }
 
         .role-tab {
             border: 1px solid var(--line);
@@ -566,13 +598,135 @@
         .loading .btn-spinner { display: inline-block; animation: spin .75s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        .verification-methods {
+            border: 0;
+            margin: 4px 0 18px;
+        }
+        .verification-methods legend {
+            color: var(--ink);
+            font-size: .82rem;
+            font-weight: 800;
+            margin-bottom: 9px;
+        }
+        .verification-options {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .verification-option {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 50px;
+            padding: 11px 13px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--white);
+            color: var(--muted);
+            font-size: .82rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .verification-option:has(input:checked) {
+            border-color: var(--navy);
+            color: var(--navy);
+            box-shadow: 0 0 0 2px rgba(0,34,68,.08);
+        }
+        .verification-option:has(input:disabled) {
+            opacity: .48;
+            cursor: not-allowed;
+        }
+        .verification-option input { accent-color: var(--navy); }
+        .verification-option i { color: var(--gold); }
+        .verification-option small {
+            display: block;
+            margin-top: 2px;
+            color: var(--muted);
+            font-size: .68rem;
+            font-weight: 600;
+        }
+        .otp-stage {
+            padding: 4px 0;
+            text-align: center;
+        }
+        .otp-icon {
+            display: grid;
+            place-items: center;
+            width: 54px;
+            height: 54px;
+            margin: 0 auto 14px;
+            border-radius: 50%;
+            background: rgba(15,159,143,.1);
+            color: var(--teal);
+            font-size: 1.25rem;
+        }
+        .otp-stage h3 {
+            color: var(--navy);
+            font-family: "Playfair Display", serif;
+            font-size: 1.45rem;
+            margin-bottom: 7px;
+        }
+        .otp-stage > p {
+            color: var(--muted);
+            font-size: .84rem;
+            line-height: 1.6;
+            margin-bottom: 18px;
+        }
+        .otp-input {
+            width: 100%;
+            height: 58px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            color: var(--navy);
+            text-align: center;
+            font-size: 1.55rem;
+            font-weight: 800;
+            letter-spacing: .35em;
+            padding-left: .35em;
+        }
+        .otp-input:focus {
+            outline: 0;
+            border-color: var(--navy);
+            box-shadow: 0 0 0 3px rgba(0,34,68,.1);
+        }
+        .otp-actions {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-top: 14px;
+        }
+        .otp-action {
+            min-height: 44px;
+            border: 0;
+            background: transparent;
+            color: var(--navy);
+            font: inherit;
+            font-size: .78rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .otp-action:disabled { color: var(--muted); cursor: wait; }
+
         @media (max-width: 960px) {
             .page { grid-template-columns: 1fr; }
             .brand-side {
                 min-height: auto;
-                padding: 28px;
-                gap: 28px;
+                padding: 24px clamp(22px, 6vw, 48px);
+                gap: 16px;
             }
+            .brand-main {
+                display:grid;
+                grid-template-columns:auto minmax(0,1fr);
+                align-items:center;
+                gap:18px;
+                max-width:760px;
+            }
+            .school-mark { width:64px; height:64px; margin:0; }
+            .brand-kicker { margin-bottom:5px; }
+            .brand-title { font-size:1.65rem; margin-bottom:0; }
+            .brand-copy { display:none; }
             .brand-footer { display: none; }
             .work-side {
                 min-height: auto;
@@ -587,14 +741,31 @@
             }
             .auth-body { padding: 22px; }
             .mode-tabs,
-            .role-tabs,
             .grid-2,
             .brand-metrics {
                 grid-template-columns: 1fr;
             }
+            .mode-tabs {
+                grid-template-columns:repeat(3,minmax(0,1fr));
+                overflow-x:auto;
+            }
             .inline-row {
                 align-items: flex-start;
                 flex-direction: column;
+            }
+            .back-home,
+            .text-link {
+                min-height: 36px;
+                display: inline-flex;
+                align-items: center;
+            }
+            .password-wrap input { padding-right: 54px; }
+            .verification-options { grid-template-columns: 1fr; }
+            .icon-btn {
+                width: 40px;
+                height: 40px;
+                right: 5px;
+                top: 5px;
             }
         }
     </style>
@@ -606,12 +777,13 @@
 
             <div class="brand-main">
                 <img src="/asset/Logo SMK.png" alt="Logo SMK Negeri 1 Terisi" class="school-mark">
-                <p class="brand-kicker">Portal EduGate Terpadu</p>
-                <h2 class="brand-title">Masuk, daftar, dan pantau layanan sekolah.</h2>
+                <div>
+                <p class="brand-kicker">Portal Siswa</p>
+                <h2 class="brand-title">SMK Negeri 1 Terisi</h2>
                 <p class="brand-copy">
-                    Akses akademik siswa, panel guru dan tata usaha, pendaftaran akun baru,
-                    reset password email, autentikasi Google, serta pengecekan status PPDB dalam satu halaman.
+                    Akses kegiatan belajar, tugas, CBT, nilai, dan layanan sekolah dengan akun resmi siswa.
                 </p>
+                </div>
                 <div class="brand-metrics">
                     <div class="metric"><strong>750+</strong><span>Siswa Aktif</span></div>
                     <div class="metric"><strong>50+</strong><span>Guru & Staff</span></div>
@@ -650,8 +822,12 @@
                     </div>
 
                     <section class="panel active" id="loginPanel">
-                        <div class="role-tabs" id="roleTabs">
-                            <button class="role-tab active" type="button" data-role="siswa"><i class="fas fa-user-graduate"></i>Siswa</button>
+                        <div class="access-context">
+                            <i class="fas fa-user-graduate" aria-hidden="true"></i>
+                            <div>
+                                <strong>Akun Siswa</strong>
+                                <span>Gunakan NISN dan password yang terdaftar.</span>
+                            </div>
                         </div>
 
                         <form id="loginForm" novalidate>
@@ -692,12 +868,12 @@
 
                         <div class="divider">atau masuk cepat</div>
                         <button class="btn btn-google" id="googleBtn" type="button">
-                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="">
+                            <i class="fab fa-google" aria-hidden="true"></i>
                             <span>Masuk dengan Google</span>
                         </button>
 
                         <p class="form-note">
-                            Akun demo default: siswa NISN <strong>0012345678</strong>, password <strong>Smkn1Terisi@2024</strong>.
+                            Gunakan akun siswa yang sudah diberikan sekolah. Jika belum punya akses, hubungi Tata Usaha.
                         </p>
                     </section>
 
@@ -760,13 +936,44 @@
                                 <span id="strengthText"></span>
                             </div>
 
+                            <fieldset class="verification-methods">
+                                <legend>Kirim kode verifikasi melalui</legend>
+                                <div class="verification-options">
+                                    <label class="verification-option">
+                                        <input type="radio" name="verificationMethod" value="email" checked>
+                                        <i class="fas fa-envelope" aria-hidden="true"></i>
+                                        <span>Email<small id="emailMethodStatus">Memeriksa layanan...</small></span>
+                                    </label>
+                                    <label class="verification-option">
+                                        <input id="phoneVerificationMethod" type="radio" name="verificationMethod" value="phone" disabled>
+                                        <i class="fas fa-mobile-screen" aria-hidden="true"></i>
+                                        <span>Nomor telepon<small id="phoneMethodStatus">Belum tersedia</small></span>
+                                    </label>
+                                </div>
+                            </fieldset>
+
                             <button class="btn btn-primary" id="registerBtn" type="submit">
                                 <i class="fas fa-spinner btn-spinner"></i>
-                                <span class="btn-label"><i class="fas fa-user-plus"></i> Buat Akun</span>
+                                <span class="btn-label"><i class="fas fa-paper-plane"></i> Kirim Kode Verifikasi</span>
                             </button>
                         </form>
+                        <form id="otpForm" class="otp-stage" hidden novalidate>
+                            <div class="otp-icon"><i class="fas fa-shield-halved" aria-hidden="true"></i></div>
+                            <h3>Verifikasi Pendaftaran</h3>
+                            <p>Kode 6 digit telah dikirim ke <strong id="otpDestination"></strong>. Kode berlaku selama 10 menit.</p>
+                            <label class="sr-only" for="otpCode">Kode verifikasi 6 digit</label>
+                            <input class="otp-input" id="otpCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required>
+                            <button class="btn btn-primary" id="verifyOtpBtn" type="submit" style="margin-top:14px">
+                                <i class="fas fa-spinner btn-spinner"></i>
+                                <span class="btn-label"><i class="fas fa-check"></i> Verifikasi & Buat Akun</span>
+                            </button>
+                            <div class="otp-actions">
+                                <button class="otp-action" id="resendOtpBtn" type="button" disabled>Kirim ulang (60 dtk)</button>
+                                <button class="otp-action" id="editRegistrationBtn" type="button">Ubah data</button>
+                            </div>
+                        </form>
                         <p class="hint">
-                            Pendaftaran mandiri hanya untuk siswa, calon siswa, dan wali murid. Akun staff dibuat oleh administrator.
+                            Akun baru dibuat setelah kode berhasil diverifikasi. Akun staff tetap dibuat oleh administrator.
                         </p>
                     </section>
 
@@ -804,11 +1011,14 @@
         </section>
     </main>
 
+    <script src="/security.js"></script>
     <script>
-        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+        const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3001' : '';
         const AUTH_API = API_BASE + '/api/auth';
         let currentRole = 'siswa';
         let schoolClasses = [];
+        let registrationChallenge = null;
+        let resendTimer = null;
 
         const roleConfig = {
             siswa: { label: 'NISN Siswa', placeholder: '10 digit NISN', type: 'text' },
@@ -821,6 +1031,7 @@
             bindPasswordToggles();
             bindUrlMessages();
             checkServerStatus();
+            loadVerificationMethods();
             loadSchoolClasses();
             checkExistingSession();
             updateRegisterRole();
@@ -865,6 +1076,9 @@
         function bindForms() {
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
             document.getElementById('registerForm').addEventListener('submit', handleRegister);
+            document.getElementById('otpForm').addEventListener('submit', handleVerifyRegistration);
+            document.getElementById('resendOtpBtn').addEventListener('click', resendRegistrationCode);
+            document.getElementById('editRegistrationBtn').addEventListener('click', editRegistration);
             document.getElementById('forgotForm').addEventListener('submit', handleForgotPassword);
             document.getElementById('ppdbCheckForm').addEventListener('submit', handlePpdbCheck);
             document.getElementById('googleBtn').addEventListener('click', loginWithGoogle);
@@ -893,6 +1107,7 @@
                     google_failed: 'Login Google gagal. Coba lagi atau gunakan email/password.',
                     oauth_failed: 'Autentikasi Google gagal diproses backend.',
                     account_disabled: 'Akun dinonaktifkan. Hubungi administrator.',
+                    google_account_not_registered: 'Email Google ini belum terdaftar. Hubungi administrator agar akun sekolah ditautkan terlebih dahulu.',
                 };
                 showAlert('error', map[params.get('error')] || 'Autentikasi gagal.');
             }
@@ -904,6 +1119,15 @@
                     user: { role: params.get('role') || 'siswa', nama: 'Google User' },
                     redirectTo: redirectForRole(params.get('role') || 'siswa')
                 });
+            }
+            if (params.get('oauth') === 'success') {
+                fetch(AUTH_API + '/check', { credentials: 'include', cache: 'no-store' })
+                    .then(res => res.json())
+                    .then(json => {
+                        if (!json.success || !json.user) throw new Error('oauth_failed');
+                        persistSession({ user: json.user, redirectTo: redirectForRole(json.user.role) });
+                    })
+                    .catch(() => showAlert('error', 'Login Google berhasil, tapi sesi tidak bisa diverifikasi. Coba login ulang.'));
             }
         }
 
@@ -943,9 +1167,9 @@
 
         async function checkExistingSession() {
             const token = localStorage.getItem('studentAccessToken') || localStorage.getItem('smkn_token') || localStorage.getItem('accessToken');
-            if (!token) return;
             try {
-                const res = await fetch(AUTH_API + '/check', { headers: { Authorization: 'Bearer ' + token } });
+                const headers = token ? { Authorization: 'Bearer ' + token } : {};
+                const res = await fetch(AUTH_API + '/check', { headers, credentials: 'include', cache: 'no-store' });
                 const json = await res.json();
                 if (!json.success) return;
                 const role = json.user?.role || localStorage.getItem('userRole');
@@ -990,6 +1214,7 @@
                 email: document.getElementById('regEmail').value.trim(),
                 password,
                 no_hp: document.getElementById('regPhone').value.trim(),
+                verification_method: document.querySelector('input[name="verificationMethod"]:checked')?.value || 'email',
             };
             const nisn = document.getElementById('regNisn').value.trim();
             const kelas = document.getElementById('regKelas').value;
@@ -1004,16 +1229,107 @@
             setLoading(btn, true);
             try {
                 const json = await postJson(AUTH_API + '/register', payload);
-                if (!json.success) throw new Error(json.message || 'Pendaftaran gagal.');
-                document.getElementById('registerForm').reset();
-                updateRegisterRole();
-                updateStrength();
-                showPanel('loginPanel');
-                showAlert('success', json.message || 'Akun berhasil dibuat. Silakan login.');
+                registrationChallenge = json.data;
+                document.getElementById('registerForm').hidden = true;
+                document.getElementById('otpForm').hidden = false;
+                document.getElementById('otpDestination').textContent = json.data.destination;
+                document.getElementById('otpCode').value = '';
+                document.getElementById('otpCode').focus();
+                startResendCountdown(json.data.resendAfter || 60);
+                showAlert('success', json.message);
             } catch (err) {
                 showAlert('error', normalizeError(err.message));
             } finally {
                 setLoading(btn, false);
+            }
+        }
+
+        async function handleVerifyRegistration(event) {
+            event.preventDefault();
+            hideAlert();
+            if (!registrationChallenge?.challengeId) return editRegistration();
+            const code = document.getElementById('otpCode').value.replace(/\D/g, '');
+            if (code.length !== 6) return showAlert('error', 'Masukkan kode OTP 6 digit.');
+
+            const btn = document.getElementById('verifyOtpBtn');
+            setLoading(btn, true);
+            try {
+                const json = await postJson(AUTH_API + '/register/verify', {
+                    challengeId: registrationChallenge.challengeId,
+                    code,
+                });
+                clearInterval(resendTimer);
+                document.getElementById('registerForm').reset();
+                document.getElementById('registerForm').hidden = false;
+                document.getElementById('otpForm').hidden = true;
+                registrationChallenge = null;
+                updateRegisterRole();
+                updateStrength();
+                showPanel('loginPanel');
+                showAlert('success', json.message);
+            } catch (err) {
+                document.getElementById('otpCode').select();
+                showAlert('error', normalizeError(err.message));
+            } finally {
+                setLoading(btn, false);
+            }
+        }
+
+        async function resendRegistrationCode() {
+            if (!registrationChallenge?.challengeId) return;
+            const btn = document.getElementById('resendOtpBtn');
+            btn.disabled = true;
+            try {
+                const json = await postJson(AUTH_API + '/register/resend', {
+                    challengeId: registrationChallenge.challengeId,
+                });
+                document.getElementById('otpCode').value = '';
+                startResendCountdown(json.data?.resendAfter || 60);
+                showAlert('success', json.message);
+            } catch (err) {
+                showAlert('error', normalizeError(err.message));
+                btn.disabled = false;
+            }
+        }
+
+        function startResendCountdown(seconds) {
+            clearInterval(resendTimer);
+            const btn = document.getElementById('resendOtpBtn');
+            let remaining = Math.max(0, Number(seconds) || 60);
+            const render = () => {
+                btn.disabled = remaining > 0;
+                btn.textContent = remaining > 0 ? `Kirim ulang (${remaining} dtk)` : 'Kirim ulang kode';
+                remaining -= 1;
+                if (remaining < 0) clearInterval(resendTimer);
+            };
+            render();
+            resendTimer = setInterval(render, 1000);
+        }
+
+        function editRegistration() {
+            clearInterval(resendTimer);
+            registrationChallenge = null;
+            document.getElementById('otpForm').hidden = true;
+            document.getElementById('registerForm').hidden = false;
+            hideAlert();
+        }
+
+        async function loadVerificationMethods() {
+            const emailRadio = document.querySelector('input[name="verificationMethod"][value="email"]');
+            const phoneRadio = document.getElementById('phoneVerificationMethod');
+            try {
+                const res = await fetch(AUTH_API + '/verification-methods', { cache: 'no-store' });
+                const json = await res.json();
+                const methods = json.data || {};
+                emailRadio.disabled = !methods.email;
+                phoneRadio.disabled = !methods.phone;
+                document.getElementById('emailMethodStatus').textContent = methods.email ? 'SMTP dikonfigurasi' : 'SMTP belum aktif';
+                document.getElementById('phoneMethodStatus').textContent = methods.phone ? 'Gateway SMS dikonfigurasi' : 'Gateway SMS belum aktif';
+                if (!methods.email && methods.phone) phoneRadio.checked = true;
+            } catch {
+                emailRadio.disabled = true;
+                phoneRadio.disabled = true;
+                document.getElementById('emailMethodStatus').textContent = 'Status tidak tersedia';
             }
         }
 
@@ -1079,14 +1395,9 @@
                 showAlert('error', 'Akun staf/admin harus masuk lewat panel staf, bukan login siswa.');
                 return;
             }
-            localStorage.setItem('studentAccessToken', data.accessToken || '');
-            localStorage.setItem('studentRefreshToken', data.refreshToken || '');
+            ['studentAccessToken','studentRefreshToken','smkn_token','smkn_refresh','accessToken','refreshToken'].forEach(key => localStorage.removeItem(key));
             localStorage.setItem('studentUserData', JSON.stringify(user));
-            localStorage.setItem('smkn_token', data.accessToken || '');
-            localStorage.setItem('smkn_refresh', data.refreshToken || '');
             localStorage.setItem('smkn_user', JSON.stringify(user));
-            localStorage.setItem('accessToken', data.accessToken || '');
-            localStorage.setItem('refreshToken', data.refreshToken || '');
             localStorage.setItem('userRole', role);
             localStorage.setItem('userData', JSON.stringify(user));
             window.location.href = data.redirectTo || redirectForRole(role);
@@ -1115,6 +1426,7 @@
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(payload),
             });
             const json = await res.json().catch(() => ({ success: false, message: 'Response backend tidak valid.' }));

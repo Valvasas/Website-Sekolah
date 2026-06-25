@@ -1,5 +1,4 @@
-// middleware/errorHandler.js — NEW FILE
-// FIX: Centralized error handler, tidak bocorkan stack trace ke client di production
+// Centralized HTTP error handling. Production responses never expose stack traces.
 'use strict';
 
 const isDev = process.env.NODE_ENV !== 'production';

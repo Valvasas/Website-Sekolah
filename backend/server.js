@@ -1,7 +1,7 @@
-// server.js — SMKN 1 Terisi Backend (Final Version)
+// Main HTTP and WebSocket server for EduGate.
 'use strict';
 
-// ── 1. Validasi ENV dulu sebelum apapun ───────────────────────────
+// Validate environment variables before loading runtime services.
 const ENV = require('./config/env');
 
 const express    = require('express');
@@ -17,12 +17,15 @@ const { v4: uuidv4 } = require('uuid');
 
 const { initDatabase }                   = require('./config/database');
 const { apiLimiter }                     = require('./middleware/rateLimiter');
+const { csrfProtection, csrfTokenEndpoint } = require('./middleware/csrf');
 const { verifyToken }                    = require('./config/jwt');
+const { authenticate, getRequestToken }  = require('./middleware/auth');
 const { notFoundHandler, globalErrorHandler } = require('./middleware/errorHandler');
 const permissions                        = require('./utils/permissions');
 
 const app    = express();
 const server = http.createServer(app);
+if (ENV.IS_PROD) app.set('trust proxy', 1);
 
 /* ── Logging setup (ke file di production) ────────────────────────── */
 const logsDir = path.join(__dirname, 'logs');
@@ -37,9 +40,28 @@ if (ENV.IS_PROD) {
 
 /* ── Security headers ─────────────────────────────────────────────── */
 app.use(helmet({
-    contentSecurityPolicy:    false,
+    contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+            "default-src": ["'self'"],
+            "base-uri": ["'self'"],
+            "object-src": ["'none'"],
+            "frame-ancestors": ["'self'"],
+            "script-src": ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+            "script-src-attr": ["'unsafe-inline'"],
+            "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
+            "font-src": ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com", "data:"],
+            "img-src": ["'self'", "data:", "blob:", "https:"],
+            "media-src": ["'self'", "blob:", "data:"],
+            "connect-src": ["'self'", "ws:", "wss:", "https://speed.cloudflare.com"],
+            "frame-src": ["'self'", "https://www.youtube.com", "https://www.google.com"],
+            "form-action": ["'self'"],
+            "upgrade-insecure-requests": ENV.IS_PROD ? [] : null,
+        },
+    },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
 
 /* ── CORS (dynamic, dari env) ─────────────────────────────────────── */
@@ -79,7 +101,7 @@ app.use(cors({
     },
     credentials:    true,
     methods:        ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization'],
+    allowedHeaders: ['Content-Type','Authorization','X-CSRF-Token'],
 }));
 
 /* ── Body parsing ─────────────────────────────────────────────────── */
@@ -96,7 +118,12 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 // Assets dengan cache 1 hari di production
 const staticOpts = ENV.IS_PROD ? { maxAge: '1d', etag: true } : {};
 app.use('/asset',    express.static(path.join(projectRoot, 'asset'), staticOpts));
-app.use('/uploads',  express.static(uploadDir, staticOpts));
+['ppdb', 'tugas', 'materi', 'forum', 'kantin-chat'].forEach(dirName => {
+    app.use(`/uploads/${dirName}`, authenticate, express.static(path.join(uploadDir, dirName), staticOpts));
+});
+['website', 'kantin', 'profil', 'cbt', 'general'].forEach(dirName => {
+    app.use(`/uploads/${dirName}`, express.static(path.join(uploadDir, dirName), staticOpts));
+});
 app.use('/admin-panel', express.static(path.join(__dirname, 'admin-panel')));
 
 app.get(['/login', '/login.html'], (_req, res) => {
@@ -111,25 +138,29 @@ app.get('/api/health', (_req, res) => {
     let dbStatus = 'ok';
     try { db().prepare('SELECT 1').get(); } catch { dbStatus = 'error'; }
 
-    res.json({
+    const payload = {
         status:    dbStatus === 'ok' ? 'OK' : 'DEGRADED',
         db:        dbStatus,
-        uptime:    Math.floor(process.uptime()),
-        memory:    `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
         timestamp: new Date().toISOString(),
-        env:       ENV.NODE_ENV,
         version:   '2.0.0',
-    });
+    };
+    if (!ENV.IS_PROD) {
+        payload.uptime = Math.floor(process.uptime());
+        payload.memory = `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`;
+        payload.env = ENV.NODE_ENV;
+    }
+    res.json(payload);
 });
 
+/* ── Rate limiter untuk semua /api/* kecuali health check ───────── */
+app.use('/api/', apiLimiter);
+
+/* ── CSRF token untuk request mutasi berbasis cookie ─────────────── */
+app.get('/api/csrf-token', csrfTokenEndpoint);
+app.use('/api/', csrfProtection);
+
 app.get('/api/resource-status', (_req, res) => {
-    const authHeader = _req.headers['authorization'];
-    const rawToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
-    const { valid, decoded } = verifyToken(rawToken);
-    const allowed = ['super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'];
-    if (!valid || !allowed.includes(decoded?.role)) {
-        return res.status(401).json({ success:false, message:'Autentikasi admin/staff diperlukan.' });
-    }
+    if (!requireApiPermission(_req, res, 'viewReports')) return;
     const uploadRoot = path.join(__dirname, 'public/uploads');
     const maxBytes = Math.round(ENV.UPLOAD_MAX_TOTAL_GB * 1024 * 1024 * 1024);
     function dirSize(dir) {
@@ -175,8 +206,7 @@ function publicFeatureFlags() {
 }
 
 function requireApiRole(req, res, roles) {
-    const authHeader = req.headers['authorization'];
-    const rawToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    const rawToken = getRequestToken(req);
     const { valid, decoded } = verifyToken(rawToken);
     if (!valid || !roles.includes(decoded?.role)) {
         res.status(401).json({ success:false, message:'Akses tidak diizinkan untuk role akun ini.' });
@@ -186,8 +216,7 @@ function requireApiRole(req, res, roles) {
 }
 
 function requireApiPermission(req, res, permission) {
-    const authHeader = req.headers['authorization'];
-    const rawToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    const rawToken = getRequestToken(req);
     const { valid, decoded } = verifyToken(rawToken);
     if (!valid || !permissions.hasPermission(decoded, permission)) {
         res.status(401).json({ success:false, message:'Akses tidak diizinkan untuk permission akun ini.' });
@@ -281,10 +310,20 @@ app.post('/api/storage/cleanup-orphans', (req, res) => {
         }
         walk(uploadRoot);
         const shouldDelete = req.query.delete === 'true' || req.body?.delete === true;
+        const selected = Array.isArray(req.body?.files)
+            ? new Set(req.body.files.map(file => String(file || '').replace(/\\/g, '/')))
+            : new Set();
         let deleted = 0;
         if (shouldDelete) {
+            if (!selected.size) {
+                return res.status(400).json({
+                    success:false,
+                    message:'Pilih file orphan yang ingin dihapus terlebih dahulu.'
+                });
+            }
             orphanFiles.forEach(file => {
-                if (path.resolve(file).startsWith(uploadRoot) && fs.existsSync(file)) {
+                const relative = path.relative(uploadRoot, file).replace(/\\/g, '/');
+                if (selected.has(relative) && path.resolve(file).startsWith(uploadRoot) && fs.existsSync(file)) {
                     fs.unlinkSync(file);
                     deleted += 1;
                 }
@@ -360,9 +399,6 @@ app.get('/api/backup/database/:name', (req, res) => {
     res.download(file, name);
 });
 
-/* ── Rate limiter untuk semua /api/* ──────────────────────────────── */
-app.use('/api/', apiLimiter);
-
 /* ════════════════════════════════════════════════════════════════════
    WEBSOCKET — CBT Admin Panel (dengan JWT auth)
    ════════════════════════════════════════════════════════════════════ */
@@ -434,10 +470,20 @@ function setupWebSocket() {
         return value && typeof value === 'object' && !Array.isArray(value);
     }
 
-    wss.on('connection', (ws) => {
+    wss.on('connection', (ws, request) => {
         ws.isAlive = true;
         ws.isAuth  = false;
         ws.role    = null;
+
+        const handshakeToken = getRequestToken(request);
+        const handshakeAuth = verifyToken(handshakeToken);
+        if (handshakeAuth.valid && ['super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'].includes(handshakeAuth.decoded?.role)) {
+            ws.role = 'admin';
+            ws.isAuth = true;
+            ws.adminUser = handshakeAuth.decoded;
+            ws.examFilter = null;
+            adminClients.add(ws);
+        }
 
         ws.on('pong', () => { ws.isAlive = true; });
 
@@ -466,6 +512,10 @@ function setupWebSocket() {
 
             switch (msg.type) {
                 case 'admin_auth': {
+                    if (ws.isAuth && ws.role === 'admin' && !msg.token) {
+                        send(ws, { type: 'admin_auth_ok', message: `Terhubung sebagai ${ws.adminUser?.nama || 'admin'}.` });
+                        break;
+                    }
                     const { valid, decoded } = verifyToken(msg.token || '');
                     if (!valid || !['super_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'].includes(decoded?.role)) {
                         send(ws, { type: 'error', message: 'Token admin tidak valid.' });
@@ -928,7 +978,7 @@ function setupRoutes() {
         if (fs.existsSync(file) && fs.statSync(file).isFile()) {
             return res.sendFile(file);
         }
-        res.sendFile(path.join(frontendPath, 'index.html'));
+        res.status(404).sendFile(path.join(frontendPath, '404.html'));
     });
 
     // ── Error handlers (urutan penting!) ────────────────────────────
@@ -942,9 +992,9 @@ function main() {
     process.stdout.write('⏳ Setup schema & seed data...');
     try {
         require('./utils/setupDatabase').setup();
-        process.stdout.write(' ✅\n');
+        process.stdout.write(' selesai\n');
     } catch(err) {
-        console.error('\n❌ Gagal setup schema:', err.message);
+        console.error('\nGagal menyiapkan schema:', err.message);
         process.exit(1);
     }
 
@@ -952,9 +1002,9 @@ function main() {
     process.stdout.write('⏳ Menginisialisasi database...');
     try {
         initDatabase();
-        process.stdout.write(' ✅\n');
+        process.stdout.write(' selesai\n');
     } catch(err) {
-        console.error('\n❌ Gagal init database:', err.message);
+        console.error('\nGagal menginisialisasi database:', err.message);
         process.exit(1);
     }
 
@@ -970,27 +1020,19 @@ function main() {
     }
 
     server.listen(ENV.PORT, () => {
-        console.log('\n╔══════════════════════════════════════════════════════════╗');
-        console.log('║       SMKN 1 TERISI — Backend Server v2.0                ║');
-        console.log('╠══════════════════════════════════════════════════════════╣');
-        console.log(`║  🌐  Website    : http://localhost:${ENV.PORT}                    ║`);
-        console.log(`║  🔑  Admin      : http://localhost:${ENV.PORT}/admin-panel/login.html ║`);
-        console.log(`║  📝  CBT Siswa  : http://localhost:${ENV.PORT}/cbt.html            ║`);
-        console.log(`║  📚  LMS        : http://localhost:${ENV.PORT}/LMS.html            ║`);
-        console.log(`║  ❤️   Health    : http://localhost:${ENV.PORT}/api/health          ║`);
-        console.log('╠══════════════════════════════════════════════════════════╣');
-        console.log(`║  🗄️  DB         : ${ENV.DB_PATH}.db                       ║`);
-        console.log(`║  🌍  Mode       : ${ENV.NODE_ENV.padEnd(10)}                          ║`);
-        console.log('╚══════════════════════════════════════════════════════════╝\n');
+        console.log(`EduGate server listening on http://localhost:${ENV.PORT}`);
+        console.log(`Admin:  http://localhost:${ENV.PORT}/admin-panel/login.html`);
+        console.log(`Health: http://localhost:${ENV.PORT}/api/health`);
+        console.log(`Mode: ${ENV.NODE_ENV} | Database: ${ENV.DB_PATH}.db`);
     });
 }
 
 /* ── Graceful shutdown ────────────────────────────────────────────── */
 function gracefulShutdown(signal) {
-    console.log(`\n🛑 ${signal} received — shutting down gracefully...`);
+    console.log(`\n${signal} received. Shutting down gracefully...`);
     server.close(() => {
         try { require('./config/database').closeDB(); } catch {}
-        console.log('✅ Server closed.');
+        console.log('Server closed.');
         process.exit(0);
     });
     // Force exit setelah 10 detik

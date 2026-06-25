@@ -1,4 +1,4 @@
-/* ================= START OF FILE: script.js ================= */
+/* Global public website interactions */
 (function() {
     const hidePageLoader = () => {
         const loader = document.getElementById('page-loader');
@@ -30,7 +30,7 @@ document.addEventListener('keydown', event => {
 
 /* ── Fetch ticker bar dari API backend ── */
 (function fetchTicker() {
-    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+    const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3001' : '';
     if (!document.querySelector('.ticker-inner')) return;
 
     function createTickerItem(text) {
@@ -78,7 +78,7 @@ document.addEventListener('keydown', event => {
 
 /* ── Konten dinamis dari dashboard admin ── */
 (function hydrateWebsiteContent() {
-    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+    const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3001' : '';
     const fallbackHomeNews = [
         {
             id: 'fallback-ppdb',
@@ -310,18 +310,15 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileMenu.setAttribute('aria-expanded', 'false');
         mobileMenu.setAttribute('aria-controls', 'primary-navigation');
         navMenu.id = navMenu.id || 'primary-navigation';
-        mobileMenu.addEventListener('click', () => {
-            navMenu.classList.toggle('active');
-            mobileMenu.classList.toggle('is-active');
-            mobileMenu.classList.toggle('active');
-            document.body.classList.toggle('nav-open', navMenu.classList.contains('active'));
-            mobileMenu.setAttribute('aria-expanded', navMenu.classList.contains('active') ? 'true' : 'false');
-            
-            // Prevent body scroll when menu is open
-            document.body.style.overflow = navMenu.classList.contains('active') ? 'hidden' : '';
-
+        const setMobileMenuOpen = (open) => {
+            navMenu.classList.toggle('active', open);
+            mobileMenu.classList.toggle('is-active', open);
+            mobileMenu.classList.toggle('active', open);
+            document.body.classList.toggle('nav-open', open);
+            mobileMenu.setAttribute('aria-expanded', open ? 'true' : 'false');
+            document.body.style.overflow = open ? 'hidden' : '';
             const bars = mobileMenu.querySelectorAll('.bar');
-            if (mobileMenu.classList.contains('is-active')) {
+            if (open) {
                 bars[0].style.transform = 'rotate(-45deg) translate(-5px, 6px)';
                 bars[1].style.opacity = '0';
                 bars[2].style.transform = 'rotate(45deg) translate(-5px, -6px)';
@@ -330,6 +327,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 bars[1].style.opacity = '1';
                 bars[2].style.transform = 'none';
             }
+        };
+
+        mobileMenu.addEventListener('click', () => {
+            setMobileMenuOpen(!navMenu.classList.contains('active'));
         });
         mobileMenu.addEventListener('keydown', event => {
             if (event.key === 'Enter' || event.key === ' ') {
@@ -339,17 +340,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         navMenu.querySelectorAll('a').forEach(link => {
-            link.addEventListener('click', () => {
-                navMenu.classList.remove('active');
-                mobileMenu.classList.remove('is-active', 'active');
-                mobileMenu.setAttribute('aria-expanded', 'false');
-                document.body.classList.remove('nav-open');
-                document.body.style.overflow = '';
-                mobileMenu.querySelectorAll('.bar').forEach(bar => {
-                    bar.style.transform = 'none';
-                    bar.style.opacity = '1';
-                });
-            });
+            link.addEventListener('click', () => setMobileMenuOpen(false));
+        });
+
+        document.addEventListener('click', event => {
+            if (!navMenu.classList.contains('active')) return;
+            if (navMenu.contains(event.target) || mobileMenu.contains(event.target)) return;
+            setMobileMenuOpen(false);
+        });
+
+        document.addEventListener('keydown', event => {
+            if (event.key !== 'Escape' || !navMenu.classList.contains('active')) return;
+            setMobileMenuOpen(false);
+            mobileMenu.focus();
         });
     }
 
@@ -621,7 +624,63 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 8. PUSAT LAYANAN DIGITAL - MODAL SKL ---
+    // --- 8. LOGIN MODAL LEGACY: redirect ke flow login yang benar-benar aktif ---
+    (function initLoginModal() {
+        const loginModal = document.getElementById('loginModal');
+        if (!loginModal) return;
+
+        const openLoginButtons = document.querySelectorAll('[data-open-login], .open-login, #openLoginBtn');
+        const closeLoginBtn = document.getElementById('closeLoginBtn');
+        const openLoginModal = (event) => {
+            if (event) event.preventDefault();
+            loginModal.classList.add('active');
+            loginModal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+            loginModal.querySelector('input, a, button')?.focus();
+        };
+        const closeLoginModal = () => {
+            loginModal.classList.remove('active');
+            loginModal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        };
+
+        openLoginButtons.forEach(button => button.addEventListener('click', openLoginModal));
+        closeLoginBtn?.addEventListener('click', closeLoginModal);
+        loginModal.addEventListener('click', (event) => {
+            if (event.target === loginModal) closeLoginModal();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && loginModal.classList.contains('active')) closeLoginModal();
+        });
+
+        document.querySelectorAll('.login-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetId = tab.dataset.target;
+                if (!targetId) return;
+                if (targetId === 'form-guru') {
+                    window.location.href = '/admin-panel/login.html';
+                    return;
+                }
+                document.querySelectorAll('.login-tab').forEach(item => item.classList.remove('active'));
+                document.querySelectorAll('.login-form').forEach(form => form.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(targetId)?.classList.add('active');
+            });
+        });
+
+        document.querySelectorAll('.login-form').forEach(form => {
+            form.addEventListener('submit', (event) => {
+                event.preventDefault();
+                if (form.id === 'form-guru') {
+                    window.location.href = '/admin-panel/login.html';
+                    return;
+                }
+                window.location.href = '/login.html';
+            });
+        });
+    })();
+
+    // --- 9. PUSAT LAYANAN DIGITAL - MODAL SKL ---
     const sklCard = document.getElementById('skl-card');
     const sklModal = document.getElementById('sklModal');
     const sklBox = sklModal ? sklModal.querySelector('.skl-modal-box') : null;
@@ -660,26 +719,143 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.style.overflow = '';
     };
 
-    // Simulasi pencarian SKL (ganti dengan fetch API nyata)
-    window.cariSKL = function(btn) {
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+        }[char]));
+    }
+
+    function setSklMessage(message, type = 'error') {
+        const messageEl = document.getElementById('sklInlineMessage');
+        if (!messageEl) return;
+        messageEl.textContent = message;
+        messageEl.classList.toggle('success', type === 'success');
+    }
+
+    function resetSklButton(btn) {
+        if (!btn) return;
+        btn.innerHTML = '<i class="fas fa-search"></i> Cari & Unduh SKL';
+        btn.disabled = false;
+        btn.style.background = '';
+        btn.style.color = '';
+    }
+
+    function downloadVerifiedSkl(data) {
+        const safeName = String(data.nama || 'siswa').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_') || 'siswa';
+        const tanggalLahir = data.ttl
+            ? new Date(data.ttl).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+            : '-';
+        const tahunLulus = Number.parseInt(data.tahun_lulus, 10);
+        const tahunPelajaran = Number.isFinite(tahunLulus) ? `${tahunLulus - 1}/${tahunLulus}` : '-';
+        const kode = `SKL-${escapeHtml(data.tahun_lulus || '')}-${Date.now().toString(36).toUpperCase()}`;
+        const html = `<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>SKL ${escapeHtml(data.nama || '')}</title>
+<style>
+body{font-family:Arial,sans-serif;line-height:1.55;color:#111827;margin:48px}
+.kop{text-align:center;border-bottom:3px double #111827;padding-bottom:16px;margin-bottom:32px}
+.kop h1{font-size:18px;margin:0;text-transform:uppercase}
+.kop h2{font-size:16px;margin:4px 0 0;text-transform:uppercase}
+.nomor{text-align:center;margin-bottom:28px}
+table{width:100%;border-collapse:collapse;margin:18px 0}
+td{padding:6px 8px;vertical-align:top}
+td:first-child{width:190px;font-weight:700}
+.status{font-weight:800;letter-spacing:.08em}
+.ttd{margin-top:48px;width:320px;margin-left:auto;text-align:left}
+.kode{margin-top:32px;font-size:12px;color:#475569}
+@media print{body{margin:24mm}.no-print{display:none}}
+</style>
+</head>
+<body>
+<button class="no-print" onclick="window.print()">Cetak / Simpan PDF</button>
+<div class="kop">
+<h1>Pemerintah Provinsi Jawa Barat</h1>
+<h2>SMK Negeri 1 Terisi</h2>
+<div>Jl. Raya Terisi, Kec. Terisi, Kabupaten Indramayu, Jawa Barat 45262</div>
+</div>
+<h2 style="text-align:center;text-decoration:underline">Surat Keterangan Lulus</h2>
+<div class="nomor">Nomor: ${escapeHtml(data.no_ijazah || '-')}</div>
+<p>Yang bertanda tangan di bawah ini menerangkan bahwa:</p>
+<table>
+<tr><td>Nama Lengkap</td><td>: ${escapeHtml(data.nama)}</td></tr>
+<tr><td>NISN</td><td>: ${escapeHtml(data.nisn)}</td></tr>
+<tr><td>Tanggal Lahir</td><td>: ${escapeHtml(tanggalLahir)}</td></tr>
+<tr><td>Program Keahlian</td><td>: ${escapeHtml(data.jurusan || '-')}</td></tr>
+<tr><td>Kelas</td><td>: ${escapeHtml(data.kelas || '-')}</td></tr>
+<tr><td>Nilai Rata-rata</td><td>: ${escapeHtml(Number(data.nilai_rata || 0).toFixed(2))}</td></tr>
+</table>
+<p>Telah dinyatakan <span class="status">LULUS</span> pada tahun pelajaran ${escapeHtml(tahunPelajaran)} berdasarkan data kelulusan sekolah.</p>
+<div class="ttd">
+<p>Indramayu, ${escapeHtml(new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }))}</p>
+<p>Kepala SMK Negeri 1 Terisi,</p>
+<br><br><br>
+<strong>Agung Hendra Adiwiguna, S.Kom., M.M.</strong><br>
+NIP. 19800101 200501 1 001
+</div>
+<div class="kode">Kode verifikasi: ${kode}</div>
+</body>
+</html>`;
+
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `SKL_${escapeHtml(data.nisn || '')}_${safeName}.html`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    window.cariSKL = async function(btn) {
+        const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3001' : '';
+        const nisn = document.getElementById('sklNisn')?.value.replace(/\D/g, '').slice(0, 10) || '';
+        const nama = document.getElementById('sklNama')?.value.trim() || '';
+        const ttl = document.getElementById('sklTanggalLahir')?.value || '';
+        const tahun = document.getElementById('sklTahun')?.value || '';
+
+        setSklMessage('');
+        if (!nisn || nisn.length !== 10 || !nama || !ttl || !tahun) {
+            setSklMessage('Lengkapi NISN 10 digit, nama, tanggal lahir, dan tahun lulus.');
+            return;
+        }
+
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memverifikasi...';
         btn.disabled = true;
-        setTimeout(() => {
-            btn.innerHTML = '<i class="fas fa-check-circle"></i> Data ditemukan - mengunduh...';
+
+        try {
+            const response = await fetch(`${API_BASE}/api/content/skl/cari`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nisn, nama, ttl, tahun_lulus: tahun }),
+            });
+            const json = await response.json().catch(() => ({}));
+            if (!response.ok || !json.success || !json.data) {
+                throw new Error(json.message || 'Data tidak dapat diverifikasi.');
+            }
+
+            btn.innerHTML = '<i class="fas fa-check-circle"></i> Data valid - mengunduh...';
             btn.style.background = '#059669';
             btn.style.color = '#fff';
-            // Simulasi selesai setelah 2 detik
-            setTimeout(() => {
-                btn.innerHTML = '<i class="fas fa-search"></i> Cari & Unduh SKL';
-                btn.style.background = 'var(--secondary)';
-                btn.style.color = 'var(--primary)';
-                btn.disabled = false;
+            setSklMessage('Data valid. Dokumen sedang disiapkan.', 'success');
+            downloadVerifiedSkl(json.data);
+            window.setTimeout(() => {
+                resetSklButton(btn);
                 window.closeSklModal();
-            }, 2000);
-        }, 1500);
+            }, 900);
+        } catch (error) {
+            setSklMessage(error.message || 'Gagal menghubungi server SKL.');
+            resetSklButton(btn);
+        }
     };
 
-    // --- 9. STAGGERED REVEAL KARTU SAAT MASUK VIEWPORT ---
+    // --- 10. STAGGERED REVEAL KARTU SAAT MASUK VIEWPORT ---
     (function() {
         const cards = document.querySelectorAll('.layanan-grid .l-card');
         if (!cards.length) return;
@@ -708,8 +884,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ============================================================
-   SNIPPET UNTUK script.js
-   Tempel seluruh blok ini di bagian PALING BAWAH script.js
+   Struktur organisasi sekolah
    Semua fungsi menggunakan prefix "org" agar tidak bentrok
    dengan fungsi yang sudah ada di website.
    ============================================================ */
@@ -1033,6 +1208,48 @@ const ORG_ALL_STAFF = [
   ...ORG_DATA.tu,
 ];
 
+function orgSortStaff(a, b) {
+  return (Number(a.tier || 3) - Number(b.tier || 3))
+    || (Number(a.sort_order || 0) - Number(b.sort_order || 0))
+    || String(a.nama || '').localeCompare(String(b.nama || ''));
+}
+
+function orgApplyRemoteRows(rows) {
+  if (!Array.isArray(rows) || !rows.length) return false;
+  const normalized = rows.map(row => ({
+    ...row,
+    id: row.code || row.id,
+    code: row.code || row.id,
+    mapel: row.mapel || '-',
+    icon: row.icon || 'fa-user',
+    tier: Number(row.tier || 3),
+    sort_order: Number(row.sort_order || 0),
+    tugas: Array.isArray(row.tugas)
+      ? row.tugas
+      : String(row.tugas || '').split(/\r?\n/).map(item => item.trim()).filter(Boolean),
+    bawahan: Array.isArray(row.bawahan) ? row.bawahan : [],
+    atasan: row.atasan || null,
+  })).sort(orgSortStaff);
+
+  ORG_DATA.pimpinan = normalized.filter(row => row.tipe === 'pimpinan');
+  ORG_DATA.koordinator = [];
+  ORG_DATA.guru = normalized.filter(row => row.tipe === 'guru');
+  ORG_DATA.tu = normalized.filter(row => row.tipe === 'tu');
+  ORG_ALL_STAFF.splice(0, ORG_ALL_STAFF.length, ...normalized);
+  return true;
+}
+
+async function orgLoadRemoteData() {
+  try {
+    const res = await fetch('/api/content/organization', { cache: 'no-store' });
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.success) return orgApplyRemoteRows(json.data);
+  } catch (error) {
+    return false;
+  }
+  return false;
+}
+
 /* -- Cari staff by ID -- */
 function orgFindById(id) {
   return ORG_ALL_STAFF.find(s => s.id === id);
@@ -1071,56 +1288,37 @@ function orgBuildTree() {
   root.innerHTML = '';
   root.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:0;';
 
-  /* Level 0 - Kepala Sekolah */
-  root.appendChild(orgBuildNode(orgFindById('P01'), 0));
-  root.appendChild(orgConnV(40));
-
-  /* Level 1 - Wakasek & Ka TU */
-  const row1 = document.createElement('div');
-  row1.className = 'org-tree-row';
-  ['P02','P03','P04','P05','T01'].forEach(id => {
-    const s = orgFindById(id);
-    if (s) row1.appendChild(orgBuildNode(s, 1));
+  const byParent = new Map();
+  const staffCodes = new Set(ORG_ALL_STAFF.map(staff => staff.id));
+  ORG_ALL_STAFF.forEach(staff => {
+    const parentKey = staff.atasan && staffCodes.has(staff.atasan) ? staff.atasan : '__root__';
+    if (!byParent.has(parentKey)) byParent.set(parentKey, []);
+    byParent.get(parentKey).push(staff);
   });
-  root.appendChild(row1);
-  root.appendChild(orgConnV(30));
+  byParent.forEach(list => list.sort(orgSortStaff));
 
-  /* Level 2 - Kaprodi */
-  const row2 = document.createElement('div');
-  row2.className = 'org-tree-row';
-  ['K01','K02','K03','K04'].forEach(id => {
-    const s = orgFindById(id);
-    if (s) row2.appendChild(orgBuildNode(s, 2));
-  });
-  root.appendChild(row2);
-  root.appendChild(orgConnV(28));
+  const renderBranch = (items, level = 0) => {
+    if (!items.length || level > 4) return;
+    const row = document.createElement('div');
+    row.className = 'org-tree-row';
+    items.slice(0, level >= 3 ? 8 : 12).forEach(staff => row.appendChild(orgBuildNode(staff, level)));
+    root.appendChild(row);
 
-  /* Level 3 - Sample guru per prodi */
-  const groups = {
-    TKJ  : ['G11','G12','G40'],
-    TBSM : ['G15','G16'],
-    ATPH : ['G18','G37'],
-    AKL  : ['G21','G22'],
+    const children = items
+      .flatMap(staff => byParent.get(staff.id) || [])
+      .sort(orgSortStaff);
+    if (children.length) {
+      root.appendChild(orgConnV(level >= 2 ? 20 : 30));
+      renderBranch(children, level + 1);
+    }
   };
 
-  const row3 = document.createElement('div');
-  row3.className = 'org-tree-row';
-
-  Object.values(groups).forEach(ids => {
-    const grp = document.createElement('div');
-    grp.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;';
-    ids.forEach(id => {
-      const s = orgFindById(id);
-      if (s) grp.appendChild(orgBuildNode(s, 3));
-    });
-    row3.appendChild(grp);
-  });
-  root.appendChild(row3);
+  renderBranch(byParent.get('__root__') || [], 0);
 
   /* Catatan */
   const note = document.createElement('p');
   note.className = 'org-tree-note';
-  note.innerHTML = '<i class="fas fa-info-circle" style="color:var(--secondary);margin-right:6px;"></i>Bagan menampilkan representasi hierarki. Gunakan tab <strong>Daftar</strong> atau <strong>Bidang</strong> untuk melihat seluruh 50 staf.';
+  note.innerHTML = '<i class="fas fa-info-circle" style="color:var(--secondary);margin-right:6px;"></i>Bagan menampilkan hierarki aktif dari data sekolah. Gunakan tab <strong>Daftar</strong> atau <strong>Bidang</strong> untuk melihat semuanya.';
   root.appendChild(note);
 }
 
@@ -1219,14 +1417,27 @@ function orgBuildDept() {
   grid.innerHTML = '';
 
   const depts = [
-    { nama:'Pimpinan Sekolah',   sub:'Kepala Sekolah & Wakasek',      icon:'fa-crown',              members:[...ORG_DATA.pimpinan] },
-    { nama:'Program TKJ',        sub:'Teknik Komputer & Jaringan',     icon:'fa-network-wired',      members:[orgFindById('K01'), ...ORG_DATA.guru.filter(g => g.atasan === 'K01')] },
-    { nama:'Program TBSM',       sub:'Teknik Bisnis Sepeda Motor',     icon:'fa-motorcycle',         members:[orgFindById('K02'), ...ORG_DATA.guru.filter(g => g.atasan === 'K02')] },
-    { nama:'Program ATPH',       sub:'Agribisnis Tanaman Pangan',      icon:'fa-seedling',           members:[orgFindById('K03'), ...ORG_DATA.guru.filter(g => g.atasan === 'K03')] },
-    { nama:'Program AKL',        sub:'Akuntansi & Keuangan Lembaga',   icon:'fa-calculator',         members:[orgFindById('K04'), ...ORG_DATA.guru.filter(g => g.atasan === 'K04')] },
-    { nama:'Guru Mapel Umum',    sub:'Kurikulum, Kesiswaan & Humas',   icon:'fa-chalkboard-teacher', members:ORG_DATA.guru.filter(g => ['P02','P03','P05'].includes(g.atasan)) },
-    { nama:'Tata Usaha',         sub:'Administrasi & Umum',            icon:'fa-briefcase',          members:ORG_DATA.tu },
+    { nama:'Pimpinan Sekolah', sub:'Kepala sekolah, wakil, dan koordinator', icon:'fa-crown', members:[...ORG_DATA.pimpinan] },
   ];
+
+  const guruGroups = new Map();
+  ORG_DATA.guru.forEach(guru => {
+    const key = guru.mapel && guru.mapel !== '-' ? guru.mapel : 'Guru Mapel Umum';
+    if (!guruGroups.has(key)) guruGroups.set(key, []);
+    guruGroups.get(key).push(guru);
+  });
+  [...guruGroups.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .forEach(([nama, members]) => depts.push({
+      nama,
+      sub: `${members.length} personel guru`,
+      icon: 'fa-chalkboard-teacher',
+      members: members.sort(orgSortStaff),
+    }));
+
+  if (ORG_DATA.tu.length) {
+    depts.push({ nama:'Tata Usaha', sub:'Administrasi, layanan, sarpras, dan operasional', icon:'fa-briefcase', members:ORG_DATA.tu.sort(orgSortStaff) });
+  }
 
   depts.forEach(dept => {
     const valid = dept.members.filter(Boolean);
@@ -1435,14 +1646,14 @@ function orgShowToast(msg) {
 /* =============================================
    INIT - jalankan hanya jika elemen ada
    ============================================= */
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
   if (!document.getElementById('org-tree-root')) return; /* hanya di profil.html */
+  await orgLoadRemoteData();
   orgBuildTree();
   orgBuildTable();
   orgBuildDept();
-  setTimeout(() => orgShowToast('Klik nama untuk melihat detail tugas & jabatan'), 800);
 });
 /* ============================================================
-   AKHIR SNIPPET script.js
+   Akhir modul struktur organisasi
    ============================================================ */
 

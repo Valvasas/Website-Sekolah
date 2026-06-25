@@ -8,6 +8,37 @@ const { authenticate, authorize } = require('../middleware/auth');
 const getDB   = require('../config/database');
 
 const STAFF = ['tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'];
+const VALID_JALUR = ['Zonasi', 'Prestasi', 'Afirmasi'];
+const VALID_STATUS = ['pending','diterima','ditolak','cadangan'];
+
+function cleanText(value, max = 160) {
+    if (value === undefined || value === null) return null;
+    return String(value).replace(/[<>]/g, '').trim().slice(0, max) || null;
+}
+
+function cleanNisn(value) {
+    const text = String(value || '').replace(/\D/g, '').slice(0, 10);
+    return text.length === 10 ? text : null;
+}
+
+function cleanPhone(value) {
+    const text = String(value || '').replace(/[^\d+]/g, '').slice(0, 16);
+    return /^(\+62|62|0)\d{8,13}$/.test(text) ? text : null;
+}
+
+function cleanDate(value) {
+    const text = String(value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+    const time = new Date(`${text}T00:00:00Z`).getTime();
+    return Number.isFinite(time) ? text : null;
+}
+
+function cleanDistance(value) {
+    if (value === undefined || value === null || value === '') return null;
+    const num = Number(value);
+    if (!Number.isFinite(num)) return null;
+    return Math.max(0, Math.min(num, 999)).toFixed(2);
+}
 
 /* Generate nomor pendaftaran: PPDB-2026-XXXX */
 function genNomor() {
@@ -21,15 +52,30 @@ router.post('/', async (req, res) => {
     try {
         const db  = getDB();
         const now = new Date().toISOString();
-        const {
-            jalur, nama_lengkap, nisn, tempat_lahir, tanggal_lahir,
-            jenis_kelamin, asal_sekolah, jurusan_pilihan,
-            nama_ayah, pekerjaan_ayah, nama_ibu, pekerjaan_ibu,
-            no_hp, alamat, jarak_km,
-        } = req.body;
+        const jalur = cleanText(req.body.jalur, 40);
+        const nama_lengkap = cleanText(req.body.nama_lengkap, 120);
+        const nisn = cleanNisn(req.body.nisn);
+        const tempat_lahir = cleanText(req.body.tempat_lahir, 80);
+        const tanggal_lahir = cleanDate(req.body.tanggal_lahir);
+        const jenis_kelamin = cleanText(req.body.jenis_kelamin, 20);
+        const asal_sekolah = cleanText(req.body.asal_sekolah, 120);
+        const jurusan_pilihan = cleanText(req.body.jurusan_pilihan, 120);
+        const nama_ayah = cleanText(req.body.nama_ayah, 120);
+        const pekerjaan_ayah = cleanText(req.body.pekerjaan_ayah, 100);
+        const nama_ibu = cleanText(req.body.nama_ibu, 120);
+        const pekerjaan_ibu = cleanText(req.body.pekerjaan_ibu, 100);
+        const no_hp = cleanPhone(req.body.no_hp);
+        const alamat = cleanText(req.body.alamat, 400);
+        const jarak_km = cleanDistance(req.body.jarak_km);
 
-        if (!jalur || !nama_lengkap || !no_hp) {
-            return res.status(400).json({ success:false, message:'jalur, nama_lengkap, no_hp wajib diisi.' });
+        if (!VALID_JALUR.includes(jalur) || !nama_lengkap || !no_hp) {
+            return res.status(400).json({ success:false, message:'Jalur, nama lengkap, dan nomor HP valid wajib diisi.' });
+        }
+        if (req.body.nisn && !nisn) {
+            return res.status(400).json({ success:false, message:'NISN harus 10 digit angka.' });
+        }
+        if (req.body.tanggal_lahir && !tanggal_lahir) {
+            return res.status(400).json({ success:false, message:'Tanggal lahir tidak valid.' });
         }
 
         const id           = uuidv4();
@@ -40,12 +86,12 @@ router.post('/', async (req, res) => {
              jenis_kelamin,asal_sekolah,jurusan_pilihan,nama_ayah,pekerjaan_ayah,
              nama_ibu,pekerjaan_ibu,no_hp,alamat,jarak_km,status,created_at,updated_at)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
-            id, nomor_daftar, jalur, nama_lengkap, nisn||null,
-            tempat_lahir||null, tanggal_lahir||null, jenis_kelamin||null,
-            asal_sekolah||null, jurusan_pilihan||null,
-            nama_ayah||null, pekerjaan_ayah||null,
-            nama_ibu||null, pekerjaan_ibu||null,
-            no_hp, alamat||null, jarak_km||null,
+            id, nomor_daftar, jalur, nama_lengkap, nisn,
+            tempat_lahir, tanggal_lahir, jenis_kelamin,
+            asal_sekolah, jurusan_pilihan,
+            nama_ayah, pekerjaan_ayah,
+            nama_ibu, pekerjaan_ibu,
+            no_hp, alamat, jarak_km,
             'pending', now, now
         );
 
@@ -55,7 +101,8 @@ router.post('/', async (req, res) => {
             data    : { nomor_daftar, status: 'pending' },
         });
     } catch(e) {
-        res.status(500).json({ success:false, message:e.message });
+        console.error('[PPDB create]', e.message);
+        res.status(500).json({ success:false, message:'Gagal menyimpan pendaftaran.' });
     }
 });
 
@@ -63,8 +110,10 @@ router.post('/', async (req, res) => {
 router.get('/cek', (req, res) => {
     try {
         const db    = getDB();
-        const nomor = req.query.nomor?.trim();
-        if (!nomor) return res.status(400).json({ success:false, message:'Nomor pendaftaran wajib.' });
+        const nomor = cleanText(req.query.nomor, 32);
+        if (!/^PPDB-\d{4}-[A-Z0-9]{6}$/.test(nomor || '')) {
+            return res.status(400).json({ success:false, message:'Nomor pendaftaran tidak valid.' });
+        }
 
         const row = db.prepare(
             `SELECT nomor_daftar,nama_lengkap,jalur,jurusan_pilihan,status,catatan,created_at
@@ -75,7 +124,8 @@ router.get('/cek', (req, res) => {
 
         res.json({ success:true, data: row });
     } catch(e) {
-        res.status(500).json({ success:false, message:e.message });
+        console.error('[PPDB cek]', e.message);
+        res.status(500).json({ success:false, message:'Gagal mengecek pendaftaran.' });
     }
 });
 
@@ -83,16 +133,16 @@ router.get('/cek', (req, res) => {
 router.get('/', authenticate, authorize(...STAFF), (req, res) => {
     try {
         const db     = getDB();
-        const status = req.query.status;
-        const jalur  = req.query.jalur;
+        const status = cleanText(req.query.status, 20);
+        const jalur  = cleanText(req.query.jalur, 40);
         const page   = parseInt(req.query.page) || 1;
         const limit  = parseInt(req.query.limit) || 20;
         const offset = (page-1)*limit;
 
         let sql    = 'SELECT * FROM ppdb_pendaftaran WHERE 1=1';
         const params = [];
-        if (status) { sql += ' AND status=?'; params.push(status); }
-        if (jalur)  { sql += ' AND jalur=?';  params.push(jalur); }
+        if (status && VALID_STATUS.includes(status)) { sql += ' AND status=?'; params.push(status); }
+        if (jalur && VALID_JALUR.includes(jalur))  { sql += ' AND jalur=?';  params.push(jalur); }
         sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
         params.push(limit, offset);
 
@@ -101,7 +151,8 @@ router.get('/', authenticate, authorize(...STAFF), (req, res) => {
 
         res.json({ success:true, data:rows, total, page, limit });
     } catch(e) {
-        res.status(500).json({ success:false, message:e.message });
+        console.error('[PPDB list]', e.message);
+        res.status(500).json({ success:false, message:'Gagal mengambil data PPDB.' });
     }
 });
 
@@ -110,18 +161,19 @@ router.patch('/:id/status', authenticate, authorize(...STAFF), (req, res) => {
     try {
         const db  = getDB();
         const now = new Date().toISOString();
-        const { status, catatan } = req.body;
-        const valid = ['pending','diterima','ditolak','cadangan'];
-        if (!valid.includes(status)) {
+        const status = cleanText(req.body.status, 20);
+        const catatan = cleanText(req.body.catatan, 500);
+        if (!VALID_STATUS.includes(status)) {
             return res.status(400).json({ success:false, message:'Status tidak valid.' });
         }
 
         db.prepare('UPDATE ppdb_pendaftaran SET status=?,catatan=?,updated_at=? WHERE id=?')
-          .run(status, catatan||null, now, req.params.id);
+          .run(status, catatan, now, req.params.id);
 
         res.json({ success:true, message:'Status pendaftaran diperbarui.' });
     } catch(e) {
-        res.status(500).json({ success:false, message:e.message });
+        console.error('[PPDB status]', e.message);
+        res.status(500).json({ success:false, message:'Gagal memperbarui status PPDB.' });
     }
 });
 
@@ -132,7 +184,8 @@ router.delete('/:id', authenticate, authorize('super_admin'), (req, res) => {
         db.prepare('DELETE FROM ppdb_pendaftaran WHERE id=?').run(req.params.id);
         res.json({ success:true, message:'Data pendaftaran dihapus.' });
     } catch(e) {
-        res.status(500).json({ success:false, message:e.message });
+        console.error('[PPDB delete]', e.message);
+        res.status(500).json({ success:false, message:'Gagal menghapus data PPDB.' });
     }
 });
 

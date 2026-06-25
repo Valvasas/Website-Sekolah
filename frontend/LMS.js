@@ -4,9 +4,7 @@
    ===================================================== */
 'use strict';
 
-const API = window.location.hostname === 'localhost'
-    ? 'http://localhost:3001/api'
-    : '/api';
+const API = window.location.protocol === 'file:' ? 'http://localhost:3001/api' : '/api';
 
 /* ── Auth helper (dari auth-guard.js) ──────────────────────── */
 function getToken() {
@@ -19,12 +17,40 @@ function getUser()  {
     try { return JSON.parse(localStorage.getItem('studentUserData') || localStorage.getItem('smkn_user') || localStorage.getItem('userData') || 'null'); } catch { return null; }
 }
 
+function syncLmsSession(user, token = '') {
+    if (!user) return;
+    lmsState.user = user;
+    localStorage.setItem('userRole', user.role || 'siswa');
+    localStorage.setItem('userData', JSON.stringify(user));
+    localStorage.setItem('smkn_user', JSON.stringify(user));
+    if (['siswa','wali_murid','calon_siswa'].includes(user.role)) {
+        localStorage.setItem('studentUserData', JSON.stringify(user));
+        if (token) localStorage.setItem('studentAccessToken', token);
+    } else if (['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin','content_admin'].includes(user.role)) {
+        localStorage.setItem('adminUserData', JSON.stringify(user));
+        if (token) localStorage.setItem('adminAccessToken', token);
+    }
+}
+
+function redirectToMainLogin(message = 'Silakan login dulu untuk membuka LMS.') {
+    window.location.replace('/login.html?msg=' + encodeURIComponent(message));
+}
+
+function authHeaders(extra = {}) {
+    const token = getToken();
+    return {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...extra,
+    };
+}
+
 async function apiFetch(endpoint, opts = {}) {
     const res = await fetch(`${API}${endpoint}`, {
         ...opts,
+        credentials: 'include',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getToken()}`,
+            ...authHeaders(),
             ...(opts.headers || {}),
         },
     });
@@ -33,6 +59,34 @@ async function apiFetch(endpoint, opts = {}) {
         throw new Error('Sesi berakhir.');
     }
     return res.json();
+}
+
+async function resolveLmsSession() {
+    if (window.__edugate?.user) {
+        syncLmsSession(window.__edugate.user, window.__edugate.token || '');
+        return window.__edugate.user;
+    }
+
+    const cachedUser = getUser();
+    const token = getToken();
+    if (cachedUser && token) {
+        syncLmsSession(cachedUser, token);
+        return cachedUser;
+    }
+
+    try {
+        const res = await fetch(`${API}/auth/check`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            credentials: 'include',
+            cache: 'no-store',
+        });
+        const json = await res.json();
+        if (!json.success || !json.user) return null;
+        syncLmsSession(json.user, token);
+        return json.user;
+    } catch {
+        return cachedUser && token ? cachedUser : null;
+    }
 }
 
 /* ── State ──────────────────────────────────────────────────── */
@@ -62,6 +116,8 @@ const lmsState = {
     staffDetail:    null,
     staffSelectedNisn: null,
     staffFetchTimer: null,
+    materiVisibleCount: 10,
+    materiQuery: '',
 };
 
 const LMS_FEATURES = {
@@ -164,77 +220,6 @@ function setLoading(el, loading, text = '') {
     else if (text) el.innerHTML = text;
 }
 
-/* ── Login ──────────────────────────────────────────────────── */
-const lfToggle = document.getElementById('lf-toggle');
-if (lfToggle) {
-    lfToggle.addEventListener('click', () => {
-        const inp = document.getElementById('lf-pass');
-        const icon = lfToggle.querySelector('i');
-        inp.type = inp.type === 'password' ? 'text' : 'password';
-        icon.className = inp.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
-    });
-}
-
-async function lmsLogin() {
-    const user    = document.getElementById('lf-user').value.trim();
-    const pass    = document.getElementById('lf-pass').value.trim();
-    const role    = document.querySelector('.role-btn.active')?.dataset?.role || 'siswa';
-    const err     = document.getElementById('lms-err');
-    const errMsg  = document.getElementById('lms-err-msg');
-    const btn     = document.querySelector('.lms-login-btn');
-
-    if (!user || !pass) {
-        errMsg.textContent = 'Harap isi semua kolom.';
-        err.classList.remove('hidden');
-        return;
-    }
-
-    setLoading(btn, true);
-    err.classList.add('hidden');
-
-    try {
-        const data = await apiFetch('/auth/login', {
-            method: 'POST',
-            body: JSON.stringify({ identifier: user, password: pass, role }),
-        });
-
-        if (!data.success) {
-            errMsg.textContent = data.message || 'Login gagal.';
-            err.classList.remove('hidden');
-            return;
-        }
-
-        // Simpan token
-        localStorage.setItem('accessToken', data.data.accessToken);
-        localStorage.setItem('refreshToken', data.data.refreshToken);
-        localStorage.setItem('userRole', data.data.user.role);
-        localStorage.setItem('userData', JSON.stringify(data.data.user));
-
-        lmsState.user = data.data.user;
-        err.classList.add('hidden');
-        await initDashboard();
-        showLmsScreen('lms-dashboard');
-        openInitialHashPage();
-
-    } catch (e) {
-        errMsg.textContent = 'Koneksi gagal. Pastikan server berjalan.';
-        err.classList.remove('hidden');
-    } finally {
-        setLoading(btn, false, '<i class="fas fa-sign-in-alt"></i> Masuk ke LMS');
-    }
-}
-
-function setRole(role, btn) {
-    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const label = document.getElementById('lf-label-user');
-    if (label) label.innerHTML = role === 'siswa'
-        ? '<i class="fas fa-id-card"></i> NISN'
-        : '<i class="fas fa-envelope"></i> Email';
-    const inp = document.getElementById('lf-user');
-    if (inp) inp.placeholder = role === 'siswa' ? 'Masukkan NISN kamu' : 'Masukkan email akun sekolah';
-}
-
 /* ── Init Dashboard (fetch semua data dari API) ─────────────── */
 async function initDashboard() {
     const u = lmsState.user || getUser();
@@ -262,21 +247,24 @@ async function initDashboard() {
         });
     }
 
-    // Fetch semua data paralel agar lebih cepat
+    const isStaff = canEditBiodata();
+    const isStudent = lmsState.user?.role === 'siswa';
+
+    // Fetch data paralel sesuai workflow role agar request dan state tidak campur.
     await Promise.allSettled([
         fetchDashboardStats(),
         fetchTugas(),
         fetchMateri(),
         fetchForum(),
         fetchPrivateContacts(),
-        fetchNilai(),
-        fetchJadwal(),
+        (isStaff || isStudent) ? fetchNilai() : Promise.resolve(),
+        isStudent ? fetchJadwal() : Promise.resolve(),
         fetchNotifikasi(),
-        fetchStudentCbtSessions(),
+        isStudent ? fetchStudentCbtSessions() : Promise.resolve(),
         fetchProfil(),
         loadSchoolClasses(),
-        fetchStaffStudents(),
-        fetchTaskProgress(),
+        isStaff ? fetchStaffStudents() : Promise.resolve(),
+        isStaff ? fetchTaskProgress() : Promise.resolve(),
     ]);
 
     await fetchKelas();
@@ -285,14 +273,19 @@ async function initDashboard() {
 
 function openInitialHashPage() {
     const target = (location.hash || '').replace('#', '').trim();
-    const allowed = ['beranda','kelas','tugas','materi','forum','nilai','profil','kantin','staff'];
-    if (!target || !allowed.includes(target)) return;
-    if (target === 'staff' && !canEditBiodata()) return;
-    navigate(target, document.querySelector(`[data-page="${target}"]`));
+    const page = normalizeWorkflowPage(target || getDefaultWorkflowPage());
+    navigate(page, document.querySelector(`[data-page="${page}"]`));
 }
 
 /* ── Fetch: Dashboard stats ─────────────────────────────────── */
 async function fetchDashboardStats() {
+    if (canEditBiodata() && !lmsState.user?.nisn) {
+        ['sc-nilai', 'sc-kehadiran'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '-';
+        });
+        return;
+    }
     try {
         const data = await apiFetch('/siswa/dashboard');
         if (!data.success) return;
@@ -304,7 +297,7 @@ async function fetchDashboardStats() {
 
         // Update stat cards
         const statMap = {
-            'sc-nilai':    d.nilai_stats?.jumlah ? Number(d.nilai_stats.rata || 0).toFixed(1) : '-',
+            'sc-nilai':    canEditBiodata() && d.nilai_stats?.jumlah ? Number(d.nilai_stats.rata || 0).toFixed(1) : '-',
             'sc-kehadiran': d.persen_hadir !== undefined ? `${d.persen_hadir}%` : '-',
         };
         Object.entries(statMap).forEach(([id, val]) => {
@@ -346,6 +339,31 @@ function canEditProfileBiodata() {
     return canEditBiodata() || lmsState.user?.role === 'siswa';
 }
 
+const LMS_PAGE_IDS = ['beranda','kelas','tugas','materi','forum','nilai','profil','kantin','staff'];
+
+function getDefaultWorkflowPage() {
+    return canEditBiodata() ? 'staff' : 'beranda';
+}
+
+function canOpenWorkflowPage(pageId) {
+    const role = lmsState.user?.role || '';
+    const isStaff = canEditBiodata();
+    const isStudent = role === 'siswa';
+    const isWali = role === 'wali_murid';
+
+    if (!LMS_PAGE_IDS.includes(pageId)) return false;
+    if (pageId === 'staff') return isStaff;
+    if (pageId === 'nilai') return isStaff || isStudent;
+    if (pageId === 'kelas') return isStudent;
+    if (pageId === 'kantin') return isStudent && LMS_FEATURES.kantin;
+    if (pageId === 'forum') return !isWali && LMS_FEATURES.forumChat;
+    return true;
+}
+
+function normalizeWorkflowPage(pageId) {
+    return canOpenWorkflowPage(pageId) ? pageId : getDefaultWorkflowPage();
+}
+
 function toggleCbtNav() {
     document.getElementById('snav-cbt-menu')?.classList.toggle('open');
 }
@@ -367,15 +385,19 @@ function configureDashboardForRole() {
     const isStudent = role === 'siswa';
     document.body.classList.toggle('staff-mode', staff);
     document.querySelectorAll('.staff-only').forEach(el => el.classList.toggle('hidden', !staff));
+    document.querySelectorAll('.student-only').forEach(el => el.classList.toggle('hidden', !isStudent));
+    document.querySelectorAll('[data-page="nilai"]').forEach(el => el.classList.toggle('hidden', !staff && !isStudent));
     document.querySelectorAll('[data-page="forum"]').forEach(el => el.classList.toggle('hidden', isWali || !LMS_FEATURES.forumChat));
     document.querySelectorAll('[data-page="kantin"]').forEach(el => el.classList.toggle('hidden', !isStudent || !LMS_FEATURES.kantin));
-    document.querySelectorAll('[data-page="kelas"]').forEach(el => el.classList.toggle('hidden', isWali));
+    document.querySelectorAll('[data-page="kelas"]').forEach(el => el.classList.toggle('hidden', !isStudent));
     document.querySelectorAll('[onclick*="chooseForumAttachment"][onclick*="video"]').forEach(el => el.classList.toggle('hidden', !LMS_FEATURES.forumVideoAttachment));
     document.querySelectorAll('[onclick*="chooseForumAttachment"][onclick*="audio"]').forEach(el => el.classList.toggle('hidden', !LMS_FEATURES.forumAudioAttachment));
     document.querySelectorAll('[onclick*="chooseKantinChatAttachment"][onclick*="video"]').forEach(el => el.classList.toggle('hidden', !LMS_FEATURES.forumVideoAttachment));
     document.querySelectorAll('[onclick*="chooseKantinChatAttachment"][onclick*="audio"]').forEach(el => el.classList.toggle('hidden', !LMS_FEATURES.forumAudioAttachment));
     document.querySelectorAll('#forum-vn-btn').forEach(el => el.classList.toggle('hidden', !LMS_FEATURES.forumVoiceNote));
     document.querySelectorAll('[onclick*="chooseStaffMateriAttachment"][onclick*="video"]').forEach(el => el.classList.toggle('hidden', !LMS_FEATURES.localVideoUpload));
+    const nilaiLabel = document.getElementById('sc-nilai-label');
+    if (nilaiLabel) nilaiLabel.textContent = staff ? 'Rata-rata Nilai' : 'CBT Siap';
 
     const welcome = document.querySelector('.wb-text p');
     if (welcome) {
@@ -387,13 +409,21 @@ function configureDashboardForRole() {
     const roleLabels = {
         kelas: staff ? 'Kelas / Siswa' : 'Kelas Saya',
         tugas: staff ? 'Tugas Kelas' : 'Tugas',
-        nilai: staff ? 'Nilai Siswa' : 'Nilai Saya',
+        nilai: isStudent ? 'Nilai Saya' : 'Nilai Siswa',
         profil: staff ? 'Profil Siswa' : isWali ? 'Profil Anak' : 'Profil & Biodata',
     };
     Object.entries(roleLabels).forEach(([page, label]) => {
         const span = document.querySelector(`[data-page="${page}"] span`);
         if (span) span.textContent = label;
     });
+    const nilaiTitle = document.getElementById('nilai-page-title');
+    const nilaiCopy = document.getElementById('nilai-page-copy');
+    if (nilaiTitle) nilaiTitle.textContent = isStudent ? 'Nilai & E-Rapor Saya' : 'Rapor & Rekap Nilai';
+    if (nilaiCopy) {
+        nilaiCopy.textContent = isStudent
+            ? 'Lihat rincian nilai setiap mata pelajaran dan cetak E-Rapor resmi saat data sudah tersedia.'
+            : 'Pantau rekapitulasi nilai, validasi komponen penilaian, dan cetak E-Rapor siswa terpilih.';
+    }
     document.getElementById('forum-kelas')?.classList.toggle('hidden', !(staff && lmsState.forumScope === 'class'));
 }
 
@@ -446,6 +476,9 @@ function renderProfil() {
         return;
     }
     const p = data.profil || {};
+    const viewingOwnProfile = data.id === lmsState.user?.id || (!staffEditable && data.nisn === lmsState.user?.nisn);
+    document.getElementById('profile-photo-button')?.classList.toggle('hidden', !viewingOwnProfile);
+    document.getElementById('profile-photo-hint')?.classList.toggle('hidden', !viewingOwnProfile);
 
     setText('profile-name', data.nama_lengkap || data.nama || '-');
     setText('profile-meta', `${data.role || 'siswa'}${p.kelas ? ' · ' + p.kelas : ''}`);
@@ -459,7 +492,8 @@ function renderProfil() {
         const el = document.getElementById(id);
         if (!el) return;
         el.textContent = avatarText;
-        if (data.foto_profil) el.style.backgroundImage = `url(${data.foto_profil})`;
+        el.style.backgroundImage = data.foto_profil ? `url(${data.foto_profil})` : '';
+        el.classList.toggle('has-photo', Boolean(data.foto_profil));
     });
     document.getElementById('pd-name').textContent = data.nama_lengkap || data.nama || '-';
 
@@ -480,6 +514,16 @@ function renderProfil() {
     setVal('pf-pekerjaan-ibu', p.pekerjaan_ibu);
     setVal('pf-hp-ortu', p.no_hp_ortu);
     setVal('pf-email-ortu', p.email_ortu);
+    const requiredValues = [
+        data.email, data.no_hp, p.kelas, p.tempat_lahir, p.tanggal_lahir,
+        p.jenis_kelamin, p.agama, p.alamat, p.kelurahan, p.kecamatan,
+        p.nama_ayah, p.pekerjaan_ayah, p.nama_ibu, p.pekerjaan_ibu,
+        p.no_hp_ortu, p.email_ortu,
+    ];
+    const completeness = Math.round((requiredValues.filter(Boolean).length / requiredValues.length) * 100);
+    setText('profile-complete-label', `${completeness}%`);
+    const completenessBar = document.getElementById('profile-complete-bar');
+    if (completenessBar) completenessBar.style.width = `${completeness}%`;
 
     const lock = document.getElementById('biodata-lock');
     if (lock) {
@@ -496,6 +540,56 @@ function renderProfil() {
         });
     const jurusanInput = document.getElementById('pf-jurusan');
     if (jurusanInput) jurusanInput.disabled = true;
+}
+
+async function uploadProfilePhoto(input) {
+    const file = input?.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg','image/png','image/webp'].includes(file.type)) {
+        input.value = '';
+        return showToast('Foto harus berformat JPG, PNG, atau WEBP.', 'red');
+    }
+    if (file.size > 1024 * 1024) {
+        input.value = '';
+        return showToast('Ukuran foto maksimal 1MB.', 'red');
+    }
+    const button = document.getElementById('profile-photo-button');
+    button?.classList.add('loading');
+    const form = new FormData();
+    form.append('foto', file);
+    try {
+        const response = await fetch(`${API}/upload/profil`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: authHeaders(),
+            body: form,
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || 'Upload gagal.');
+        const fileUrl = data.data.fileUrl;
+        lmsState.user = { ...lmsState.user, foto: fileUrl, foto_profil: fileUrl };
+        syncLmsSession(lmsState.user, getToken());
+        if (lmsState.profileData) lmsState.profileData.foto_profil = fileUrl;
+        renderProfil();
+        applyUserAvatar(fileUrl);
+        showToast('Foto profil berhasil diperbarui di LMS, CBT, dan Kantinku.', 'green');
+    } catch (error) {
+        showToast(error.message || 'Gagal mengunggah foto profil.', 'red');
+    } finally {
+        button?.classList.remove('loading');
+        input.value = '';
+    }
+}
+
+function applyUserAvatar(url = '') {
+    const name = lmsState.user?.nama || lmsState.user?.nama_lengkap || 'S';
+    ['tb-avatar-circle','pd-avatar','fc-avatar','profile-avatar'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = name.charAt(0).toUpperCase();
+        el.style.backgroundImage = url ? `url(${url})` : '';
+        el.classList.toggle('has-photo', Boolean(url));
+    });
 }
 
 async function saveProfil(event) {
@@ -631,7 +725,7 @@ function renderStaffStudents(pagination = {}) {
         const initials = (s.nama_lengkap || 'S').split(' ').slice(0,2).map(w => w.charAt(0)).join('').toUpperCase();
         return `
             <button class="staff-student-row ${lmsState.staffSelectedNisn === s.nisn ? 'active' : ''}" onclick="openStaffStudent('${escHtml(s.nisn)}')">
-                <span class="staff-avatar">${initials}</span>
+                <span class="staff-avatar" style="${s.foto_profil ? `background-image:url('${escAttr(s.foto_profil)}')` : ''}">${s.foto_profil ? '' : initials}</span>
                 <span class="staff-row-main">
                     <strong>${escHtml(s.nama_lengkap || '-')}</strong>
                     <small>${escHtml(s.nisn || '-')} · ${escHtml(s.kelas || 'Kelas belum diisi')}</small>
@@ -686,6 +780,11 @@ function renderStaffStudentDetail(data) {
     const avg = gradeSummary ? gradeSummary.avg : '-';
     setText('staff-detail-name', s.nama_lengkap || '-');
     setText('staff-detail-meta', `${s.nisn || '-'} · ${s.kelas || 'Kelas belum diisi'} · ${s.jurusan || '-'}`);
+    const detailAvatar = document.getElementById('staff-detail-avatar');
+    if (detailAvatar) {
+        detailAvatar.textContent = s.foto_profil ? '' : (s.nama_lengkap || 'S').charAt(0).toUpperCase();
+        detailAvatar.style.backgroundImage = s.foto_profil ? `url(${s.foto_profil})` : '';
+    }
     document.getElementById('staff-detail-quick').innerHTML = `
         <span><strong>${avg}</strong><small>Rata nilai</small></span>
         <span><strong>${hadir.hadir || 0}</strong><small>Hadir</small></span>
@@ -693,8 +792,8 @@ function renderStaffStudentDetail(data) {
         <span><strong>${cbt.length}</strong><small>CBT</small></span>
     `;
     document.getElementById('staff-detail-body').innerHTML = `
-        <div class="staff-detail-section">
-            <h4>Rekap Nilai Lengkap</h4>
+        <details class="staff-detail-section staff-detail-fold" open>
+            <summary><span>Rekap Nilai Lengkap</span><small>${nilai.length} mata pelajaran</small></summary>
             ${gradeSummary ? `
                 <div class="staff-grade-summary">
                     <span><strong>${gradeSummary.avg}</strong><small>Rata-rata</small></span>
@@ -704,15 +803,15 @@ function renderStaffStudentDetail(data) {
                 </div>
             ` : '<p class="staff-empty">Belum ada nilai.</p>'}
             ${nilai.map(n => `<div class="staff-mini-row"><span>${escHtml(n.mapel)} · ${escHtml(n.semester)} · KKM ${escHtml(n.kkm ?? 70)}</span><strong>${escHtml(n.nilai_final ?? '-')}</strong></div>`).join('')}
-        </div>
-        <div class="staff-detail-section">
-            <h4>Tugas Dikumpulkan</h4>
+        </details>
+        <details class="staff-detail-section staff-detail-fold">
+            <summary><span>Tugas Dikumpulkan</span><small>${tugas.length} submission</small></summary>
             ${tugas.slice(0, 5).map(t => `<div class="staff-mini-row"><span>${escHtml(t.judul || 'Tugas')} · ${formatRelativeTime(t.submitted_at)}</span><strong>${escHtml(t.nilai ?? t.status ?? '-')}</strong></div>`).join('') || '<p class="staff-empty">Belum ada submission tugas.</p>'}
-        </div>
-        <div class="staff-detail-section">
-            <h4>Histori CBT</h4>
+        </details>
+        <details class="staff-detail-section staff-detail-fold">
+            <summary><span>Histori CBT</span><small>${cbt.length} ujian</small></summary>
             ${cbt.slice(0, 5).map(c => `<div class="staff-mini-row"><span>${escHtml(c.exam_title || c.mapel || 'CBT')} · ${formatRelativeTime(c.selesai_at)}</span><strong>${escHtml(c.nilai ?? '-')}</strong></div>`).join('') || '<p class="staff-empty">Belum ada histori CBT.</p>'}
-        </div>
+        </details>
         <div class="staff-detail-section" style="margin-top:15px; border-top:1px solid var(--border); padding-top:15px; display:flex; gap:10px;">
             <button class="lms-btn compact" style="flex:1; background:linear-gradient(135deg, #4f46e5, #3b82f6); color:white; border:none; padding:10px 14px; border-radius:8px; font-weight:600; cursor:pointer;" onclick="openStaffStudentRapor('${escHtml(s.nisn)}')">
                 <i class="fas fa-file-invoice"></i> Lihat E-Rapor Siswa
@@ -919,7 +1018,8 @@ async function uploadStaffMateri() {
     try {
         const res = await fetch(`${API}/upload/materi`, {
             method:'POST',
-            headers:{ Authorization:`Bearer ${getToken()}` },
+            credentials: 'include',
+            headers: authHeaders(),
             body:form,
         });
         const json = await res.json();
@@ -1318,7 +1418,8 @@ async function submitTugas() {
 
             const uploadRes = await fetch(`${API}/upload/tugas`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${getToken()}` },
+                credentials: 'include',
+                headers: authHeaders(),
                 body: formData,
             });
             const uploadData = await uploadRes.json();
@@ -1353,6 +1454,8 @@ async function fetchMateri(query = '') {
         const data = await apiFetch(endpoint);
         if (!data.success) return;
         lmsState.allMateri = data.data || [];
+        lmsState.materiQuery = query;
+        lmsState.materiVisibleCount = 10;
         renderMateri();
         renderTodayPriorities();
     } catch(e) { console.warn('[Fetch materi]', e.message); }
@@ -1365,8 +1468,14 @@ function renderMateri() {
         el.innerHTML = '<div class="empty-state"><i class="fas fa-folder-open"></i><strong>Belum ada materi</strong><span>Materi yang diunggah guru akan tampil di sini.</span></div>';
         return;
     }
-    el.innerHTML = lmsState.allMateri.map(m => `
-        <div class="materi-item" onclick="downloadMateri('${m.file_url}', '${escHtml(m.original_name)}')">
+    const rows = lmsState.allMateri.slice(0, lmsState.materiVisibleCount);
+    el.innerHTML = `
+        <div class="materi-summary">
+            <span><strong>${lmsState.allMateri.length}</strong> materi ditemukan</span>
+            <small>${lmsState.materiQuery ? `Hasil pencarian "${escHtml(lmsState.materiQuery)}"` : 'Urut dari materi terbaru'}</small>
+        </div>
+        ${rows.map(m => `
+        <article class="materi-item">
             <div class="mi-icon" style="background:${getFileBg(m.tipe)};">
                 <i class="${getFileIcon(m.tipe)}" style="color:${getFileColor(m.tipe)};"></i>
             </div>
@@ -1377,15 +1486,50 @@ function renderMateri() {
                     <span><i class="fas fa-user-group"></i>${escHtml(m.target_label || 'Materi LMS')}</span>
                     <span><i class="fas fa-hard-drive"></i>${escHtml(m.ukuran || '-')}</span>
                 </div>
-                ${m.deskripsi ? `<p>${escHtml(m.deskripsi)}</p>` : ''}
+                ${m.deskripsi ? `<p class="line-clamp-2">${escHtml(m.deskripsi)}</p>` : ''}
             </div>
             <span class="mi-type ${m.tipe}">${m.jenis}</span>
-            <i class="fas fa-download mi-dl"></i>
-        </div>
-    `).join('');
+            <div class="materi-actions">
+                <button type="button" onclick="openMateriDetail('${escAttr(m.id)}')"><i class="fas fa-eye"></i> Detail</button>
+                <button type="button" class="primary" onclick="downloadMateri('${escAttr(m.file_url)}', '${escAttr(m.original_name)}')"><i class="fas fa-arrow-up-right-from-square"></i> Buka</button>
+            </div>
+        </article>`).join('')}
+        ${lmsState.allMateri.length > rows.length ? `
+            <button class="load-more-button" type="button" onclick="showMoreMateri()">
+                <i class="fas fa-chevron-down"></i> Lihat ${Math.min(10, lmsState.allMateri.length - rows.length)} materi berikutnya
+            </button>` : ''}
+    `;
 }
 
 function searchMateri(query) { fetchMateri(query); }
+
+function showMoreMateri() {
+    lmsState.materiVisibleCount += 10;
+    renderMateri();
+}
+
+function openMateriDetail(id) {
+    const materi = lmsState.allMateri.find(item => String(item.id) === String(id));
+    if (!materi) return;
+    document.getElementById('modal-kelas-title').textContent = materi.title || materi.original_name || 'Detail Materi';
+    document.getElementById('modal-kelas-body').innerHTML = `
+        <div class="material-detail-sheet">
+            <div class="material-detail-icon" style="background:${getFileBg(materi.tipe)}"><i class="${getFileIcon(materi.tipe)}" style="color:${getFileColor(materi.tipe)}"></i></div>
+            <div>
+                <span class="status-pill info">${escHtml(materi.jenis || materi.tipe || 'File')}</span>
+                <h3>${escHtml(materi.title || materi.original_name)}</h3>
+                <p>${escHtml(materi.deskripsi || 'Tidak ada deskripsi tambahan untuk materi ini.')}</p>
+                <dl>
+                    <div><dt>Mata pelajaran</dt><dd>${escHtml(materi.mapel || '-')}</dd></div>
+                    <div><dt>Target</dt><dd>${escHtml(materi.target_label || 'Materi LMS')}</dd></div>
+                    <div><dt>Ukuran</dt><dd>${escHtml(materi.ukuran || '-')}</dd></div>
+                    <div><dt>Diunggah</dt><dd>${formatRelativeTime(materi.created_at)}</dd></div>
+                </dl>
+                <button class="lms-submit-btn" onclick="downloadMateri('${escAttr(materi.file_url)}','${escAttr(materi.original_name)}')"><i class="fas fa-arrow-up-right-from-square"></i> Buka Materi</button>
+            </div>
+        </div>`;
+    openModal('modal-kelas');
+}
 
 function downloadMateri(url, nama) {
     if (!url) return showToast('URL file tidak valid.', 'red');
@@ -1686,7 +1830,8 @@ async function uploadForumAttachment() {
     form.append('entity_type', 'forum_posts');
     const res = await fetch(`${API}/upload/forum`, {
         method: 'POST',
-        headers: { Authorization:`Bearer ${getToken()}` },
+        credentials: 'include',
+        headers: authHeaders(),
         body: form
     });
     const data = await res.json();
@@ -1891,20 +2036,35 @@ function switchNilaiTab(tab) {
 }
 
 async function fetchNilai() {
+    const isStudent = lmsState.user?.role === 'siswa';
+    if (!canEditBiodata() && !isStudent) {
+        lmsState.nilaiData = [];
+        lmsState.raporData = null;
+        return;
+    }
+    if (canEditBiodata() && !lmsState.targetNisn && !lmsState.user?.nisn) {
+        lmsState.nilaiData = [];
+        lmsState.raporData = null;
+        renderNilai();
+        renderRaporPaper();
+        return;
+    }
     await fetchRaporDanNilai();
 }
 
 async function fetchRaporDanNilai() {
     const sem = document.getElementById('nilai-semester-select')?.value || 'genap';
     const thn = document.getElementById('nilai-tahun-select')?.value || '2025/2026';
+    const target = canEditBiodata() ? (lmsState.targetNisn || lmsState.user?.nisn || '') : '';
+    const targetQuery = target ? `&nisn=${encodeURIComponent(target)}` : '';
     try {
-        const resNilai = await apiFetch(`/siswa/nilai?semester=${encodeURIComponent(sem)}`);
+        const resNilai = await apiFetch(`/siswa/nilai?semester=${encodeURIComponent(sem)}${targetQuery}`);
         if (resNilai.success) {
             lmsState.nilaiData = resNilai.data || [];
             renderNilai();
         }
 
-        const resRapor = await apiFetch(`/siswa/rapor?semester=${encodeURIComponent(sem)}&tahun_ajaran=${encodeURIComponent(thn)}`);
+        const resRapor = await apiFetch(`/siswa/rapor?semester=${encodeURIComponent(sem)}&tahun_ajaran=${encodeURIComponent(thn)}${targetQuery}`);
         if (resRapor.success) {
             lmsState.raporData = resRapor.data;
             if (lmsNilaiTab === 'rapor') {
@@ -1937,6 +2097,10 @@ function renderRaporPaper() {
     if (!el) return;
 
     if (!lmsState.raporData) {
+        if (canEditBiodata() && !lmsState.targetNisn && !lmsState.user?.nisn) {
+            el.innerHTML = '<div class="empty-state"><i class="fas fa-user-graduate"></i><strong>Pilih siswa dulu</strong><span>Gunakan Ruang Staff atau masukkan NISN di Profil Siswa untuk memuat E-Rapor.</span></div>';
+            return;
+        }
         el.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><strong>Memuat E-Rapor...</strong></div>';
         return;
     }
@@ -2263,6 +2427,12 @@ function renderStudentCbtSessions() {
     const sessions = lmsState.cbtSessions || [];
     const openCount = sessions.filter(s => s.status === 'open' && !s.used).length;
     if (status) status.textContent = openCount ? `${openCount} sesi siap dikerjakan` : 'Cek sesi ujian aktif';
+    if (!canEditBiodata()) {
+        const stat = document.getElementById('sc-nilai');
+        const label = document.getElementById('sc-nilai-label');
+        if (stat) stat.textContent = String(openCount || 0);
+        if (label) label.textContent = 'CBT Siap';
+    }
     renderTodayPriorities();
     if (!sessions.length) {
         el.innerHTML = '<p style="text-align:center;color:#64748b;padding:20px 0;font-size:.85rem;">Belum ada sesi CBT untuk akun kamu.</p>';
@@ -2329,7 +2499,7 @@ function debouncedFetchKantinProducts() {
 }
 
 /* ── Kantin ku ─────────────────────────────────────────────── */
-const kantinState = { profile: null, seller: null, products: [], orders: [], currentChatOrder: null, currentChat: null, pendingChatAttachment: null, currentProductDetail: null };
+const kantinState = { profile: null, seller: null, products: [], orders: [], currentChatOrder: null, currentChat: null, pendingChatAttachment: null, currentProductDetail: null, orderLimit: 8 };
 
 function switchKantinTab(tab) {
     document.querySelectorAll('[data-kantin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.kantinTab === tab));
@@ -2368,10 +2538,10 @@ async function fetchKantinProducts() {
                 </button>
                 <div class="kantin-info">
                     <strong>${escHtml(p.name)}</strong>
-                    <span>${escHtml(p.description || 'Tanpa deskripsi')}</span>
+                    <span class="line-clamp-2">${escHtml(p.description || 'Tanpa deskripsi')}</span>
                     <small>${escHtml(p.category || 'produk')} ${p.tags ? `· ${escHtml(p.tags)}` : ''}</small>
                     <small class="rating-line">${renderStars(p.avg_rating || 0)} <b>${Number(p.avg_rating || 0).toFixed(1)}</b> (${Number(p.review_count || 0)} review)</small>
-                    <small>Penjual: ${escHtml(p.seller_name || 'Siswa')} ${p.seller_class ? `· ${escHtml(p.seller_class)}` : ''}</small>
+                    <small class="seller-identity">${p.seller_photo ? `<img src="${escAttr(p.seller_photo)}" alt="">` : '<i class="fas fa-user-circle"></i>'} Penjual: ${escHtml(p.seller_name || 'Siswa')} ${p.seller_class ? `· ${escHtml(p.seller_class)}` : ''}</small>
                     ${p.preference_score ? '<small><i class="fas fa-wand-magic-sparkles"></i> Cocok dengan minatmu</small>' : ''}
                 </div>
                 <div class="kantin-foot">
@@ -2476,14 +2646,15 @@ function renderKantinSellerOrders(orders = []) {
         el.innerHTML = '<div class="staff-empty">Belum ada pesanan masuk.</div>';
         return;
     }
-    el.innerHTML = orders.slice(0, 30).map(order => {
+    const visible = orders.slice(0, kantinState.orderLimit);
+    el.innerHTML = visible.map(order => {
         const status = String(order.status || 'pending').toLowerCase();
         const canFinalize = !['completed', 'cancelled'].includes(status);
         return `
             <div class="kantin-order seller-inbox-order">
                 <strong>${escHtml(order.product_name || 'Produk')}</strong>
                 <span>${Number(order.quantity || 1)} item · ${formatRupiah(order.total_price)} · ${escHtml(status)}</span>
-                <small>Pembeli: ${escHtml(order.buyer_name || '-')} ${order.buyer_class ? `· ${escHtml(order.buyer_class)}` : ''}</small>
+                <small class="seller-identity">${order.buyer_photo ? `<img src="${escAttr(order.buyer_photo)}" alt="">` : '<i class="fas fa-user-circle"></i>'} Pembeli: ${escHtml(order.buyer_name || '-')} ${order.buyer_class ? `· ${escHtml(order.buyer_class)}` : ''}</small>
                 <div class="seller-order-actions">
                     <button class="small-action" onclick="openKantinChat('${escAttr(order.id)}')"><i class="fas fa-message"></i> Chat</button>
                     ${canFinalize ? `
@@ -2493,7 +2664,10 @@ function renderKantinSellerOrders(orders = []) {
                 </div>
             </div>
         `;
-    }).join('');
+    }).join('') + (orders.length > visible.length ? `
+        <button class="load-more-button" type="button" onclick="kantinState.orderLimit += 8; renderKantinSellerOrders(kantinState.seller?.orders || [])">
+            <i class="fas fa-chevron-down"></i> Lihat pesanan lainnya (${orders.length - visible.length})
+        </button>` : '');
 }
 
 function renderKantinSellerCharts(dashboard = {}) {
@@ -2716,7 +2890,8 @@ async function uploadKantinImage() {
     try {
         const res = await fetch(`${API}/upload/kantin`, {
             method:'POST',
-            headers:{ Authorization:`Bearer ${getToken()}` },
+            credentials: 'include',
+            headers: authHeaders(),
             body:form
         });
         const data = await res.json();
@@ -3007,7 +3182,8 @@ async function uploadKantinChatAttachment() {
     form.append('entity_type', 'kantin_chats');
     const res = await fetch(`${API}/upload/kantin-chat`, {
         method: 'POST',
-        headers: { Authorization:`Bearer ${getToken()}` },
+        credentials: 'include',
+        headers: authHeaders(),
         body: form
     });
     const data = await res.json();
@@ -3056,6 +3232,11 @@ function normalizePhone(value) {
 
 /* ── Sidebar navigasi ───────────────────────────────────────── */
 function navigate(pageId, btn) {
+    const normalizedPage = normalizeWorkflowPage(pageId);
+    if (normalizedPage !== pageId) {
+        pageId = normalizedPage;
+        btn = document.querySelector(`[data-page="${pageId}"]`);
+    }
     document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.snav-item').forEach(s => s.classList.remove('active'));
     document.getElementById('page-' + pageId)?.classList.add('active');
@@ -3063,8 +3244,8 @@ function navigate(pageId, btn) {
     else document.querySelector(`[data-page="${pageId}"]`)?.classList.add('active');
 
     document.getElementById('tb-page-name').textContent = {
-        beranda:'Beranda', kelas:'Kelas Saya', tugas:'Tugas',
-        materi:'Materi', forum:'Forum Diskusi', nilai:'Nilai Saya',
+        beranda: canEditBiodata() ? 'Ringkasan Staff' : 'Beranda', kelas:'Kelas Saya', tugas: canEditBiodata() ? 'Tugas Kelas' : 'Tugas',
+        materi:'Materi', forum:'Forum Diskusi', nilai: lmsState.user?.role === 'siswa' ? 'Nilai Saya' : 'Nilai Siswa',
         profil:'Profil & Biodata', kantin:'Kantin ku', staff:'Ruang Staff'
     }[pageId] || 'Dashboard';
 
@@ -3082,6 +3263,9 @@ function navigate(pageId, btn) {
     if (pageId === 'staff') {
         fetchStaffStudents().catch(() => {});
         fetchTaskProgress().catch(() => {});
+    }
+    if (pageId === 'nilai') {
+        fetchNilai().catch(() => showToast('Gagal memuat nilai.', 'red'));
     }
     closeSidebar();
     window.scrollTo(0, 0);
@@ -3184,11 +3368,12 @@ async function changePassword() {
 function lmsLogout() {
     // Notify server
     const rt = localStorage.getItem('studentRefreshToken') || localStorage.getItem('smkn_refresh') || localStorage.getItem('refreshToken');
-    if (rt) {
+    {
         fetch(`${API}/auth/logout`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
-            body: JSON.stringify({ refreshToken: rt }),
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify(rt ? { refreshToken: rt } : {}),
         }).catch(() => {});
     }
     const studentToken = localStorage.getItem('studentAccessToken') || localStorage.getItem('smkn_token');
@@ -3302,20 +3487,17 @@ function clearTugasAttachment() {
 }
 
 /* ── Init ───────────────────────────────────────────────────── */
-document.addEventListener('DOMContentLoaded', () => {
-    // Cek apakah sudah login (dari auth-guard atau session sebelumnya)
-    const existingUser = getUser();
-    const token        = getToken();
-
-    if (existingUser && token) {
-        lmsState.user = existingUser;
-        initDashboard().then(() => {
-            showLmsScreen('lms-dashboard');
-            openInitialHashPage();
-        });
-    } else {
-        showLmsScreen('lms-login');
+document.addEventListener('DOMContentLoaded', async () => {
+    const sessionUser = await resolveLmsSession();
+    if (!sessionUser) {
+        redirectToMainLogin('Sesi LMS tidak valid. Silakan login dari portal utama.');
+        return;
     }
+
+    lmsState.user = sessionUser;
+    await initDashboard();
+    showLmsScreen('lms-dashboard');
+    openInitialHashPage();
 
     // Drag & drop untuk file upload
     const drop = document.getElementById('file-drop');

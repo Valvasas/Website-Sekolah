@@ -1,6 +1,4 @@
-// config/database.js — better-sqlite3 wrapper
-// MIGRATION: in-memory SQLite wrapper → better-sqlite3 (direct disk write)
-// API tetap sama persis sehingga tidak perlu ubah route/controller manapun
+// Shared better-sqlite3 connection used by routes and services.
 'use strict';
 
 require('dotenv').config();
@@ -13,7 +11,7 @@ let Database;
 try {
     Database = require('better-sqlite3');
 } catch(e) {
-    console.error('❌ better-sqlite3 tidak ditemukan.');
+    console.error('better-sqlite3 tidak ditemukan.');
     console.error('   Jalankan: npm install better-sqlite3');
     process.exit(1);
 }
@@ -44,34 +42,31 @@ function initDatabase() {
     _db.pragma('cache_size = -32000');       // 32MB cache
     _db.pragma('temp_store = MEMORY');       // Temporary tables di memory
 
-    console.log(`✅ Database terhubung: ${DB_PATH}`);
+    console.log(`Database terhubung: ${DB_PATH}`);
     return _db;
 }
 
-// ── getDB — sama seperti sebelumnya ──────────────────────────────
+// Access is explicit so modules cannot silently create a second connection.
 function getDB() {
     if (!_db) throw new Error('[DB] Belum diinisialisasi. Panggil initDatabase() dahulu.');
     return _db;
 }
 
-// ── saveDB — tidak diperlukan lagi (better-sqlite3 langsung tulis ke disk)
-// Tetap export agar tidak break code lain yang memanggil saveDB()
+// Kept for compatibility with older callers; better-sqlite3 writes synchronously.
 function saveDB() {
     // No-op: better-sqlite3 menulis ke disk secara synchronous otomatis
     // Fungsi ini dibiarkan ada agar tidak perlu ubah server.js
 }
 
-// ── Graceful close ────────────────────────────────────────────────
 function closeDB() {
     if (_db) {
         _db.close();
         _db = null;
-        console.log('✅ Database connection closed.');
+        console.log('Database connection closed.');
     }
 }
 
-// ── Export ────────────────────────────────────────────────────────
-// Untuk backward compatibility: module.exports = getDB (bisa dipanggil langsung)
+// Default export remains callable for compatibility with existing modules.
 module.exports             = getDB;
 module.exports.initDatabase = initDatabase;
 module.exports.saveDB       = saveDB;

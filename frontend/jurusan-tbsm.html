@@ -7,7 +7,7 @@
     <link rel="icon" type="image/png" href="asset/Logo SMK.png">
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,11 +20,11 @@
             <div class="brand-text">
                     <span>SMK NEGERI 1 TERISI</span><small>TERISI</small></div>
             </a>
-            <div class="menu-toggle" id="mobile-menu">
+            <button class="menu-toggle" id="mobile-menu" type="button" aria-label="Buka menu navigasi">
                 <span class="bar"></span>
                 <span class="bar"></span>
                 <span class="bar"></span>
-            </div>
+            </button>
             <ul class="nav-menu">
                 <li><a href="index.html" class="nav-link">Beranda</a></li>
                 <li><a href="akademik.html" class="nav-link active">Akademik</a></li>
@@ -33,7 +33,7 @@
         </div>
     </nav>
 
-    <!-- HERO SECTION OUT OF THE BOX -->
+    <!-- Program hero -->
     <header class="major-hero hero-jurusan hero-tbsm" style="background-image: url('asset/tbsm.jpg');">
         <div class="major-title">Astra Honda Motor</div> <!-- Teks raksasa di background -->
         <div class="container relative">
@@ -122,7 +122,7 @@
             <div class="gallery-4-grid reveal">
                 <!-- Foto 1 (Besar Kiri) -->
                 <div class="g4-item large">
-                    <img src="https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="Praktik Bengkel AHASS">
+                    <img src="asset/bengkel.jpg" alt="Praktik Bengkel AHASS">
                     <div class="g4-overlay">
                         <h3>Fasilitas Bengkel Standar AHASS</h3>
                         <p style="color: #fff;">Area workshop utama dengan hydraulic lift khusus motor</p>
@@ -130,7 +130,7 @@
                 </div>
                 <!-- Foto 2 (Atas Kanan) -->
                 <div class="g4-item">
-                    <img src="https://images.unsplash.com/photo-1574629810360-7efbb1925536?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Praktik Mesin">
+                    <img src="asset/tbsm.jpg" alt="Praktik Mesin">
                     <div class="g4-overlay">
                         <h3>Overhaul Mesin</h3>
                         <p style="color: #fff;">Siswa membedah transmisi</p>
@@ -138,7 +138,7 @@
                 </div>
                 <!-- Foto 3 (Bawah Kanan) -->
                 <div class="g4-item">
-                    <img src="https://images.unsplash.com/photo-1530635398299-4d6f44d9f783?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Diagnosa Digital">
+                    <img src="asset/11.jpeg" alt="Diagnosa Digital">
                     <div class="g4-overlay">
                         <h3>Diagnosa PGM-FI</h3>
                         <p style="color: #fff;">Pengecekan menggunakan scanner digital</p>
@@ -173,7 +173,7 @@
                 <div class="footer-links">
                     <h3 style="color:#fff; margin-bottom: 20px;">Tautan Resmi</h3>
                     <ul>
-                        <!-- FITUR TAMBAHAN: Link EduGate -->
+                        <!-- EduGate link -->
                         <li><a href="https://edugate.smkn1terisi.sch.id" target="_blank" rel="noopener noreferrer">Portal Kedisiplinan (EduGate)</a></li>
                         <li><a href="https://kemdikbud.go.id" target="_blank">Kementerian Pendidikan</a></li>
                         <li><a href="https://dapo.kemdikbud.go.id/" target="_blank">Dapodikdasmen</a></li>
@@ -186,14 +186,14 @@
                 <p>&copy; 2026 SMK Negeri 1 Terisi - Indramayu. Dikembangkan dengan <i class="fas fa-heart" style="color:red;"></i> oleh IT Club SMKN 1 Terisi.</p>
             </div>
         </div>
+    <script src="/security.js"></script>
     <script src="script.js"></script>
     <script>
-        // JS Khusus Halaman Detail Jurusan: Efek Parallax Teks Raksasa
+        // Move the background title more slowly than the page.
         window.addEventListener('scroll', () => {
             const scroll = window.pageYOffset;
             const title = document.querySelector('.major-title');
             if(title) {
-                // Teks raksasa akan bergeser saat di scroll (Parallax effect out of the box)
                 title.style.transform = `rotate(-90deg) translateX(${scroll * 0.5}px)`;
             }
         });

@@ -16,7 +16,7 @@
   'use strict';
 
   /* ── Config ── */
-  const API_BASE   = window.location.hostname === 'localhost'
+  const API_BASE   = window.location.protocol === 'file:'
     ? 'http://localhost:3001' : '';
   const CHECK_URL  = API_BASE + '/api/auth/check';
   const LOGIN_PAGE = '/login.html';
@@ -92,12 +92,12 @@
         || localStorage.getItem('adminRefreshToken')
         || localStorage.getItem('refreshToken')
         || localStorage.getItem('smkn_refresh');
-    if (!rt) return null;
     try {
       const res  = await fetch(API_BASE + '/api/auth/refresh', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ refreshToken: rt })
+        credentials: 'include',
+        body:    JSON.stringify(rt ? { refreshToken: rt } : {})
       });
       const json = await res.json();
       if (json.success && json.data?.accessToken) {
@@ -105,6 +105,7 @@
         localStorage.setItem('smkn_token',  json.data.accessToken);
         return json.data.accessToken;
       }
+      if (json.success) return '__cookie__';
       return null;
     } catch { return null; }
   }
@@ -139,9 +140,7 @@
     setTimeout(() => el.remove(), 350);
   }
 
-  /* ══════════════════════════════════════
-     MAIN GUARD FUNCTION
-  ══════════════════════════════════════ */
+  /* Authentication guard */
   async function guard() {
     const authRequired = getMeta('auth-required');
     if (!authRequired || authRequired !== 'true') return; // public page
@@ -154,14 +153,6 @@
     const overlay = showOverlay();
     let   token   = getToken(allowedRoles);
 
-    /* 1. No token → redirect to login */
-    if (!token) {
-      hideOverlay(overlay);
-      const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
-      window.location.replace(`${LOGIN_PAGE}?msg=Silakan+login+terlebih+dahulu&return=${returnTo}`);
-      return;
-    }
-
     /* 2. Locally expired → try refresh first */
     if (isExpiredLocally(token)) {
       const newToken = await tryRefresh();
@@ -171,13 +162,15 @@
         window.location.replace(`${LOGIN_PAGE}?msg=Sesi+berakhir,+silakan+login+kembali`);
         return;
       }
-      token = newToken;
+      token = newToken === '__cookie__' ? '' : newToken;
     }
 
     /* 3. Verify with server */
     try {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res  = await fetch(CHECK_URL, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
+        credentials: 'include',
         cache:   'no-store',
       });
       const json = await res.json();
@@ -191,6 +184,10 @@
 
       const user = json.user;
       const role = user.role;
+      if (!token) {
+        const refreshed = await tryRefresh();
+        token = refreshed === '__cookie__' ? '' : (refreshed || '');
+      }
 
       /* 4. Role check */
       if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
@@ -210,10 +207,10 @@
       localStorage.setItem('userData', JSON.stringify(user));
       localStorage.setItem('smkn_user', JSON.stringify(user));
       if (['siswa','wali_murid','calon_siswa'].includes(role)) {
-        localStorage.setItem('studentAccessToken', token);
+        if (token) localStorage.setItem('studentAccessToken', token);
         localStorage.setItem('studentUserData', JSON.stringify(user));
       } else if (['super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha'].includes(role)) {
-        localStorage.setItem('adminAccessToken', token);
+        if (token) localStorage.setItem('adminAccessToken', token);
         localStorage.setItem('adminUserData', JSON.stringify(user));
       }
 

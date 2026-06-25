@@ -9,7 +9,9 @@ const getDB    = require('../config/database');
 const { findSchoolClass } = require('../utils/schoolClasses');
 
 const STAFF = ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'];
+const PROFILE_STAFF = ['tata_usaha','kepala_sekolah','wakil_kepala_sekolah','content_admin','super_admin'];
 const isStaffRole = (role) => STAFF.includes(role);
+const isProfileStaffRole = (role) => PROFILE_STAFF.includes(role);
 const cleanText = (value, max = 160) => {
     if (value === undefined) return null;
     if (value === null) return null;
@@ -23,6 +25,15 @@ const cleanIncoming = (body, field, fallback = null, max = 160) => (
 function getNisn(req) {
     if (['siswa','wali_murid'].includes(req.user.role)) return req.user.nisn;
     return req.params.nisn || req.query.nisn || req.user.nisn;
+}
+
+function getStaffTargetNisn(req, res) {
+    const nisn = cleanText(req.params.nisn || req.query.nisn || req.body?.nisn, 20);
+    if (!nisn) {
+        res.status(400).json({ success:false, message:'NISN siswa wajib dipilih oleh guru/staff.' });
+        return null;
+    }
+    return nisn;
 }
 
 function clampInt(value, fallback, min, max) {
@@ -92,8 +103,8 @@ function getGradeRows(db, nisn, semester = null) {
    PROFIL SISWA
    ══════════════════════════════════════════ */
 
-/* GET /api/siswa/staff/list — daftar siswa untuk guru/staff */
-router.get('/staff/list', authenticate, authorize(...STAFF), (req, res) => {
+/* GET /api/siswa/staff/list — daftar biodata siswa untuk TU sampai admin, bukan guru */
+router.get('/staff/list', authenticate, authorize(...PROFILE_STAFF), (req, res) => {
     const db = getDB();
     const { search = '', kelas = '', page = 1, limit = 20 } = req.query;
     const pageInt = clampInt(page, 1, 1, 9999);
@@ -158,7 +169,7 @@ router.get('/staff/list', authenticate, authorize(...STAFF), (req, res) => {
 });
 
 /* GET /api/siswa/staff/:nisn/detail — profil + histori akademik siswa */
-router.get('/staff/:nisn/detail', authenticate, authorize(...STAFF), (req, res) => {
+router.get('/staff/:nisn/detail', authenticate, authorize(...PROFILE_STAFF), (req, res) => {
     const db = getDB();
     const nisn = cleanText(req.params.nisn, 20);
     if (!nisn) return res.status(400).json({ success:false, message:'NISN wajib diisi.' });
@@ -254,7 +265,7 @@ router.put('/profil', authenticate, (req, res) => {
         const db   = getDB();
         const nisn = getNisn(req);
         const now  = new Date().toISOString();
-        const isStaff = isStaffRole(req.user.role);
+        const isStaff = isProfileStaffRole(req.user.role);
         if (!nisn) return res.status(400).json({ success:false, message:'NISN tidak ditemukan.' });
 
         const targetUser = db.prepare('SELECT id, role, email, no_hp FROM users WHERE nisn = ?').get(nisn);
@@ -418,7 +429,15 @@ router.put('/profil', authenticate, (req, res) => {
 router.get('/nilai', authenticate, (req, res) => {
     try {
         const db       = getDB();
-        const nisn     = getNisn(req);
+        const nisn     = isStaffRole(req.user.role)
+            ? getStaffTargetNisn(req, res)
+            : req.user.role === 'siswa'
+                ? cleanText(req.user.nisn, 20)
+                : null;
+        if (!nisn && !res.headersSent) {
+            return res.status(403).json({ success:false, message:'Akses nilai hanya tersedia untuk siswa terkait atau guru/staff.' });
+        }
+        if (!nisn) return;
         const semester = req.query.semester || 'genap';
 
         const gradeData = summarizeGrades(getGradeRows(db, nisn, semester));
@@ -557,9 +576,10 @@ router.get('/dashboard', authenticate, (req, res) => {
         const db   = getDB();
         const nisn = getNisn(req);
         if (!nisn) return res.status(400).json({ success:false, message:'NISN tidak ditemukan.' });
-
-        /* Nilai rata-rata */
-        const gradeData = summarizeGrades(getGradeRows(db, nisn, 'genap'));
+        const canSeeGrades = isStaffRole(req.user.role);
+        const gradeData = canSeeGrades
+            ? summarizeGrades(getGradeRows(db, nisn, 'genap'))
+            : { stats: { rata: null, max: null, min: null, jumlah: 0, lulus: 0 } };
 
         /* Kehadiran */
         const khRows = db.prepare('SELECT status, COUNT(*) as cnt FROM kehadiran WHERE nisn=? GROUP BY status').all(nisn);
@@ -576,8 +596,8 @@ router.get('/dashboard', authenticate, (req, res) => {
                 nisn,
                 kelas    : profil?.kelas   || '-',
                 jurusan  : profil?.jurusan || '-',
-                nilai_rata: gradeData.stats.rata,
-                nilai_stats: gradeData.stats,
+                nilai_rata: canSeeGrades ? gradeData.stats.rata : null,
+                nilai_stats: canSeeGrades ? gradeData.stats : null,
                 kehadiran : kh.hadir,
                 absen_total: kh.sakit + kh.izin + kh.alpha,
                 persen_hadir: totalKh ? Math.round((kh.hadir/totalKh)*100) : 100,
@@ -592,8 +612,15 @@ router.get('/dashboard', authenticate, (req, res) => {
 router.get('/rapor', authenticate, (req, res) => {
     try {
         const db   = getDB();
-        const nisn = getNisn(req);
-        if (!nisn) return res.status(400).json({ success:false, message:'NISN tidak ditemukan.' });
+        const nisn = isStaffRole(req.user.role)
+            ? getStaffTargetNisn(req, res)
+            : req.user.role === 'siswa'
+                ? cleanText(req.user.nisn, 20)
+                : null;
+        if (!nisn && !res.headersSent) {
+            return res.status(403).json({ success:false, message:'Akses rapor hanya tersedia untuk siswa terkait atau guru/staff.' });
+        }
+        if (!nisn) return;
 
         const semester = req.query.semester || 'genap';
         const tahun_ajaran = req.query.tahun_ajaran || '2025/2026';

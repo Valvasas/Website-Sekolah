@@ -1,5 +1,4 @@
-// routes/upload.js — NEW FILE
-// Handles semua file upload: lampiran tugas, foto profil, berkas PPDB
+// Upload routes for assignments, profiles, PPDB, LMS, CBT, and Kantinku.
 'use strict';
 
 const express  = require('express');
@@ -9,7 +8,7 @@ const path     = require('path');
 const fs       = require('fs');
 const crypto   = require('crypto');
 const { v4: uuidv4 } = require('uuid');
-const { authenticate, isStaff, isContentAdmin } = require('../middleware/auth');
+const { authenticate, isContentAdmin, authorize } = require('../middleware/auth');
 const getDB    = require('../config/database');
 const ENV      = require('../config/env');
 const { uploadLimiter } = require('../middleware/rateLimiter');
@@ -118,6 +117,29 @@ const MAX_SIZE = {
 };
 
 const UPLOAD_QUOTA_BYTES = Math.round(ENV.UPLOAD_MAX_TOTAL_GB * 1024 * 1024 * 1024);
+const STAFF_ROLES = ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'];
+const CBT_MANAGER_ROLES = ['guru','kepala_sekolah','wakil_kepala_sekolah','super_admin'];
+const CONTENT_ROLES = ['super_admin','content_admin','tata_usaha'];
+const STORAGE_ONLY_CATEGORIES = ['ppdb', 'website', 'cbt', 'general'];
+const OWN_FILE_CATEGORIES = ['tugas', 'profil', 'forum', 'kantin', 'kantin_chat'];
+
+function canListUploadCategory(user, category) {
+    const role = user?.role;
+    if (role === 'super_admin') return { ok: true, scope: 'all' };
+    if (category === 'website') return { ok: CONTENT_ROLES.includes(role), scope: 'all' };
+    if (category === 'cbt') return { ok: CBT_MANAGER_ROLES.includes(role), scope: 'all' };
+    if (category === 'materi') {
+        if (STAFF_ROLES.includes(role)) return { ok: true, scope: 'all' };
+        return { ok: false, scope: 'none' };
+    }
+    if (category === 'ppdb' || category === 'general') return { ok: STAFF_ROLES.includes(role), scope: 'all' };
+    if (OWN_FILE_CATEGORIES.includes(category)) {
+        if (STAFF_ROLES.includes(role)) return { ok: true, scope: 'all' };
+        return { ok: true, scope: 'own' };
+    }
+    if (STORAGE_ONLY_CATEGORIES.includes(category)) return { ok: false, scope: 'none' };
+    return { ok: false, scope: 'none' };
+}
 
 function cleanText(value, max = 500) {
     return String(value || '').replace(/[<>]/g, '').trim().slice(0, max) || null;
@@ -212,7 +234,7 @@ function maxSizeByMime(category, mimeType) {
 function validateUploadedFilePolicy(req, res, next) {
     const file = req.file;
     if (!file) return next();
-    const category = req.uploadCategory || 'general';
+    const category = req.uploadCategory || categoryFromFile(file) || 'general';
     if (!hasAllowedExtension(category, file.originalname)) {
         fs.unlink(file.path, () => {});
         return res.status(415).json({
@@ -228,7 +250,66 @@ function validateUploadedFilePolicy(req, res, next) {
             message: `File terlalu besar untuk kategori ${category}. Maksimal ${Math.round(limit / 1024 / 1024)}MB.`
         });
     }
+    const magicError = validateFileMagic(file);
+    if (magicError) {
+        fs.unlink(file.path, () => {});
+        return res.status(415).json({ success: false, message: magicError });
+    }
     next();
+}
+
+function categoryFromFile(file) {
+    const dir = path.basename(file?.destination || '').toLowerCase();
+    if (dir === 'kantin-chat') return 'kantin_chat';
+    return Object.keys(CATEGORIES).find(category => path.basename(CATEGORIES[category]).toLowerCase() === dir) || '';
+}
+
+function validateUploadedFilesPolicy(req, res, next) {
+    const groups = req.files && typeof req.files === 'object' ? Object.values(req.files).flat() : [];
+    for (const file of groups) {
+        const fakeReq = { ...req, file, uploadCategory: req.uploadCategory || categoryFromFile(file) || 'general' };
+        let finished = false;
+        validateUploadedFilePolicy(fakeReq, res, () => { finished = true; });
+        if (!finished) return;
+    }
+    next();
+}
+
+function readMagic(filePath, length = 32) {
+    const fd = fs.openSync(filePath, 'r');
+    try {
+        const buffer = Buffer.alloc(length);
+        const bytes = fs.readSync(fd, buffer, 0, length, 0);
+        return buffer.subarray(0, bytes);
+    } finally {
+        fs.closeSync(fd);
+    }
+}
+
+function validateFileMagic(file) {
+    let sig;
+    try { sig = readMagic(file.path); } catch { return 'File upload tidak bisa diverifikasi.'; }
+    const hex = sig.toString('hex');
+    const ascii = sig.toString('ascii');
+    const mime = String(file.mimetype || '').toLowerCase();
+
+    const checks = [
+        { match: 'image/jpeg', ok: () => hex.startsWith('ffd8ff') },
+        { match: 'image/png', ok: () => hex.startsWith('89504e470d0a1a0a') },
+        { match: 'image/gif', ok: () => ascii.startsWith('GIF87a') || ascii.startsWith('GIF89a') },
+        { match: 'image/webp', ok: () => ascii.startsWith('RIFF') && ascii.slice(8, 12) === 'WEBP' },
+        { match: 'application/pdf', ok: () => ascii.startsWith('%PDF-') },
+        { match: 'audio/mpeg', ok: () => ascii.startsWith('ID3') || hex.startsWith('fffb') || hex.startsWith('fff3') || hex.startsWith('fff2') },
+        { match: 'audio/wav', ok: () => ascii.startsWith('RIFF') && ascii.slice(8, 12) === 'WAVE' },
+        { match: 'audio/ogg', ok: () => ascii.startsWith('OggS') },
+        { match: 'audio/webm', ok: () => hex.startsWith('1a45dfa3') },
+        { match: 'video/webm', ok: () => hex.startsWith('1a45dfa3') },
+        { match: 'video/mp4', ok: () => ascii.slice(4, 8) === 'ftyp' },
+        { match: 'video/quicktime', ok: () => ascii.slice(4, 8) === 'ftyp' },
+    ];
+    const rule = checks.find(item => item.match === mime);
+    if (!rule) return '';
+    return rule.ok() ? '' : 'Isi file tidak cocok dengan tipe file yang dikirim.';
 }
 
 // ── Multer storage engine ──────────────────────────────────────────
@@ -293,6 +374,7 @@ router.post('/tugas',
     authenticate,
     enforceUploadQuota,
     createUploader('tugas').single('file'),
+    validateUploadedFilePolicy,
     (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada file yang di-upload.' });
         try {
@@ -322,6 +404,7 @@ router.post('/profil',
     authenticate,
     enforceUploadQuota,
     createUploader('profil').single('foto'),
+    validateUploadedFilePolicy,
     (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada file yang di-upload.' });
         try {
@@ -338,6 +421,8 @@ router.post('/profil',
 
             // Update di DB
             db.prepare('UPDATE users SET foto_profil = ?, updated_at = ? WHERE id = ?')
+              .run(fileUrl, new Date().toISOString(), req.user.sub);
+            db.prepare('UPDATE organization_staff SET foto = ?, updated_at = ? WHERE user_id = ?')
               .run(fileUrl, new Date().toISOString(), req.user.sub);
 
             saveFileRecord(db, {
@@ -360,6 +445,44 @@ router.post('/profil',
     }
 );
 
+// ── ROUTE: Upload foto personel struktur oleh pengelola ───────────
+router.post('/organization-photo/:id',
+    authenticate,
+    authorize('super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','tata_usaha'),
+    enforceUploadQuota,
+    createUploader('profil').single('foto'),
+    validateUploadedFilePolicy,
+    (req, res) => {
+        if (!req.file) return res.status(400).json({ success:false, message:'Tidak ada foto yang di-upload.' });
+        const db = getDB();
+        try {
+            const row = db.prepare('SELECT id,user_id,foto FROM organization_staff WHERE id = ? OR code = ?').get(req.params.id, req.params.id);
+            if (!row) {
+                fs.unlink(req.file.path, () => {});
+                return res.status(404).json({ success:false, message:'Data struktur tidak ditemukan.' });
+            }
+            if (row.foto?.startsWith('/uploads/profil/')) {
+                const oldPath = path.join(CATEGORIES.profil, path.basename(row.foto));
+                if (fs.existsSync(oldPath)) fs.unlink(oldPath, () => {});
+            }
+            const fileUrl = `/uploads/profil/${req.file.filename}`;
+            const now = new Date().toISOString();
+            db.prepare('UPDATE organization_staff SET foto = ?, updated_at = ? WHERE id = ?').run(fileUrl, now, row.id);
+            if (row.user_id) db.prepare('UPDATE users SET foto_profil = ?, updated_at = ? WHERE id = ?').run(fileUrl, now, row.user_id);
+            saveFileRecord(db, {
+                uploaderId:req.user.sub, originalName:req.file.originalname, fileName:req.file.filename,
+                category:'profil', mimeType:req.file.mimetype, size:req.file.size,
+                entityType:'organization_staff', entityId:row.id,
+            });
+            return res.status(200).json({ success:true, message:'Foto struktur berhasil diperbarui.', data:{ fileUrl } });
+        } catch (err) {
+            fs.unlink(req.file.path, () => {});
+            console.error('[Upload organization photo]', err.message);
+            return res.status(500).json({ success:false, message:'Gagal menyimpan foto struktur.' });
+        }
+    }
+);
+
 // ── ROUTE: Upload berkas PPDB ──────────────────────────────────────
 // Tidak butuh auth karena calon siswa belum punya akun
 router.post('/ppdb',
@@ -370,6 +493,7 @@ router.post('/ppdb',
         { name: 'skl_ijazah',     maxCount: 1 },
         { name: 'pas_foto',       maxCount: 1 },
     ]),
+    validateUploadedFilesPolicy,
     (req, res) => {
         const files = req.files;
         if (!files || Object.keys(files).length === 0) {
@@ -408,6 +532,7 @@ router.post('/materi',
     },
     enforceUploadQuota,
     createUploader('materi').single('file'),
+    validateUploadedFilePolicy,
     (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada file yang di-upload.' });
         try {
@@ -462,6 +587,7 @@ router.post('/website',
     isContentAdmin,
     enforceUploadQuota,
     createUploader('website').single('image'),
+    validateUploadedFilePolicy,
     (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada gambar yang di-upload.' });
         try {
@@ -490,6 +616,7 @@ router.post('/kantin',
     authenticate,
     enforceUploadQuota,
     createUploader('kantin').single('image'),
+    validateUploadedFilePolicy,
     (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada gambar yang di-upload.' });
         try {
@@ -550,9 +677,15 @@ router.post('/kantin-chat', ...uploadStudentAttachment('kantin_chat', 'kantin_ch
 // ── ROUTE: Upload media soal CBT (guru/staff) ─────────────────────
 router.post('/cbt',
     authenticate,
-    isStaff,
+    (req, res, next) => {
+        if (!CBT_MANAGER_ROLES.includes(req.user.role)) {
+            return res.status(403).json({ success: false, message: 'Hanya guru, kepala sekolah, wakil kepala sekolah, atau super admin yang bisa upload media CBT.' });
+        }
+        next();
+    },
     enforceUploadQuota,
     createUploader('cbt').single('file'),
+    validateUploadedFilePolicy,
     (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada file yang di-upload.' });
         try {
@@ -593,11 +726,24 @@ router.get('/list/:category', authenticate, (req, res) => {
     if (!valid.includes(category)) {
         return res.status(400).json({ success: false, message: 'Kategori tidak valid.' });
     }
+    const access = canListUploadCategory(req.user, category);
+    if (!access.ok) {
+        return res.status(403).json({ success: false, message: 'Anda tidak berhak melihat daftar file kategori ini.' });
+    }
     try {
-        const files = db.prepare(
-            `SELECT id,original_name,file_url,mime_type,size_bytes,entity_type,entity_id,created_at
-             FROM file_uploads WHERE category = ? ORDER BY created_at DESC LIMIT 100`
-        ).all(category);
+        const params = [category];
+        let ownerClause = '';
+        if (access.scope === 'own') {
+            ownerClause = ' AND uploader_id = ?';
+            params.push(req.user.sub);
+        }
+        const files = db.prepare(`
+            SELECT id,original_name,file_url,mime_type,size_bytes,entity_type,entity_id,created_at
+            FROM file_uploads
+            WHERE category = ?${ownerClause}
+            ORDER BY created_at DESC
+            LIMIT 100
+        `).all(...params);
         return res.status(200).json({ success: true, data: files });
     } catch (err) {
         console.error('[Upload list]', err.message);

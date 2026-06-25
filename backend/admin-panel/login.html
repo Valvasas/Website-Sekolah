@@ -6,7 +6,7 @@
     <title>Login — Portal EduGate SMKN 1 Terisi</title>
     <link rel="icon" type="image/png" href="/asset/Logo SMK.png">
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <style>
         :root {
             --navy:   #002244;
@@ -27,11 +27,14 @@
             min-height: 100vh;
             background: var(--navy-d);
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            gap: 18px;
+            padding: clamp(20px, 4vh, 42px);
             position: relative;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
         /* Animated background */
@@ -51,9 +54,11 @@
 
         .login-wrapper {
             position: relative; z-index: 2;
-            width: 100%; max-width: 980px;
+            width: min(100%, 1080px);
+            flex: 0 0 auto;
+            min-height: min(720px, calc(100vh - 84px));
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: minmax(360px, 0.95fr) minmax(440px, 1.05fr);
             background: rgba(255,255,255,0.04);
             backdrop-filter: blur(24px);
             border: 1px solid var(--border);
@@ -65,7 +70,7 @@
         /* ── LEFT PANEL (Branding) ── */
         .brand-panel {
             background: linear-gradient(160deg, rgba(0,34,68,0.6) 0%, rgba(0,10,20,0.4) 100%);
-            padding: 50px 40px;
+            padding: clamp(34px, 4vw, 56px) clamp(28px, 3.4vw, 44px);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -113,44 +118,29 @@
 
         /* ── RIGHT PANEL (Form) ── */
         .form-panel {
-            padding: 50px 44px;
+            min-width: 0;
+            padding: clamp(34px, 4vw, 56px) clamp(30px, 3.6vw, 48px);
             display: flex;
             flex-direction: column;
             justify-content: center;
             gap: 0;
+            overflow: hidden;
         }
+
+        .form-panel * { min-width: 0; }
 
         .back-link {
             display: inline-flex; align-items: center; gap: 7px;
             color: rgba(255,255,255,0.4); text-decoration: none;
             font-size: 0.8rem; font-weight: 500;
             transition: color 0.2s; margin-bottom: 28px;
+            max-width: 100%;
+            overflow-wrap: anywhere;
         }
         .back-link:hover { color: var(--gold); }
 
-        .form-title { font-family:'Playfair Display',serif; font-size:1.8rem; color:var(--white); margin-bottom:6px; }
-        .form-sub   { color: rgba(255,255,255,0.4); font-size:0.83rem; margin-bottom:28px; }
-
-        /* Role Tabs */
-        .role-tabs {
-            display: flex; gap: 4px;
-            background: rgba(0,0,0,0.25);
-            border-radius: 10px; padding: 4px;
-            margin-bottom: 24px;
-        }
-        .role-tab {
-            flex: 1; padding: 9px 10px;
-            background: transparent; border: none;
-            color: rgba(255,255,255,0.45);
-            font-family: 'Sora', sans-serif;
-            font-size: 0.75rem; font-weight: 600;
-            border-radius: 7px; cursor: pointer;
-            transition: all 0.25s;
-            display: flex; align-items: center; justify-content: center; gap: 5px;
-        }
-        .role-tab i { font-size: 0.8rem; }
-        .role-tab.active { background: var(--gold); color: var(--navy-d); }
-        .role-tab:not(.active):hover { background: rgba(255,255,255,0.08); color: var(--white); }
+        .form-title { font-family:'Playfair Display',serif; font-size:1.8rem; color:var(--white); margin-bottom:6px; overflow-wrap:anywhere; }
+        .form-sub   { color: rgba(255,255,255,0.4); font-size:0.83rem; margin-bottom:28px; overflow-wrap:anywhere; }
 
         /* Form Fields */
         .field-group { margin-bottom: 16px; }
@@ -295,10 +285,148 @@
         .modal-sub   { color:rgba(255,255,255,0.4); font-size:0.82rem; margin-bottom:24px; }
 
         /* Responsive */
+        @media (max-width: 980px) {
+            .login-wrapper {
+                grid-template-columns: minmax(320px, 0.9fr) minmax(390px, 1.1fr);
+            }
+            .brand-stats { gap: 14px; }
+        }
+
         @media (max-width: 768px) {
-            .login-wrapper { grid-template-columns: 1fr; }
+            body {
+                align-items: flex-start;
+                padding: 16px;
+            }
+            .login-wrapper {
+                grid-template-columns: 1fr;
+                min-height: auto;
+                width: 100%;
+                max-width: 100vw;
+            }
             .brand-panel   { display: none; }
             .form-panel    { padding: 36px 28px; }
+        }
+
+        @media (max-width: 460px) {
+            .form-panel { padding: 28px 20px; }
+            .form-options {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 12px;
+            }
+        }
+
+        @media (max-height: 760px) and (min-width: 769px) {
+            body { justify-content: flex-start; }
+            .login-wrapper { min-height: auto; }
+            .brand-panel,
+            .form-panel { justify-content: flex-start; }
+        }
+
+        /* Production login surface: restrained, school-first, and task focused. */
+        body {
+            background:#edf2f7;
+            color:#172033;
+        }
+        .bg-orbs { display:none; }
+        .login-wrapper {
+            min-height:min(690px, calc(100vh - 64px));
+            grid-template-columns:minmax(320px,.86fr) minmax(430px,1.14fr);
+            border:1px solid #dbe3ec;
+            border-radius:10px;
+            background:#fff;
+            box-shadow:0 24px 60px rgba(15,23,42,.16);
+        }
+        .brand-panel {
+            position:relative;
+            isolation:isolate;
+            align-items:flex-start;
+            text-align:left;
+            border-right:0;
+            background:
+                linear-gradient(180deg,rgba(0,28,56,.72),rgba(0,20,40,.92)),
+                url('/asset/gedung-web.jpg') center/cover;
+        }
+        .brand-logo,
+        .brand-logo-fallback {
+            width:72px;
+            height:72px;
+            border-radius:14px;
+            border:0;
+            background:#fff;
+            padding:7px;
+            box-shadow:0 14px 32px rgba(0,0,0,.2);
+        }
+        .brand-title {
+            font-family:'Sora',sans-serif;
+            font-size:1.55rem;
+            font-weight:800;
+        }
+        .brand-title span { color:#f4c941; }
+        .brand-sub { color:rgba(255,255,255,.76); }
+        .brand-stats { display:none; }
+        .brand-note {
+            margin-top:auto;
+            color:rgba(255,255,255,.72);
+            border-color:rgba(255,255,255,.18);
+            text-align:left;
+        }
+        .form-panel { background:#fff; overflow:visible; }
+        .back-link,
+        .form-sub,
+        .remember-me { color:#64748b; }
+        .back-link:hover,
+        .forgot-link { color:#064f8c; }
+        .form-title {
+            font-family:'Sora',sans-serif;
+            color:#102a43;
+            font-size:1.65rem;
+        }
+        .field-group label { color:#334155; }
+        .field-group label i { color:#0b6aa8; }
+        .field-group input,
+        .field-group select {
+            min-height:48px;
+            color:#172033;
+            background:#f8fafc;
+            border-color:#cbd5e1;
+        }
+        .field-group input::placeholder { color:#94a3b8; }
+        .field-group input:focus,
+        .field-group select:focus {
+            border-color:#0b6aa8;
+            background:#fff;
+            box-shadow:0 0 0 3px rgba(11,106,168,.13);
+        }
+        .pw-toggle { color:#64748b; width:40px; height:40px; right:5px; }
+        .btn-login {
+            min-height:50px;
+            background:#0b4f82;
+            color:#fff;
+            box-shadow:0 10px 22px rgba(11,79,130,.2);
+        }
+        .btn-login:hover { background:#073d66; box-shadow:0 12px 25px rgba(11,79,130,.25); }
+        .modal-box { background:#fff; border-color:#dbe3ec; color:#172033; }
+        .modal-title { font-family:'Sora',sans-serif; color:#102a43; }
+        .modal-sub { color:#64748b; }
+        .modal-close { color:#64748b; }
+
+        @media (max-width:768px) {
+            body { padding:0; background:#fff; }
+            .login-wrapper {
+                min-height:100dvh;
+                grid-template-columns:1fr;
+                border:0;
+                border-radius:0;
+                box-shadow:none;
+            }
+            .brand-panel { display:flex; padding:24px; min-height:190px; }
+            .brand-panel .brand-sub,
+            .brand-panel .brand-note { display:none; }
+            .brand-logo { width:58px; height:58px; }
+            .brand-title { font-size:1.25rem; }
+            .form-panel { padding:28px 22px 36px; justify-content:flex-start; }
+            .back-link { margin-bottom:22px; }
         }
     </style>
 </head>
@@ -344,29 +472,7 @@
         </a>
 
         <h2 class="form-title">Portal Admin & Staf</h2>
-        <p class="form-sub">Masuk sebagai guru, tata usaha, wakasek, kepala sekolah, atau admin</p>
-
-        <!-- Role Selector -->
-        <div class="role-tabs" id="roleTabs">
-            <button class="role-tab active" data-role="guru" onclick="switchRole('guru', this)">
-                <i class="fas fa-chalkboard-teacher"></i> Guru
-            </button>
-            <button class="role-tab" data-role="tata_usaha" onclick="switchRole('tata_usaha', this)">
-                <i class="fas fa-briefcase"></i> Staff TU
-            </button>
-            <button class="role-tab" data-role="kepala_sekolah" onclick="switchRole('kepala_sekolah', this)">
-                <i class="fas fa-user-tie"></i> Kepsek
-            </button>
-            <button class="role-tab" data-role="wakil_kepala_sekolah" onclick="switchRole('wakil_kepala_sekolah', this)">
-                <i class="fas fa-user-shield"></i> Wakasek
-            </button>
-            <button class="role-tab" data-role="super_admin" onclick="switchRole('super_admin', this)">
-                <i class="fas fa-user-shield"></i> Admin
-            </button>
-            <button class="role-tab" data-role="content_admin" onclick="switchRole('content_admin', this)">
-                <i class="fas fa-pen-to-square"></i> Admin Konten
-            </button>
-        </div>
+        <p class="form-sub">Gunakan email akun sekolah Anda. Hak akses ditentukan otomatis oleh sistem.</p>
 
         <!-- Alert Box -->
         <div class="alert hidden" id="alertBox">
@@ -378,11 +484,11 @@
         <form id="loginForm" onsubmit="handleLogin(event)">
             <div class="field-group">
                 <label id="identifierLabel">
-                    <i class="fas fa-id-card"></i>
-                    <span id="identifierLabelText">Email Guru</span>
+                    <i class="fas fa-envelope"></i>
+                    <span>Email Akun Sekolah</span>
                 </label>
                 <input type="email" id="identifier" name="identifier"
-                       placeholder="email@smkn1terisi.sch.id" autocomplete="username" required>
+                       placeholder="nama@smkn1terisi.sch.id" autocomplete="username" required>
             </div>
 
             <div class="field-group">
@@ -390,7 +496,7 @@
                 <div class="pw-wrap">
                     <input type="password" id="password" name="password"
                            placeholder="Masukkan password" autocomplete="current-password" required>
-                    <button type="button" class="pw-toggle" onclick="togglePassword()">
+                    <button type="button" class="pw-toggle" onclick="togglePassword()" aria-label="Tampilkan password">
                         <i class="fas fa-eye" id="pwEyeIcon"></i>
                     </button>
                 </div>
@@ -413,7 +519,7 @@
         <div id="googleLoginSection" style="display:none">
             <div class="divider">atau</div>
             <button class="btn-google" onclick="loginWithGoogle()">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+                <i class="fab fa-google" aria-hidden="true"></i>
                 Masuk dengan Google
             </button>
         </div>
@@ -533,6 +639,7 @@
     </div>
 </div>
 
+<script src="/security.js"></script>
 <script>
 /* ══════════════════════════════════════
    CONFIG
@@ -545,14 +652,18 @@ const API = '/api/auth';
 (function checkAlreadyLoggedIn() {
     const token = localStorage.getItem('accessToken');
     const role  = localStorage.getItem('userRole');
-    if (!token || !role) return;
 
     // Verifikasi token masih valid
-    fetch(`${API}/check`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API}/check`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
+        cache: 'no-store'
+    })
         .then(r => r.json())
         .then(data => {
-            if (data.success) {
-                redirectByRole(role);
+            const verifiedRole = data.user?.role || role;
+            if (data.success && verifiedRole) {
+                redirectByRole(verifiedRole);
             }
         })
         .catch(() => {
@@ -575,46 +686,11 @@ if (urlParams.get('error')) {
 const oauthToken = urlParams.get('token');
 if (oauthToken) {
     const oauthRole = urlParams.get('role') || 'siswa';
-    localStorage.setItem('accessToken', oauthToken);
     localStorage.setItem('userRole', oauthRole);
     redirectByRole(oauthRole);
 }
 
-/* ══════════════════════════════════════
-   ROLE SWITCHER
-══════════════════════════════════════ */
 const STAFF_ROLES = new Set(['guru', 'tata_usaha', 'kepala_sekolah', 'wakil_kepala_sekolah', 'super_admin', 'content_admin']);
-let currentRole = 'guru';
-
-function switchRole(role, btn) {
-    currentRole = role;
-    document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-
-    const labelEl      = document.getElementById('identifierLabelText');
-    const inputEl      = document.getElementById('identifier');
-    const googleSec    = document.getElementById('googleLoginSection');
-    const registerLink = document.getElementById('registerLink');
-
-    const config = {
-        guru:            { label:'Email Guru', placeholder:'email@smkn1terisi.sch.id', google: false, register: false },
-        tata_usaha:      { label:'Email Staff TU', placeholder:'email@smkn1terisi.sch.id', google: false, register: false },
-        kepala_sekolah:  { label:'Email Kepala Sekolah', placeholder:'email@smkn1terisi.sch.id', google: false, register: false },
-        wakil_kepala_sekolah: { label:'Email Wakasek', placeholder:'email@smkn1terisi.sch.id', google: false, register: false },
-        super_admin:     { label:'Email Admin', placeholder:'admin@smkn1terisi.sch.id', google: false, register: false },
-        content_admin:   { label:'Email Admin Konten', placeholder:'konten@smkn1terisi.sch.id', google: false, register: false },
-    };
-
-    const c = config[role] || config.guru;
-    labelEl.textContent    = c.label;
-    inputEl.placeholder    = c.placeholder;
-    inputEl.type           = 'email';
-    inputEl.value          = '';
-    googleSec.style.display  = c.google   ? '' : 'none';
-    registerLink.style.display= c.register ? '' : 'none';
-
-    hideAlert('alertBox');
-}
 
 /* ══════════════════════════════════════
    LOGIN HANDLER
@@ -636,14 +712,11 @@ async function handleLogin(e) {
     setLoading(btn, true);
 
     try {
-        if (!STAFF_ROLES.has(currentRole)) {
-            showAlert('error', 'Halaman ini khusus admin dan staf. Siswa masuk lewat /login.html.', 'alertBox', 'alertMsg');
-            return;
-        }
         const res  = await fetch(`${API}/login`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ identifier, password, role: currentRole, rememberMe })
+            credentials: 'include',
+            body:    JSON.stringify({ identifier, password, portal: 'staff', rememberMe })
         });
         const data = await res.json();
 
@@ -652,12 +725,9 @@ async function handleLogin(e) {
                 showAlert('error', 'Akun ini bukan akun staf. Silakan masuk lewat /login.html.', 'alertBox', 'alertMsg');
                 return;
             }
-            // Simpan token & data user
-            localStorage.setItem('adminAccessToken',  data.data.accessToken);
-            localStorage.setItem('adminRefreshToken', data.data.refreshToken);
+            // Simpan data user saja. Token utama dikirim backend via HttpOnly cookie.
+            ['adminAccessToken','adminRefreshToken','accessToken','refreshToken'].forEach(key => localStorage.removeItem(key));
             localStorage.setItem('adminUserData',     JSON.stringify(data.data.user));
-            localStorage.setItem('accessToken',  data.data.accessToken);
-            localStorage.setItem('refreshToken', data.data.refreshToken);
             localStorage.setItem('userRole',     data.data.user.role);
             localStorage.setItem('userData',     JSON.stringify(data.data.user));
 
@@ -893,6 +963,12 @@ document.querySelectorAll('.modal-overlay').forEach(modal => {
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+    }
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+    if (window.location.hash === '#forgot') {
+        showForgotPassword();
     }
 });
 </script>

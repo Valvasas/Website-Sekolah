@@ -5,7 +5,7 @@
 'use strict';
 
 /* URL API Backend */
-const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3001' : '';
 
 /* ============================================================
    STATE
@@ -113,8 +113,8 @@ function animateLoadingProgress(steps, onComplete) {
     const stepMessages = [
         'Memverifikasi Data...',
         'Menyiapkan Dokumen...',
-        'Menambahkan TTD Digital...',
-        'Enkripsi & Finalisasi...'
+        'Membuat Kode Verifikasi...',
+        'Finalisasi Dokumen...'
     ];
 
     // Reset semua step
@@ -226,22 +226,10 @@ async function cariSKL() {
             tampilkanKonfirmasi(dataSiswaFound);
         });
     } catch(e) {
-        // Fallback ke data lokal jika backend tidak tersedia
         animateLoadingProgress([1,2,3,4], () => {
             hideLoading();
-            const LOCAL = [
-                { nisn:'0012345678', nama:'AHMAD FARHAN MAULANA', ttl:'2008-01-15', jurusan:'Teknik Komputer & Jaringan (TKJ)', kelas:'XI TKJ 1',  tahunLulus:'2026', noIjazah:'DN-034/SMKN1T/2026', nilaiRata:87.40 },
-                { nisn:'0023456789', nama:'SITI NURHALIZA PUTRI',  ttl:'2008-03-22', jurusan:'Akuntansi & Keuangan (AKL)',       kelas:'XI AKL 1',  tahunLulus:'2026', noIjazah:'DN-057/SMKN1T/2026', nilaiRata:91.20 },
-                { nisn:'0034567890', nama:'RIZKY ADITYA PRATAMA',  ttl:'2007-11-08', jurusan:'Teknik Bisnis Sepeda Motor (TBSM)',kelas:'XI TBSM 2', tahunLulus:'2026', noIjazah:'DN-089/SMKN1T/2026', nilaiRata:83.75 },
-                { nisn:'1234567890', nama:'BUDI SANTOSO',          ttl:'2007-05-20', jurusan:'Teknik Komputer & Jaringan (TKJ)', kelas:'XI TKJ 2',  tahunLulus:'2025', noIjazah:'DN-011/SMKN1T/2025', nilaiRata:85.30 },
-            ];
-            const found = LOCAL.find(s =>
-                s.nisn === nisn && s.nama.toUpperCase() === nama.toUpperCase() &&
-                s.ttl === ttl && s.tahunLulus === tahun
-            );
-            if (!found) { showErr(errEl, errMsg, 'Data tidak ditemukan.'); genCaptcha(); return; }
-            dataSiswaFound = found;
-            tampilkanKonfirmasi(found);
+            showErr(errEl, errMsg, 'Server verifikasi SKL tidak dapat dihubungi. Coba lagi beberapa saat.');
+            genCaptcha();
         });
     }
 }
@@ -250,6 +238,23 @@ function showErr(errEl, errMsg, msg) {
     errMsg.textContent = msg;
     errEl.classList.remove('hidden');
     document.getElementById('form-search-card').scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+    }[char]));
+}
+
+function formatTanggalId(value) {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
 }
 
 /* ============================================================
@@ -261,14 +266,12 @@ function tampilkanKonfirmasi(data) {
     document.getElementById('conf-nama').textContent   = data.nama;
     document.getElementById('conf-kelas').textContent  = `${data.kelas} · Lulus ${data.tahunLulus}`;
     document.getElementById('conf-nisn').textContent   = data.nisn;
-    document.getElementById('conf-jurusan').textContent= data.jurusan.split('(')[0].trim();
-    document.getElementById('conf-noij').textContent   = data.noIjazah;
-    document.getElementById('conf-nilai').textContent  = data.nilaiRata.toFixed(2);
+    document.getElementById('conf-jurusan').textContent= String(data.jurusan || '-').split('(')[0].trim();
+    document.getElementById('conf-noij').textContent   = data.noIjazah || '-';
+    document.getElementById('conf-nilai').textContent  = Number(data.nilaiRata || 0).toFixed(2);
 
     // Format tanggal lahir
-    const tgl = new Date(data.ttl);
-    const opsi = { day:'numeric', month:'long', year:'numeric' };
-    document.getElementById('conf-ttl').textContent = tgl.toLocaleDateString('id-ID', opsi);
+    document.getElementById('conf-ttl').textContent = formatTanggalId(data.ttl);
 
     // Pilihan format kartu
     document.querySelectorAll('.dl-format-card').forEach((card, i) => {
@@ -286,7 +289,7 @@ function tampilkanKonfirmasi(data) {
    ============================================================ */
 function prosesUnduh() {
     const selectedFormat = document.querySelector('input[name="dl-format"]:checked');
-    const format = selectedFormat ? selectedFormat.value : 'pdf';
+    const format = selectedFormat ? selectedFormat.value : 'print';
 
     showLoading();
     animateLoadingProgress([1,2,3,4], () => {
@@ -295,8 +298,7 @@ function prosesUnduh() {
         const kodeVerif = generateKodeVerif(dataSiswaFound);
         document.getElementById('verify-code').textContent = kodeVerif;
 
-        // Simulasi unduh (buat konten dokumen)
-        simulasiUnduh(dataSiswaFound, format);
+        unduhDokumenSkl(dataSiswaFound, format, kodeVerif);
 
         updateStepIndicator(3);
         showScreen('screen-done');
@@ -312,42 +314,102 @@ function generateKodeVerif(data) {
     return `SKL-${data.tahunLulus}-${hash.slice(0,4)}-${hash.slice(4,8)}`;
 }
 
-function simulasiUnduh(data, format) {
-    // Membuat konten HTML untuk SKL (akan dicetak / diunduh)
-    const isiSKL = `
-SURAT KETERANGAN LULUS
+function createSklDocumentHtml(data, kodeVerif, includeCode = true) {
+    const tahun = Number.parseInt(data.tahunLulus, 10);
+    const tahunPelajaran = Number.isFinite(tahun) ? `${tahun - 1}/${tahun}` : '-';
+    return `<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>SKL ${escapeHtml(data.nama || '')}</title>
+<style>
+body{font-family:Arial,sans-serif;line-height:1.55;color:#111827;margin:48px}
+.kop{text-align:center;border-bottom:3px double #111827;padding-bottom:16px;margin-bottom:32px}
+.kop h1{font-size:18px;margin:0;text-transform:uppercase}
+.kop h2{font-size:16px;margin:4px 0 0;text-transform:uppercase}
+.nomor{text-align:center;margin-bottom:28px}
+table{width:100%;border-collapse:collapse;margin:18px 0}
+td{padding:6px 8px;vertical-align:top}
+td:first-child{width:190px;font-weight:700}
+.status{font-weight:800;letter-spacing:.08em}
+.ttd{margin-top:48px;width:320px;margin-left:auto;text-align:left}
+.kode{margin-top:32px;font-size:12px;color:#475569}
+@media print{body{margin:24mm}.no-print{display:none}}
+</style>
+</head>
+<body>
+<button class="no-print" onclick="window.print()">Cetak / Simpan PDF</button>
+<div class="kop">
+<h1>Pemerintah Provinsi Jawa Barat</h1>
+<h2>SMK Negeri 1 Terisi</h2>
+<div>Jl. Raya Terisi, Kec. Terisi, Kabupaten Indramayu, Jawa Barat 45262</div>
+</div>
+<h2 style="text-align:center;text-decoration:underline">Surat Keterangan Lulus</h2>
+<div class="nomor">Nomor: ${escapeHtml(data.noIjazah || '-')}</div>
+<p>Yang bertanda tangan di bawah ini menerangkan bahwa:</p>
+<table>
+<tr><td>Nama Lengkap</td><td>: ${escapeHtml(data.nama)}</td></tr>
+<tr><td>NISN</td><td>: ${escapeHtml(data.nisn)}</td></tr>
+<tr><td>Tanggal Lahir</td><td>: ${escapeHtml(formatTanggalId(data.ttl))}</td></tr>
+<tr><td>Program Keahlian</td><td>: ${escapeHtml(data.jurusan || '-')}</td></tr>
+<tr><td>Kelas</td><td>: ${escapeHtml(data.kelas || '-')}</td></tr>
+<tr><td>Nilai Rata-rata</td><td>: ${escapeHtml(Number(data.nilaiRata || 0).toFixed(2))}</td></tr>
+</table>
+<p>Telah dinyatakan <span class="status">LULUS</span> pada tahun pelajaran ${escapeHtml(tahunPelajaran)} berdasarkan data kelulusan sekolah.</p>
+<div class="ttd">
+<p>Indramayu, ${escapeHtml(formatTanggalId(new Date().toISOString()))}</p>
+<p>Kepala SMK Negeri 1 Terisi,</p>
+<br><br><br>
+<strong>Agung Hendra Adiwiguna, S.Kom., M.M.</strong><br>
+NIP. 19800101 200501 1 001
+</div>
+${includeCode ? `<div class="kode">Kode verifikasi: ${escapeHtml(kodeVerif)}</div>` : ''}
+</body>
+</html>`;
+}
+
+function createSklArchiveText(data, kodeVerif) {
+    const tahun = Number.parseInt(data.tahunLulus, 10);
+    const tahunPelajaran = Number.isFinite(tahun) ? `${tahun - 1}/${tahun}` : '-';
+    return `SURAT KETERANGAN LULUS
 SMK NEGERI 1 TERISI
 Jl. Raya Terisi, Kec. Terisi, Kabupaten Indramayu, Jawa Barat 45262
 
-Nomor: ${data.noIjazah}
+Nomor: ${data.noIjazah || '-'}
+Kode Verifikasi: ${kodeVerif}
 
-Yang bertanda tangan di bawah ini, Kepala SMK Negeri 1 Terisi menerangkan bahwa:
+Nama Lengkap   : ${data.nama}
+NISN           : ${data.nisn}
+Tanggal Lahir  : ${formatTanggalId(data.ttl)}
+Program Keahlian: ${data.jurusan || '-'}
+Kelas          : ${data.kelas || '-'}
+Nilai Rata-rata: ${Number(data.nilaiRata || 0).toFixed(2)}
+Status         : LULUS
+Tahun Pelajaran: ${tahunPelajaran}
 
-Nama Lengkap  : ${data.nama}
-NISN          : ${data.nisn}
-Tanggal Lahir : ${new Date(data.ttl).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}
-Program Keahlian: ${data.jurusan}
-Kelas         : ${data.kelas}
-Nilai Rata-rata: ${data.nilaiRata.toFixed(2)}
-
-Telah LULUS mengikuti ujian akhir pada Tahun Pelajaran ${parseInt(data.tahunLulus)-1}/${data.tahunLulus}
-sesuai dengan Keputusan Kepala Dinas Pendidikan Provinsi Jawa Barat.
-
-Indramayu, ${new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}
+Indramayu, ${formatTanggalId(new Date().toISOString())}
 Kepala SMK Negeri 1 Terisi,
 
 
 Agung Hendra Adiwiguna, S.Kom., M.M.
 NIP. 19800101 200501 1 001
-    `;
+`;
+}
 
-    // Unduh sebagai file teks (simulasi — ganti dengan PDF library di produksi)
-    const blob = new Blob([isiSKL], { type: 'text/plain;charset=utf-8' });
+function unduhDokumenSkl(data, format, kodeVerif) {
+    const safeName = String(data.nama || 'siswa').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g,'_') || 'siswa';
+    const isArchive = format === 'archive';
+    const content = isArchive
+        ? createSklArchiveText(data, kodeVerif)
+        : createSklDocumentHtml(data, kodeVerif, format === 'print-code');
+    const blob = new Blob([content], { type: isArchive ? 'text/plain;charset=utf-8' : 'text/html;charset=utf-8' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `SKL_${data.nisn}_${data.nama.replace(/\s+/g,'_')}.txt`;
+    a.download = `SKL_${data.nisn}_${safeName}.${isArchive ? 'txt' : 'html'}`;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     URL.revokeObjectURL(url);
 }
 

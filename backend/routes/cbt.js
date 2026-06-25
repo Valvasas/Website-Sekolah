@@ -5,12 +5,14 @@
 const express  = require('express');
 const router   = express.Router();
 const crypto   = require('crypto');
+const JSZip    = require('jszip');
 const { v4: uuidv4 } = require('uuid');
 const { authenticate, authorize } = require('../middleware/auth');
+const { cbtPublicLimiter } = require('../middleware/rateLimiter');
 const getDB    = require('../config/database');
 const { getSchoolClasses } = require('../utils/schoolClasses');
 
-const STAFF = ['guru', 'tata_usaha', 'kepala_sekolah', 'wakil_kepala_sekolah', 'super_admin'];
+const STAFF = ['guru', 'kepala_sekolah', 'wakil_kepala_sekolah', 'super_admin'];
 const CBT_FULL_ACCESS = ['super_admin', 'kepala_sekolah', 'wakil_kepala_sekolah'];
 const VALID_MAPEL = ['matematika', 'bindo', 'basing', 'pkk', 'sejarah', 'produktif'];
 const VALID_STATUS = ['draft', 'open', 'closed', 'archived'];
@@ -235,6 +237,16 @@ function getExam(db, examId) {
     return db.prepare('SELECT * FROM cbt_exams WHERE id = ?').get(examId);
 }
 
+function getAssignedQuestionCount(db, examId) {
+    if (!examId) return 0;
+    return db.prepare(`
+        SELECT COUNT(*) as c
+        FROM cbt_exam_questions eq
+        JOIN bank_soal b ON b.id = eq.question_id
+        WHERE eq.exam_id = ? AND b.is_active = 1
+    `).get(examId)?.c || 0;
+}
+
 function assertExamAvailable(exam) {
     if (!exam) return { ok: true };
     if (exam.status !== 'open') {
@@ -380,6 +392,24 @@ function listExamQuestionsForGrading(db, examId, mapel) {
         WHERE mapel = ? AND is_active = 1
         ORDER BY id
     `).all(mapel);
+}
+
+function listExamQuestionsForAdmin(db, examId) {
+    return db.prepare(`
+        SELECT eq.urutan,
+               b.id, b.mapel, b.jenis_ujian, b.question_type, b.soal,
+               b.opsi_a, b.opsi_b, b.opsi_c, b.opsi_d, b.opsi_e, b.jawaban,
+               b.essay_keywords, b.essay_min_words,
+               b.media_type, b.media_url, b.media_alt, b.canvas_data,
+               b.tingkat, b.is_active, b.created_at, b.updated_at
+        FROM cbt_exam_questions eq
+        JOIN bank_soal b ON b.id = eq.question_id
+        WHERE eq.exam_id = ?
+        ORDER BY eq.urutan ASC
+    `).all(examId).map(row => ({
+        ...row,
+        canvas_data: safeParseJson(row.canvas_data)
+    }));
 }
 
 /* ── GET /api/cbt/kelas — class list for admin CBT ───────────── */
@@ -680,6 +710,9 @@ router.patch('/exams/:id/status', authenticate, authorize(...STAFF), (req, res) 
     try {
         const examBefore = getExam(db, req.params.id);
         if (!assertExamAccess(req.user, examBefore, res)) return;
+        if (status === 'open' && getAssignedQuestionCount(db, examBefore.id) < 1) {
+            return res.status(400).json({ success: false, message: 'Pasang dan review soal terlebih dahulu sebelum sesi CBT dibuka.' });
+        }
         const info = db.prepare('UPDATE cbt_exams SET status = ?, updated_at = ? WHERE id = ?').run(status, nowISO(), req.params.id);
         if (!info.changes) return res.status(404).json({ success: false, message: 'Sesi CBT tidak ditemukan.' });
         if (status === 'open') {
@@ -706,6 +739,74 @@ router.delete('/exams/:id', authenticate, authorize('super_admin'), (req, res) =
         return res.json({ success: true, message: 'Sesi CBT diarsipkan.' });
     } catch (err) {
         return res.status(500).json({ success: false, message: 'Gagal mengarsipkan sesi CBT.' });
+    }
+});
+
+router.delete('/exams/:id/permanent', authenticate, authorize('super_admin'), (req, res) => {
+    const db = getDB();
+    const exam = getExam(db, req.params.id);
+    if (!exam) return res.status(404).json({ success: false, message: 'Sesi CBT tidak ditemukan.' });
+
+    try {
+        const result = db.transaction(() => {
+            const sessionRows = db.prepare('SELECT id FROM cbt_sessions WHERE exam_id = ?').all(exam.id);
+            const sessionIds = sessionRows.map(row => row.id);
+            const counts = {
+                messages: db.prepare('DELETE FROM cbt_messages WHERE exam_id = ?').run(exam.id).changes,
+                answers: 0,
+                results: db.prepare('DELETE FROM cbt_results WHERE exam_id = ?').run(exam.id).changes,
+                sessions: db.prepare('DELETE FROM cbt_sessions WHERE exam_id = ?').run(exam.id).changes,
+                questions: db.prepare('DELETE FROM cbt_exam_questions WHERE exam_id = ?').run(exam.id).changes,
+                exams: db.prepare('DELETE FROM cbt_exams WHERE id = ?').run(exam.id).changes
+            };
+
+            for (const sessionId of sessionIds) {
+                counts.answers += db.prepare('DELETE FROM cbt_answers WHERE session_id = ?').run(sessionId).changes;
+                counts.results += db.prepare('DELETE FROM cbt_results WHERE session_id = ?').run(sessionId).changes;
+                counts.messages += db.prepare('DELETE FROM cbt_messages WHERE session_id = ?').run(sessionId).changes;
+            }
+            return counts;
+        })();
+
+        return res.json({
+            success: true,
+            message: 'Sesi CBT dihapus permanen.',
+            data: result
+        });
+    } catch (err) {
+        console.error('[CBT exam permanent delete]', err.message);
+        return res.status(500).json({ success: false, message: 'Gagal menghapus permanen sesi CBT.' });
+    }
+});
+
+router.get('/exams/:id/questions', authenticate, authorize(...STAFF), (req, res) => {
+    const db = getDB();
+    const exam = getExam(db, req.params.id);
+    if (!assertExamAccess(req.user, exam, res)) return;
+
+    try {
+        const questions = listExamQuestionsForAdmin(db, exam.id);
+        return res.json({
+            success: true,
+            data: {
+                exam: {
+                    id: exam.id,
+                    title: exam.title,
+                    mapel: exam.mapel,
+                    kelas: exam.kelas,
+                    durasi_menit: exam.durasi_menit,
+                    question_count: exam.question_count,
+                    status: exam.status,
+                    start_at: exam.start_at,
+                    end_at: exam.end_at
+                },
+                questions,
+                total: questions.length
+            }
+        });
+    } catch (err) {
+        console.error('[CBT exam questions GET]', err.message);
+        return res.status(500).json({ success: false, message: 'Gagal mengambil soal sesi CBT.' });
     }
 });
 
@@ -791,6 +892,9 @@ router.post('/exams/:id/tokens', authenticate, authorize(...STAFF), (req, res) =
     const exam = getExam(db, req.params.id);
     if (!assertExamAccess(req.user, exam, res)) return;
     if (exam.status === 'archived') return res.status(400).json({ success: false, message: 'Sesi CBT sudah diarsipkan.' });
+    if (getAssignedQuestionCount(db, exam.id) < 1) {
+        return res.status(400).json({ success: false, message: 'Pasang dan review soal terlebih dahulu sebelum membuat token CBT.' });
+    }
 
     try {
         const siswaList = getActiveStudentsByClass(db, exam.kelas);
@@ -880,7 +984,7 @@ router.get('/exams/:id/monitor', authenticate, authorize(...STAFF), (req, res) =
                    cs.network_mbps, cs.camera_status, cs.screen_status,
                    cs.progress_answered, cs.progress_total, cs.current_question,
                    cs.violation_count, cs.last_camera_frame, cs.last_screen_frame,
-                   u.nama_lengkap, sp.kelas as siswa_kelas,
+                   u.nama_lengkap, u.foto_profil, sp.kelas as siswa_kelas,
                    cr.nilai, cr.benar, cr.salah, cr.kosong, cr.selesai_at
             FROM cbt_sessions cs
             LEFT JOIN users u ON u.nisn = cs.nisn
@@ -992,7 +1096,7 @@ router.post('/token/generate', authenticate, authorize(...STAFF), (req, res) => 
 });
 
 /* ── Validasi token siswa ───────────────────────────────────── */
-router.post('/token/validate', (req, res) => {
+router.post('/token/validate', cbtPublicLimiter, (req, res) => {
     const db = getDB();
     const { nisn, token } = req.body;
     if (!nisn || !token) return res.status(400).json({ success: false, message: 'nisn dan token wajib ada.' });
@@ -1101,7 +1205,7 @@ router.delete('/token/:token', authenticate, authorize(...STAFF), (req, res) => 
 });
 
 /* ── Soal siswa: tidak pernah mengirim kunci jawaban ───────── */
-router.get('/soal/ujian/:mapel', (req, res) => {
+router.get('/soal/ujian/:mapel', cbtPublicLimiter, (req, res) => {
     const db = getDB();
     const mapel = req.params.mapel;
     const { nisn, token } = req.query;
@@ -1119,8 +1223,17 @@ router.get('/soal/ujian/:mapel', (req, res) => {
         const availability = assertExamAvailable(exam);
         if (!availability.ok) return res.status(availability.code).json({ success: false, message: availability.message });
 
-        let rows = assignQuestionsIfNeeded(db, exam);
-        if (!rows.length) {
+        let rows = [];
+        if (exam) {
+            rows = db.prepare(`
+                SELECT b.id, b.soal, b.question_type, b.opsi_a, b.opsi_b, b.opsi_c, b.opsi_d, b.opsi_e,
+                       b.media_type, b.media_url, b.media_alt, b.canvas_data, b.essay_min_words
+                FROM cbt_exam_questions eq
+                JOIN bank_soal b ON b.id = eq.question_id
+                WHERE eq.exam_id = ? AND b.is_active = 1
+                ORDER BY eq.urutan ASC
+            `).all(exam.id);
+        } else {
             rows = db.prepare(`
                 SELECT id, soal, question_type, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e,
                        media_type, media_url, media_alt, canvas_data, essay_min_words
@@ -1132,7 +1245,7 @@ router.get('/soal/ujian/:mapel', (req, res) => {
         }
 
         if (!rows.length) {
-            return res.status(404).json({ success: false, message: 'Soal belum tersedia di database. Hubungi guru pengawas.' });
+            return res.status(404).json({ success: false, message: 'Soal sesi CBT belum dipasang. Hubungi guru pengawas.' });
         }
 
         db.prepare(`
@@ -1149,7 +1262,7 @@ router.get('/soal/ujian/:mapel', (req, res) => {
 });
 
 /* ── Submit jawaban: server-side grading ───────────────────── */
-router.post('/submit', (req, res) => {
+router.post('/submit', cbtPublicLimiter, (req, res) => {
     const db = getDB();
     const { nisn, token, answers } = req.body;
     if (!nisn || !token || !Array.isArray(answers)) {
@@ -1191,6 +1304,13 @@ router.post('/submit', (req, res) => {
                 keyword_hits = excluded.keyword_hits,
                 answered_at = excluded.answered_at
         `);
+        const studentIdentity = db.prepare(`
+            SELECT u.nama_lengkap, sp.kelas, sp.jurusan
+            FROM users u
+            LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
+            WHERE u.nisn = ?
+            LIMIT 1
+        `).get(nisn) || {};
 
         const tx = db.transaction(() => {
             for (const q of questions) {
@@ -1239,9 +1359,17 @@ router.post('/submit', (req, res) => {
             const nilai = total ? Math.round((benar / total) * 100) : 0;
             db.prepare('DELETE FROM cbt_results WHERE session_id = ?').run(session.id);
             db.prepare(`
-                INSERT INTO cbt_results (id, exam_id, session_id, nisn, mapel, benar, salah, kosong, nilai, essay_correct, essay_pending, selesai_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(uuidv4(), session.exam_id || null, session.id, nisn, session.mapel, benar, salah, kosong, nilai, essayCorrect, essayPending, nowISO());
+                INSERT INTO cbt_results
+                (id, exam_id, session_id, nisn, mapel, nama_siswa, kelas_siswa, jurusan_siswa,
+                 benar, salah, kosong, nilai, essay_correct, essay_pending, selesai_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+                uuidv4(), session.exam_id || null, session.id, nisn, session.mapel,
+                studentIdentity.nama_lengkap || session.nama_lengkap || null,
+                studentIdentity.kelas || session.siswa_kelas || session.kelas || null,
+                studentIdentity.jurusan || null,
+                benar, salah, kosong, nilai, essayCorrect, essayPending, nowISO()
+            );
             db.prepare(`
                 UPDATE cbt_sessions
                 SET used = 1, status = 'finished', end_time = ?, start_time = COALESCE(start_time, ?)
@@ -1263,10 +1391,38 @@ router.post('/submit', (req, res) => {
     }
 });
 
+router.get('/results/export', authenticate, authorize(...STAFF), async (req, res) => {
+    const db = getDB();
+    const { exam_id } = req.query;
+    try {
+        if (!exam_id) {
+            return res.status(400).json({ success: false, message: 'Pilih sesi CBT terlebih dahulu.' });
+        }
+
+        const exam = getExam(db, exam_id);
+        if (!assertExamAccess(req.user, exam, res)) return;
+
+        const rows = getCbtResultRows(db, { exam_id, limit: 10000, offset: 0 });
+        const buffer = await buildCbtResultsXlsx({ exam, rows, exportedBy: req.user?.nama || req.user?.email || 'Admin' });
+        const filename = `rekap-cbt-${slugifyFilename(exam.title || exam.mapel || 'hasil')}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Cache-Control', 'no-store');
+        return res.send(buffer);
+    } catch (err) {
+        console.error('[CBT export xlsx]', err.message);
+        return res.status(500).json({ success: false, message: 'Gagal membuat file Excel hasil CBT.' });
+    }
+});
+
 router.get('/results', authenticate, authorize(...STAFF), (req, res) => {
     const db = getDB();
     const { nisn, mapel, exam_id, page = 1, limit = 50 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const pageInt = Math.max(1, parseInt(page) || 1);
+    const maxLimit = req.query.export === '1' ? 10000 : 500;
+    const limitInt = Math.min(maxLimit, Math.max(1, parseInt(limit) || 50));
+    const offset = (pageInt - 1) * limitInt;
     try {
         if (exam_id) {
             const exam = getExam(db, exam_id);
@@ -1274,35 +1430,603 @@ router.get('/results', authenticate, authorize(...STAFF), (req, res) => {
         } else if (!canManageAllCbt(req.user)) {
             return res.status(400).json({ success: false, message: 'Pilih sesi CBT terlebih dahulu.' });
         }
+        let examMeta = null;
+        if (exam_id) {
+            const exam = getExam(db, exam_id);
+            examMeta = exam ? {
+                id: exam.id,
+                title: exam.title,
+                mapel: exam.mapel,
+                kelas: exam.kelas,
+                jenis_ujian: 'CBT',
+                durasi_menit: exam.durasi_menit,
+                question_count: exam.question_count,
+                status: exam.status,
+                start_at: exam.start_at,
+                end_at: exam.end_at,
+            } : null;
+        }
         const conds = [];
         const params = [];
         if (nisn)    { conds.push('cr.nisn = ?'); params.push(nisn); }
         if (mapel)   { conds.push('cr.mapel = ?'); params.push(mapel); }
         if (exam_id) { conds.push('cr.exam_id = ?'); params.push(exam_id); }
         const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-        const rows = db.prepare(`
-            SELECT cr.*, u.nama_lengkap, u.no_hp, e.title as exam_title, e.kelas,
-                   cs.location_lat, cs.location_lng, cs.device_info, cs.browser_info,
-                   cs.network_mbps, cs.camera_status, cs.screen_status, cs.violation_count
-            FROM cbt_results cr
-            LEFT JOIN users u ON cr.nisn = u.nisn
-            LEFT JOIN cbt_exams e ON e.id = cr.exam_id
-            LEFT JOIN cbt_sessions cs ON cs.id = cr.session_id
-            ${where}
-            ORDER BY cr.selesai_at DESC
-            LIMIT ? OFFSET ?
-        `).all(...params, parseInt(limit), offset).map(row => ({
-            ...row,
-            device_info: safeParseJson(row.device_info),
-            browser_info: safeParseJson(row.browser_info)
-        }));
+        const rows = getCbtResultRows(db, { where, params, limit: limitInt, offset });
         const total = db.prepare(`SELECT COUNT(*) as c FROM cbt_results cr ${where}`).get(...params)?.c || 0;
-        return res.json({ success: true, data: { results: rows, pagination: { total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / parseInt(limit)) } } });
+        return res.json({
+            success: true,
+            data: {
+                exam: examMeta,
+                results: rows,
+                pagination: { total, page: pageInt, limit: limitInt, totalPages: Math.ceil(total / limitInt) }
+            }
+        });
     } catch (err) {
         console.error('[CBT results]', err.message);
         return res.status(500).json({ success: false, message: 'Gagal mengambil hasil ujian.' });
     }
 });
+
+function getCbtResultRows(db, { exam_id = null, where = '', params = [], limit = 10000, offset = 0 } = {}) {
+    let finalWhere = where;
+    let finalParams = params;
+    if (exam_id) {
+        finalWhere = 'WHERE cr.exam_id = ?';
+        finalParams = [exam_id];
+    }
+    return db.prepare(`
+        SELECT cr.*,
+               COALESCE(NULLIF(TRIM(cr.nama_siswa), ''), NULLIF(TRIM(u.nama_lengkap), ''), cr.nisn) as nama_lengkap,
+               u.no_hp, u.email,
+               COALESCE(NULLIF(TRIM(cr.kelas_siswa), ''), NULLIF(TRIM(sp.kelas), ''), NULLIF(TRIM(cs.kelas), ''), NULLIF(TRIM(e.kelas), '')) as siswa_kelas,
+               COALESCE(NULLIF(TRIM(cr.jurusan_siswa), ''), NULLIF(TRIM(sp.jurusan), '')) as jurusan,
+               sp.jenis_kelamin, sp.tempat_lahir, sp.tanggal_lahir, sp.agama,
+               sp.alamat, sp.kelurahan, sp.kecamatan, sp.kabupaten, sp.provinsi,
+               sp.nama_ayah, sp.nama_ibu, sp.no_hp_ortu, sp.email_ortu,
+               e.title as exam_title, e.kelas as kelas_ujian, 'CBT' as jenis_ujian, e.durasi_menit,
+               e.question_count, e.start_at as exam_start_at, e.end_at as exam_end_at,
+               e.status as exam_status,
+               cs.location_lat, cs.location_lng, cs.device_info, cs.browser_info,
+               cs.network_mbps, cs.camera_status, cs.screen_status, cs.violation_count,
+               cs.start_time, cs.end_time, cs.status as session_status,
+               cs.progress_answered, cs.progress_total
+        FROM cbt_results cr
+        LEFT JOIN users u ON cr.nisn = u.nisn
+        LEFT JOIN siswa_profil sp ON sp.nisn = cr.nisn
+        LEFT JOIN cbt_exams e ON e.id = cr.exam_id
+        LEFT JOIN cbt_sessions cs ON cs.id = cr.session_id
+        ${finalWhere}
+        ORDER BY cr.selesai_at DESC
+        LIMIT ? OFFSET ?
+    `).all(...finalParams, limit, offset).map(row => ({
+        ...row,
+        device_info: safeParseJson(row.device_info),
+        browser_info: safeParseJson(row.browser_info)
+    }));
+}
+
+async function buildCbtResultsXlsx({ exam, rows, exportedBy }) {
+    const attempts = prepareCbtRowsForExport(rows, exam);
+    const prepared = selectLatestCbtAttempts(attempts);
+    const stats = summarizeCbtRows(prepared);
+    stats.totalAttempts = attempts.length;
+    stats.repeatAttempts = Math.max(0, attempts.length - prepared.length);
+    const exportedAt = formatDateTimePlain(new Date().toISOString());
+    const title = exam?.title || 'Hasil CBT';
+    const kkm = prepared[0]?.kkm || 70;
+
+    const sheets = [
+        {
+            name: 'Ringkasan',
+            widths: [24, 30, 16, 24, 30, 18],
+            merges: ['A1:F1', 'A2:F2', 'A10:F10', 'A16:F16', 'A23:F23', 'A28:F28', 'A29:F29', 'A30:F30', 'A31:F31'],
+            rowHeights: { 1: 30, 2: 22, 10: 24, 16: 24, 23: 24, 28: 24, 29: 22, 30: 22, 31: 22 },
+            hideGridLines: true,
+            print: { orientation: 'landscape', fitToWidth: 1 },
+            rows: [
+                [{ v: 'REKAP HASIL UJIAN CBT', s: 1 }],
+                [{ v: 'SMK Negeri 1 Terisi', s: 2 }],
+                [],
+                [{ v: 'Judul ujian', s: 5 }, title, '', { v: 'Kelas', s: 5 }, exam?.kelas || '-'],
+                [{ v: 'Mata pelajaran', s: 5 }, formatMapelLabel(exam?.mapel), '', { v: 'Jenis ujian', s: 5 }, 'CBT'],
+                [{ v: 'Durasi resmi', s: 5 }, `${exam?.durasi_menit || '-'} menit`, '', { v: 'Status sesi', s: 5 }, exam?.status || '-'],
+                [{ v: 'Periode ujian', s: 5 }, `${formatDateTimePlain(exam?.start_at)} - ${formatDateTimePlain(exam?.end_at)}`, '', { v: 'Export oleh', s: 5 }, exportedBy],
+                [{ v: 'Waktu export', s: 5 }, exportedAt, '', { v: 'Total percobaan', s: 5 }, stats.totalAttempts],
+                [],
+                [{ v: 'Ringkasan Nilai', s: 3 }],
+                [{ v: 'Total peserta submit', s: 5 }, stats.total, '', { v: 'Rata-rata', s: 5 }, stats.avg],
+                [{ v: 'Nilai tertinggi', s: 5 }, stats.max, '', { v: 'Nilai terendah', s: 5 }, stats.min],
+                [{ v: 'Tuntas', s: 5 }, stats.pass, '', { v: 'Remedial', s: 5 }, stats.remedial],
+                [{ v: 'Persentase tuntas', s: 5 }, { v: stats.passRate / 100, s: 12 }, '', { v: 'Total pelanggaran', s: 5 }, stats.violations],
+                [],
+                [{ v: 'Distribusi Predikat', s: 3 }],
+                [{ v: 'Predikat', s: 4 }, { v: 'Rentang', s: 4 }, { v: 'Jumlah Siswa', s: 4 }],
+                ['A', '90 - 100', stats.predicates.A],
+                ['B', '80 - 89', stats.predicates.B],
+                ['C', '70 - 79', stats.predicates.C],
+                ['D', '< 70', stats.predicates.D],
+                [],
+                [{ v: 'Kelengkapan Data Siswa', s: 3 }],
+                [{ v: 'Nama tersedia', s: 5 }, stats.completeNames, '', { v: 'Nama perlu dilengkapi', s: 5 }, stats.missingNames],
+                [{ v: 'Profil lengkap', s: 5 }, stats.completeProfiles, '', { v: 'Profil belum lengkap', s: 5 }, stats.incompleteProfiles],
+                [{ v: 'Percobaan ulang', s: 5 }, stats.repeatAttempts, '', { v: 'Peserta unik', s: 5 }, stats.total],
+                [],
+                [{ v: 'Panduan Sheet', s: 3 }],
+                ['Rekap Nilai: tabel utama untuk olah nilai, filter, ranking, dan catatan guru.'],
+                ['Data Siswa: identitas administrasi peserta yang tersedia pada profil sekolah.'],
+                ['Proctoring: catatan perangkat, kamera, layar, lokasi, dan risiko integritas.']
+            ]
+        },
+        {
+            name: 'Rekap Nilai',
+            freezeRows: 5,
+            autoFilter: true,
+            autoFilterRow: 5,
+            hideGridLines: true,
+            merges: ['A1:Z1', 'A2:Z2'],
+            rowHeights: { 1: 30, 2: 22, 5: 32 },
+            print: { orientation: 'landscape', fitToWidth: 1 },
+            widths: [7, 10, 18, 30, 18, 16, 22, 32, 14, 10, 10, 12, 10, 10, 10, 12, 16, 13, 13, 20, 20, 13, 20, 18, 28, 28],
+            rows: [
+                [{ v: `REKAP NILAI - ${title}`, s: 1 }],
+                [{ v: `${formatMapelLabel(exam?.mapel)} | ${exam?.kelas || '-'} | Diekspor ${exportedAt}`, s: 2 }],
+                [],
+                [{ v: `KKM ${kkm}`, s: 11 }, { v: `Peserta ${stats.total}`, s: 11 }, { v: `Rata-rata ${stats.avg}`, s: 11 }, { v: `Tuntas ${stats.pass}`, s: 11 }],
+                ['No','Ranking','Status Administrasi','Nama Siswa','NISN','Kelas','Mata Pelajaran','Judul Ujian','Jenis Ujian','Nilai','KKM','Predikat','Benar','Salah','Kosong','Total Soal','Persentase Benar','Essay Benar','Essay Pending','Mulai','Selesai','Durasi Menit','Waktu Submit','No HP','Email','Catatan Guru'].map(v => ({ v, s: 4 })),
+                ...prepared.map((r, index) => [
+                    index + 1, r.rank, { v: r.status_admin, s: r.status_admin === 'Tuntas' ? 6 : 7 },
+                    { v: r.nama_lengkap || `Siswa ${r.nisn || '-'}`, s: 10 },
+                    { v: String(r.nisn || ''), s: 10 },
+                    r.kelas_export, r.mapel_label,
+                    r.exam_title_export, r.jenis_ujian_export, { v: Number(r.nilai || 0), s: 9 }, r.kkm,
+                    r.predikat, Number(r.benar || 0), Number(r.salah || 0), Number(r.kosong || 0),
+                    r.total_soal_export, r.percentage_correct, Number(r.essay_correct || 0), Number(r.essay_pending || 0),
+                    formatDateTimePlain(r.start_export), formatDateTimePlain(r.finish_export), r.duration_minutes ?? '',
+                    formatDateTimePlain(r.selesai_at), r.no_hp || '', r.email || '', ''
+                ])
+            ]
+        },
+        {
+            name: 'Data Siswa',
+            freezeRows: 5,
+            autoFilter: true,
+            autoFilterRow: 5,
+            hideGridLines: true,
+            merges: ['A1:T1', 'A2:T2'],
+            rowHeights: { 1: 30, 2: 22, 5: 32 },
+            print: { orientation: 'landscape', fitToWidth: 1 },
+            widths: [7, 30, 18, 16, 22, 16, 18, 16, 16, 18, 28, 20, 20, 20, 24, 30, 20, 20, 20, 20],
+            rows: [
+                [{ v: `DATA IDENTITAS PESERTA - ${title}`, s: 1 }],
+                [{ v: 'Data berasal dari snapshot hasil ujian dan profil siswa yang tersedia.', s: 2 }],
+                [],
+                [{ v: `Total peserta ${stats.total}`, s: 11 }, { v: `Profil lengkap ${stats.completeProfiles}`, s: 11 }, { v: `Perlu dilengkapi ${stats.incompleteProfiles}`, s: 11 }],
+                ['No','Nama Siswa','NISN','Kelas','Jurusan','Jenis Kelamin','Tempat Lahir','Tanggal Lahir','Agama','No HP Siswa','Email Siswa','Nama Ayah','Nama Ibu','No HP Orang Tua','Email Orang Tua','Alamat','Kelurahan','Kecamatan','Kabupaten','Provinsi'].map(v => ({ v, s: 4 })),
+                ...prepared.map((r, index) => [
+                    index + 1,
+                    { v: r.nama_lengkap || `Siswa ${r.nisn || '-'}`, s: 10 },
+                    { v: String(r.nisn || ''), s: 10 },
+                    r.kelas_export,
+                    r.jurusan || '',
+                    r.jenis_kelamin || '',
+                    r.tempat_lahir || '',
+                    formatDatePlain(r.tanggal_lahir),
+                    r.agama || '',
+                    r.no_hp || '',
+                    r.email || '',
+                    r.nama_ayah || '',
+                    r.nama_ibu || '',
+                    r.no_hp_ortu || '',
+                    r.email_ortu || '',
+                    r.alamat || '',
+                    r.kelurahan || '',
+                    r.kecamatan || '',
+                    r.kabupaten || '',
+                    r.provinsi || ''
+                ])
+            ]
+        },
+        {
+            name: 'Proctoring',
+            freezeRows: 5,
+            autoFilter: true,
+            autoFilterRow: 5,
+            hideGridLines: true,
+            merges: ['A1:N1', 'A2:N2'],
+            rowHeights: { 1: 30, 2: 22, 5: 32 },
+            print: { orientation: 'landscape', fitToWidth: 1 },
+            widths: [8, 30, 18, 16, 13, 14, 14, 14, 18, 34, 36, 15, 24, 46],
+            rows: [
+                [{ v: `CATATAN PROCTORING - ${title}`, s: 1 }],
+                [{ v: 'Gunakan sheet ini untuk verifikasi kendala teknis dan indikasi pelanggaran.', s: 2 }],
+                [],
+                [{ v: `Total pelanggaran ${stats.violations}`, s: 11 }, { v: `Perlu review ${stats.integrityReview}`, s: 11 }],
+                ['No','Nama Siswa','NISN','Status Sesi','Progress','Kamera','Layar','Pelanggaran','Risiko Integritas','Perangkat','Browser','Jaringan Mbps','Koordinat','Link Maps'].map(v => ({ v, s: 4 })),
+                ...prepared.map((r, index) => [
+                    index + 1,
+                    { v: r.nama_lengkap || `Siswa ${r.nisn || '-'}`, s: 10 },
+                    { v: String(r.nisn || ''), s: 10 },
+                    r.session_status || '-',
+                    `${r.progress_answered || 0}/${r.progress_total || r.total_soal_export || 0}`,
+                    r.camera_export, r.screen_export, Number(r.violation_count || 0),
+                    { v: r.integrity_risk, s: r.integrity_risk === 'Normal' ? 6 : 7 },
+                    getDeviceBriefPlain(r), getBrowserBriefPlain(r), Number(r.network_mbps || 0) || '',
+                    formatLocationPlain(rowToLocation(r)), getMapsLink(rowToLocation(r))
+                ])
+            ]
+        },
+        {
+            name: 'Riwayat Percobaan',
+            freezeRows: 5,
+            autoFilter: true,
+            autoFilterRow: 5,
+            hideGridLines: true,
+            merges: ['A1:Q1', 'A2:Q2'],
+            rowHeights: { 1: 30, 2: 22, 5: 32 },
+            print: { orientation: 'landscape', fitToWidth: 1 },
+            widths: [7, 18, 30, 18, 16, 10, 10, 10, 10, 10, 12, 20, 20, 14, 18, 20, 28],
+            rows: [
+                [{ v: `RIWAYAT PERCOBAAN - ${title}`, s: 1 }],
+                [{ v: 'Arsip lengkap seluruh submit. Rekap Nilai memakai percobaan terbaru per NISN.', s: 2 }],
+                [],
+                [{ v: `Total percobaan ${stats.totalAttempts}`, s: 11 }, { v: `Percobaan ulang ${stats.repeatAttempts}`, s: 11 }, { v: `Peserta unik ${stats.total}`, s: 11 }],
+                ['No','NISN','Nama Siswa','Kelas','Percobaan Ke','Nilai','Benar','Salah','Kosong','Total Soal','Predikat','Mulai','Selesai','Durasi Menit','Status Sesi','Waktu Submit','ID Sesi'].map(v => ({ v, s: 4 })),
+                ...attempts.map((r, index) => [
+                    index + 1,
+                    { v: String(r.nisn || ''), s: 10 },
+                    { v: r.nama_lengkap || `Siswa ${r.nisn || '-'}`, s: 10 },
+                    r.kelas_export,
+                    r.attempt_number,
+                    { v: Number(r.nilai || 0), s: 9 },
+                    Number(r.benar || 0),
+                    Number(r.salah || 0),
+                    Number(r.kosong || 0),
+                    r.total_soal_export,
+                    r.predikat,
+                    formatDateTimePlain(r.start_export),
+                    formatDateTimePlain(r.finish_export),
+                    r.duration_minutes ?? '',
+                    r.session_status || '-',
+                    formatDateTimePlain(r.selesai_at),
+                    r.session_id || ''
+                ])
+            ]
+        }
+    ];
+
+    return createXlsxBuffer(sheets);
+}
+
+function prepareCbtRowsForExport(rows, exam = null) {
+    const attemptCounters = new Map();
+    return [...rows]
+        .sort((a, b) => {
+            const studentDiff = String(a.nama_lengkap || a.nisn || '').localeCompare(String(b.nama_lengkap || b.nisn || ''), 'id');
+            if (studentDiff) return studentDiff;
+            return dateValue(a.selesai_at || a.end_time) - dateValue(b.selesai_at || b.end_time);
+        })
+        .map(row => {
+            const totalSoal = Number(row.benar || 0) + Number(row.salah || 0) + Number(row.kosong || 0);
+            const nilai = Number(row.nilai || 0);
+            const kkm = 70;
+            const mulai = row.start_time || '';
+            const selesai = row.selesai_at || row.end_time || '';
+            const camera = row.camera_status || '-';
+            const screen = row.screen_status || '-';
+            const violationCount = Number(row.violation_count || 0);
+            const integrityRisk = violationCount >= 3 || camera === 'denied' || screen === 'denied'
+                ? 'Perlu review'
+                : violationCount > 0 ? 'Ada catatan' : 'Normal';
+            const studentKey = String(row.nisn || row.nama_lengkap || row.session_id || 'tanpa-identitas');
+            const attemptNumber = (attemptCounters.get(studentKey) || 0) + 1;
+            attemptCounters.set(studentKey, attemptNumber);
+
+            return {
+                ...row,
+                rank: 0,
+                attempt_number: attemptNumber,
+                kkm,
+                total_soal_export: totalSoal || Number(row.question_count || exam?.question_count || 0),
+                percentage_correct: totalSoal ? Math.round((Number(row.benar || 0) / totalSoal) * 10000) / 100 : 0,
+                status_admin: nilai >= kkm ? 'Tuntas' : 'Remedial',
+                predikat: getCbtPredicate(nilai),
+                duration_minutes: minutesBetween(mulai, selesai),
+                integrity_risk: integrityRisk,
+                camera_export: camera,
+                screen_export: screen,
+                mapel_label: formatMapelLabel(row.mapel || exam?.mapel || ''),
+                exam_title_export: row.exam_title || exam?.title || '-',
+                kelas_export: row.siswa_kelas || row.kelas_siswa || row.kelas_ujian || exam?.kelas || '-',
+                jenis_ujian_export: row.jenis_ujian || 'CBT',
+                start_export: mulai,
+                finish_export: selesai,
+            };
+        });
+}
+
+function selectLatestCbtAttempts(rows) {
+    const latestByStudent = new Map();
+    for (const row of rows) {
+        const key = String(row.nisn || row.nama_lengkap || row.session_id || '');
+        const existing = latestByStudent.get(key);
+        if (!existing || dateValue(row.selesai_at || row.finish_export) >= dateValue(existing.selesai_at || existing.finish_export)) {
+            latestByStudent.set(key, row);
+        }
+    }
+    return [...latestByStudent.values()]
+        .sort((a, b) => {
+            const scoreDiff = Number(b.nilai || 0) - Number(a.nilai || 0);
+            if (scoreDiff) return scoreDiff;
+            return String(a.nama_lengkap || a.nisn || '').localeCompare(String(b.nama_lengkap || b.nisn || ''), 'id');
+        })
+        .map((row, index) => ({ ...row, rank: index + 1 }));
+}
+
+function dateValue(value) {
+    const time = value ? new Date(value).getTime() : 0;
+    return Number.isFinite(time) ? time : 0;
+}
+
+function summarizeCbtRows(rows) {
+    const scores = rows.map(r => Number(r.nilai || 0));
+    const total = rows.length;
+    const pass = rows.filter(r => Number(r.nilai || 0) >= 70).length;
+    return {
+        total,
+        avg: total ? Math.round((scores.reduce((a, b) => a + b, 0) / total) * 100) / 100 : 0,
+        max: total ? Math.max(...scores) : 0,
+        min: total ? Math.min(...scores) : 0,
+        pass,
+        remedial: total - pass,
+        passRate: total ? Math.round((pass / total) * 10000) / 100 : 0,
+        violations: rows.reduce((sum, r) => sum + Number(r.violation_count || 0), 0),
+        completeNames: rows.filter(r => r.nama_lengkap && r.nama_lengkap !== r.nisn).length,
+        missingNames: rows.filter(r => !r.nama_lengkap || r.nama_lengkap === r.nisn).length,
+        completeProfiles: rows.filter(hasCompleteStudentProfile).length,
+        incompleteProfiles: rows.filter(r => !hasCompleteStudentProfile(r)).length,
+        integrityReview: rows.filter(r => r.integrity_risk !== 'Normal').length,
+        predicates: rows.reduce((acc, r) => {
+            acc[getCbtPredicate(Number(r.nilai || 0))] += 1;
+            return acc;
+        }, { A: 0, B: 0, C: 0, D: 0 })
+    };
+}
+
+function hasCompleteStudentProfile(row) {
+    return Boolean(
+        row.nama_lengkap
+        && row.nisn
+        && row.kelas_export
+        && row.jurusan
+        && row.jenis_kelamin
+        && row.tanggal_lahir
+    );
+}
+
+function getCbtPredicate(score) {
+    const value = Number(score || 0);
+    if (value >= 90) return 'A';
+    if (value >= 80) return 'B';
+    if (value >= 70) return 'C';
+    return 'D';
+}
+
+function minutesBetween(startIso, endIso) {
+    if (!startIso || !endIso) return null;
+    const start = new Date(startIso).getTime();
+    const end = new Date(endIso).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null;
+    return Math.round((end - start) / 60000);
+}
+
+function getDeviceBriefPlain(row) {
+    const info = row.device_info || {};
+    const battery = info.battery?.level ? ` - Baterai ${info.battery.level}%` : '';
+    const screen = info.screenW && info.screenH ? ` - ${info.screenW}x${info.screenH}` : '';
+    return `${info.device || info.platform || info.name || '-'}${screen}${battery}`;
+}
+
+function getBrowserBriefPlain(row) {
+    const info = row.browser_info || {};
+    if (info.name) return `${info.name} ${info.version || ''}`.trim();
+    return info.browser || info.userAgent?.slice(0, 100) || '-';
+}
+
+function rowToLocation(row) {
+    return { location_lat: row.location_lat, location_lng: row.location_lng };
+}
+
+function formatLocationPlain(row) {
+    if (!row.location_lat || !row.location_lng) return '-';
+    return `${String(row.location_lat).slice(0, 12)}, ${String(row.location_lng).slice(0, 12)}`;
+}
+
+function getMapsLink(row) {
+    if (!row.location_lat || !row.location_lng) return '';
+    return `https://www.google.com/maps?q=${encodeURIComponent(`${row.location_lat},${row.location_lng}`)}`;
+}
+
+function formatDateTimePlain(value) {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
+    return d.toLocaleString('id-ID', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+}
+
+function formatDatePlain(value) {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
+    return d.toLocaleDateString('id-ID', {
+        day: '2-digit', month: '2-digit', year: 'numeric'
+    });
+}
+
+function formatMapelLabel(mapel) {
+    const labels = {
+        matematika: 'Matematika',
+        bindo: 'Bahasa Indonesia',
+        basing: 'Bahasa Inggris',
+        pkk: 'PKK',
+        sejarah: 'Sejarah Indonesia',
+        produktif: 'Kompetensi Keahlian'
+    };
+    return labels[mapel] || mapel || '-';
+}
+
+async function createXlsxBuffer(sheets) {
+    const zip = new JSZip();
+    zip.file('[Content_Types].xml', contentTypesXml(sheets.length));
+    zip.folder('_rels').file('.rels', rootRelsXml());
+    const xl = zip.folder('xl');
+    xl.file('workbook.xml', workbookXml(sheets));
+    xl.file('styles.xml', stylesXml());
+    xl.folder('_rels').file('workbook.xml.rels', workbookRelsXml(sheets.length));
+    const worksheets = xl.folder('worksheets');
+    sheets.forEach((sheet, index) => worksheets.file(`sheet${index + 1}.xml`, worksheetXml(sheet)));
+    return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+}
+
+function contentTypesXml(sheetCount) {
+    const sheets = Array.from({ length: sheetCount }, (_, i) =>
+        `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
+    ).join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+${sheets}
+</Types>`;
+}
+
+function rootRelsXml() {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+}
+
+function workbookXml(sheets) {
+    const sheetXml = sheets.map((sheet, index) =>
+        `<sheet name="${xmlEscape(worksheetName(sheet.name))}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`
+    ).join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets>${sheetXml}</sheets>
+</workbook>`;
+}
+
+function workbookRelsXml(sheetCount) {
+    const sheetRels = Array.from({ length: sheetCount }, (_, i) =>
+        `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`
+    ).join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${sheetRels}
+<Relationship Id="rId${sheetCount + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+}
+
+function stylesXml() {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<fonts count="6"><font><sz val="10"/><name val="Aptos"/></font><font><b/><sz val="18"/><color rgb="FFFFFFFF"/><name val="Aptos Display"/></font><font><b/><sz val="11"/><color rgb="FF475569"/><name val="Aptos"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Aptos"/></font><font><b/><sz val="10"/><color rgb="FF334155"/><name val="Aptos"/></font><font><b/><sz val="10"/><color rgb="FF1E3A5F"/><name val="Aptos"/></font></fonts>
+<fills count="10"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF0B3B60"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF0F766E"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF16324F"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFDCFCE7"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFE4E6"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE0F2FE"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEFF6FF"/><bgColor indexed="64"/></patternFill></fill></fills>
+<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFCBD5E1"/></left><right style="thin"><color rgb="FFCBD5E1"/></right><top style="thin"><color rgb="FFCBD5E1"/></top><bottom style="thin"><color rgb="FFCBD5E1"/></bottom><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="13"><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="2" fillId="9" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="3" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="3" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="4" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="4" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="4" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="2" fontId="5" fillId="8" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyNumberFormat="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="49" fontId="5" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyNumberFormat="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="5" fillId="9" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="10" fontId="5" fillId="8" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyNumberFormat="1"><alignment horizontal="center" vertical="center"/></xf></cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+}
+
+function worksheetXml(sheet) {
+    const rows = sheet.rows || [];
+    const maxCols = Math.max(...rows.map(row => row.length), sheet.widths?.length || 1);
+    const dimension = `A1:${columnName(maxCols)}${Math.max(rows.length, 1)}`;
+    const cols = (sheet.widths || []).map((width, index) =>
+        `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`
+    ).join('');
+    const rowXml = rows.map((row, rowIndex) => {
+        const rowNumber = rowIndex + 1;
+        const height = sheet.rowHeights?.[rowNumber];
+        const attrs = height ? ` ht="${height}" customHeight="1"` : '';
+        return `<row r="${rowNumber}"${attrs}>${row.map((cell, colIndex) => cellXml(cell, rowNumber, colIndex + 1)).join('')}</row>`;
+    }).join('');
+    const freezeRows = Number(sheet.freezeRows || (sheet.freezeTopRow ? 1 : 0));
+    const showGridLines = sheet.hideGridLines ? ' showGridLines="0"' : '';
+    const freezePane = freezeRows > 0
+        ? `<pane ySplit="${freezeRows}" topLeftCell="A${freezeRows + 1}" activePane="bottomLeft" state="frozen"/>`
+        : '';
+    const freeze = `<sheetViews><sheetView workbookViewId="0"${showGridLines}>${freezePane}</sheetView></sheetViews>`;
+    const filterRow = Number(sheet.autoFilterRow || 1);
+    const filter = sheet.autoFilter && rows.length ? `<autoFilter ref="A${filterRow}:${columnName(maxCols)}${rows.length}"/>` : '';
+    const merges = (sheet.merges || []).length
+        ? `<mergeCells count="${sheet.merges.length}">${sheet.merges.map(ref => `<mergeCell ref="${xmlEscape(ref)}"/>`).join('')}</mergeCells>`
+        : '';
+    const print = sheet.print ? `
+<printOptions horizontalCentered="0" verticalCentered="0"/>
+<pageMargins left="0.25" right="0.25" top="0.45" bottom="0.45" header="0.2" footer="0.2"/>
+<pageSetup orientation="${sheet.print.orientation || 'portrait'}" fitToWidth="${sheet.print.fitToWidth || 1}" fitToHeight="0" paperSize="9"/>` : '';
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<dimension ref="${dimension}"/>
+${freeze}
+<sheetFormatPr defaultRowHeight="18"/>
+<cols>${cols}</cols>
+<sheetData>${rowXml}</sheetData>
+${filter}
+${merges}
+${print}
+</worksheet>`;
+}
+
+function cellXml(cell, row, col) {
+    const normalized = typeof cell === 'object' && cell !== null && !Array.isArray(cell)
+        ? cell
+        : { v: cell };
+    const value = normalized.v === undefined || normalized.v === null ? '' : normalized.v;
+    const ref = `${columnName(col)}${row}`;
+    const style = Number.isInteger(normalized.s) ? ` s="${normalized.s}"` : '';
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return `<c r="${ref}"${style}><v>${value}</v></c>`;
+    }
+    return `<c r="${ref}" t="inlineStr"${style}><is><t>${xmlEscape(String(value))}</t></is></c>`;
+}
+
+function columnName(index) {
+    let name = '';
+    let n = index;
+    while (n > 0) {
+        const rem = (n - 1) % 26;
+        name = String.fromCharCode(65 + rem) + name;
+        n = Math.floor((n - 1) / 26);
+    }
+    return name;
+}
+
+function worksheetName(value) {
+    return String(value || 'Sheet').replace(/[\\/?*:[\]]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31) || 'Sheet';
+}
+
+function xmlEscape(value) {
+    return String(value === undefined || value === null ? '' : value).replace(/[<>&"']/g, char => ({
+        '<': '&lt;',
+        '>': '&gt;',
+        '&': '&amp;',
+        '"': '&quot;',
+        "'": '&apos;'
+    }[char]));
+}
+
+function slugifyFilename(value) {
+    return String(value || 'export').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'export';
+}
 
 function safeParseJson(value) {
     if (!value) return null;

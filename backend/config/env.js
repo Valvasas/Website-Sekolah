@@ -10,6 +10,8 @@ const isDev = process.env.NODE_ENV !== 'production';
 const schema = [
     { key: 'JWT_SECRET',     required: true,  fatal: true,  min: 32,
       hint: 'Generate: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"' },
+    { key: 'JWT_REFRESH_SECRET', required: !isDev, fatal: true, min: 32,
+      hint: 'Gunakan secret berbeda dari JWT_SECRET untuk refresh token di production.' },
     { key: 'NODE_ENV',       required: false, default: 'development' },
     { key: 'PORT',           required: false, default: '3001', validate: v => !isNaN(parseInt(v)) },
     { key: 'DB_PATH',        required: false, default: './data/smkn1terisi' },
@@ -17,7 +19,12 @@ const schema = [
     { key: 'JWT_REFRESH_EXPIRES_IN', required: false, default: '7d' },
     { key: 'LOGIN_MAX_ATTEMPTS',     required: false, default: '5', validate: v => !isNaN(parseInt(v)) },
     { key: 'LOGIN_WINDOW_MINUTES',   required: false, default: '15', validate: v => !isNaN(parseInt(v)) },
+    { key: 'API_MAX_REQUESTS_PER_MINUTE', required: false, default: '300', validate: v => !isNaN(parseInt(v)) },
     { key: 'RESET_TOKEN_EXPIRY',     required: false, default: '15', validate: v => !isNaN(parseInt(v)) },
+    { key: 'REGISTER_MAX_PER_HOUR',  required: false, default: '5', validate: v => !isNaN(parseInt(v)) },
+    { key: 'OTP_VERIFY_MAX_PER_15_MIN', required: false, default: '10', validate: v => !isNaN(parseInt(v)) },
+    { key: 'OTP_RESEND_MAX_PER_HOUR', required: false, default: '5', validate: v => !isNaN(parseInt(v)) },
+    { key: 'GOOGLE_AUTO_PROVISION',  required: false, default: 'false' },
     { key: 'JSON_BODY_LIMIT',        required: false, default: '1mb' },
     { key: 'UPLOAD_MAX_TOTAL_GB',    required: false, default: '5', validate: v => !isNaN(parseFloat(v)) },
     { key: 'UPLOAD_MAX_TUGAS_MB',    required: false, default: '3', validate: v => !isNaN(parseInt(v)) },
@@ -51,6 +58,7 @@ const schema = [
     { key: 'EMAIL_USER', required: false, warnIfMissing: true,
       hint: 'Fitur email (lupa password, verifikasi) tidak aktif tanpa ini.' },
     { key: 'EMAIL_PASS', required: false, warnIfMissing: true },
+    { key: 'SMS_PROVIDER', required: false },
 ];
 
 const errors   = [];
@@ -95,20 +103,20 @@ for (const rule of schema) {
 
 // Print warnings
 if (warnings.length > 0) {
-    console.warn('\n⚠️  Environment warnings:');
+    console.warn('\nEnvironment warnings:');
     warnings.forEach(w => console.warn(' ', w));
     console.warn('');
 }
 
 // Fatal errors — crash di production, warning di dev
 if (errors.length > 0) {
-    console.error('\n❌ Environment errors (FATAL):');
+    console.error('\nFatal environment errors:');
     errors.forEach(e => console.error(' ', e));
     if (!isDev) {
         console.error('\nServer tidak bisa start di production dengan konfigurasi yang tidak valid.\n');
         process.exit(1);
     } else {
-        console.warn('\n⚠️  Berjalan di development mode dengan konfigurasi tidak lengkap.\n');
+        console.warn('\nDevelopment mode berjalan dengan konfigurasi tidak lengkap.\n');
     }
 }
 
@@ -128,7 +136,12 @@ module.exports = {
         .split(',').map(o => o.trim().replace(/^\./, '').toLowerCase()).filter(Boolean),
     LOGIN_MAX_ATTEMPTS:   parseInt(process.env.LOGIN_MAX_ATTEMPTS)   || 5,
     LOGIN_WINDOW_MINUTES: parseInt(process.env.LOGIN_WINDOW_MINUTES) || 15,
+    API_MAX_REQUESTS_PER_MINUTE: parseInt(process.env.API_MAX_REQUESTS_PER_MINUTE) || 300,
+    GOOGLE_AUTO_PROVISION: boolFlag(process.env.GOOGLE_AUTO_PROVISION),
     RESET_TOKEN_EXPIRY:   parseInt(process.env.RESET_TOKEN_EXPIRY)   || 15,
+    REGISTER_MAX_PER_HOUR: parseInt(process.env.REGISTER_MAX_PER_HOUR) || 5,
+    OTP_VERIFY_MAX_PER_15_MIN: parseInt(process.env.OTP_VERIFY_MAX_PER_15_MIN) || 10,
+    OTP_RESEND_MAX_PER_HOUR: parseInt(process.env.OTP_RESEND_MAX_PER_HOUR) || 5,
     JSON_BODY_LIMIT:      process.env.JSON_BODY_LIMIT || '1mb',
     UPLOAD_MAX_TOTAL_GB:  parseFloat(process.env.UPLOAD_MAX_TOTAL_GB) || 5,
     UPLOAD_MAX_TUGAS_MB:  parseInt(process.env.UPLOAD_MAX_TUGAS_MB)   || 3,

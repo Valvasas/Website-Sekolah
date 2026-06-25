@@ -7,7 +7,7 @@ const express = require('express');
 const router  = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const getDB   = require('../config/database');
-const { authenticate, isAdmin, isContentAdmin, isStaff, isTU } = require('../middleware/auth');
+const { authenticate, isAdmin, isContentAdmin, isStaff, isTU, authorize } = require('../middleware/auth');
 const { log } = require('../middleware/auditLog');
 const { sklSearchLimiter } = require('../middleware/rateLimiter');
 
@@ -16,7 +16,13 @@ const cleanText = (value, max = 500) => String(value || '').replace(/[<>]/g, '')
 const cleanNisn = (value) => String(value || '').replace(/\D/g, '').slice(0, 10);
 const cleanYear = (value) => String(value || '').replace(/\D/g, '').slice(0, 4);
 const VALID_CONTENT_TYPES = ['berita', 'galeri', 'ppdb_info', 'info'];
+const VALID_CONTENT_STATUSES = ['draft', 'scheduled', 'published', 'archived'];
 const VALID_GALLERY_CATEGORIES = ['akademik', 'eskul', 'prestasi', 'fasilitas', 'umum'];
+const VALID_ORG_TYPES = ['pimpinan', 'guru', 'tu'];
+const ORG_MANAGERS = ['super_admin', 'content_admin', 'kepala_sekolah', 'wakil_kepala_sekolah', 'tata_usaha'];
+const WEBSITE_CONTENT_MANAGERS = ['super_admin', 'content_admin', 'tata_usaha'];
+const isOrgManager = authorize(...ORG_MANAGERS);
+const isWebsiteContentManager = authorize(...WEBSITE_CONTENT_MANAGERS);
 
 function cleanUrl(value, max = 500) {
     const input = String(value || '').trim().slice(0, max);
@@ -48,7 +54,23 @@ function normalizeContentPayload(body = {}, partial = false) {
     if (body.link_url !== undefined || !partial) payload.link_url = cleanUrl(body.link_url);
     if (body.icon !== undefined || !partial) payload.icon = cleanText(body.icon, 80);
     if (body.sort_order !== undefined || !partial) payload.sort_order = parseInt(body.sort_order) || 0;
-    if (body.is_active !== undefined || !partial) payload.is_active = body.is_active === false ? 0 : parseInt(body.is_active ?? 1) ? 1 : 0;
+    if (body.status !== undefined || !partial) {
+        const fallbackStatus = body.is_active === false || parseInt(body.is_active ?? 1) === 0 ? 'draft' : 'published';
+        const status = cleanText(body.status || fallbackStatus, 20);
+        if (!VALID_CONTENT_STATUSES.includes(status)) return { ok:false, message:'Status konten tidak valid.' };
+        payload.status = status;
+        payload.is_active = ['published', 'scheduled'].includes(status) ? 1 : 0;
+    } else if (body.is_active !== undefined) {
+        payload.is_active = body.is_active === false ? 0 : parseInt(body.is_active ?? 1) ? 1 : 0;
+    }
+    if (body.publish_at !== undefined || !partial) payload.publish_at = normalizeDateTime(body.publish_at);
+    if (body.expires_at !== undefined || !partial) payload.expires_at = normalizeDateTime(body.expires_at);
+    if (payload.status === 'scheduled' && !payload.publish_at) {
+        return { ok:false, message:'Tanggal tayang wajib diisi untuk konten terjadwal.' };
+    }
+    if (payload.publish_at && payload.expires_at && payload.expires_at <= payload.publish_at) {
+        return { ok:false, message:'Tanggal selesai tayang harus setelah tanggal mulai tayang.' };
+    }
     if (body.category !== undefined || !partial) {
         payload.category = category || (payload.type === 'galeri' ? 'umum' : null);
         if ((payload.type || body.type) === 'galeri' && !VALID_GALLERY_CATEGORIES.includes(payload.category)) {
@@ -56,6 +78,136 @@ function normalizeContentPayload(body = {}, partial = false) {
         }
     }
     return { ok:true, data:payload };
+}
+
+function normalizeDateTime(value) {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function ensureWebsiteContentSchema(db) {
+    const columns = db.prepare('PRAGMA table_info(website_contents)').all().map(row => row.name);
+    if (!columns.includes('status')) db.exec("ALTER TABLE website_contents ADD COLUMN status TEXT NOT NULL DEFAULT 'published'");
+    if (!columns.includes('publish_at')) db.exec('ALTER TABLE website_contents ADD COLUMN publish_at TEXT');
+    if (!columns.includes('expires_at')) db.exec('ALTER TABLE website_contents ADD COLUMN expires_at TEXT');
+    if (!columns.includes('updated_by')) db.exec('ALTER TABLE website_contents ADD COLUMN updated_by TEXT');
+    db.exec(`
+        UPDATE website_contents
+        SET status = CASE WHEN is_active = 1 THEN 'published' ELSE 'draft' END
+        WHERE status IS NULL OR status = '' OR (status = 'published' AND is_active = 0)
+    `);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_website_content_workflow ON website_contents(status, placement, publish_at, expires_at)');
+}
+
+function normalizeOrgPayload(body = {}, partial = false) {
+    const code = cleanText(body.code, 24).replace(/\s+/g, '').toUpperCase();
+    const nama = cleanText(body.nama, 160);
+    const jabatan = cleanText(body.jabatan, 140);
+    const tipe = cleanText(body.tipe || 'guru', 24);
+    const tier = Math.min(Math.max(parseInt(body.tier ?? 3) || 3, 1), 5);
+    const tugasText = Array.isArray(body.tugas)
+        ? body.tugas.map(item => cleanText(item, 220)).filter(Boolean).join('\n')
+        : cleanText(body.tugas, 2200);
+    const payload = {};
+    if (body.user_id !== undefined || !partial) payload.user_id = cleanText(body.user_id, 64) || null;
+
+    if (!partial || body.code !== undefined) {
+        if (!/^[A-Z0-9_-]{2,24}$/.test(code)) return { ok:false, message:'Kode struktur wajib 2-24 karakter, gunakan huruf/angka tanpa spasi.' };
+        payload.code = code;
+    }
+    if (!partial || body.nama !== undefined) {
+        if (!nama) return { ok:false, message:'Nama wajib diisi.' };
+        payload.nama = nama;
+    }
+    if (!partial || body.jabatan !== undefined) {
+        if (!jabatan) return { ok:false, message:'Jabatan wajib diisi.' };
+        payload.jabatan = jabatan;
+    }
+    if (!partial || body.tipe !== undefined) {
+        if (!VALID_ORG_TYPES.includes(tipe)) return { ok:false, message:'Tipe struktur tidak valid.' };
+        payload.tipe = tipe;
+    }
+    if (body.mapel !== undefined || !partial) payload.mapel = cleanText(body.mapel, 140) || '-';
+    if (body.icon !== undefined || !partial) payload.icon = cleanText(body.icon || 'fa-user', 60) || 'fa-user';
+    if (body.tier !== undefined || !partial) payload.tier = tier;
+    if (body.nip !== undefined || !partial) payload.nip = cleanText(body.nip, 80);
+    if (body.pendidikan !== undefined || !partial) payload.pendidikan = cleanText(body.pendidikan, 140);
+    if (body.tugas !== undefined || !partial) payload.tugas = tugasText || '';
+    if (body.atasan !== undefined || !partial) payload.atasan = cleanText(body.atasan, 24).replace(/\s+/g, '').toUpperCase() || null;
+    if (body.foto !== undefined || !partial) payload.foto = cleanUrl(body.foto, 500);
+    if (body.sort_order !== undefined || !partial) payload.sort_order = parseInt(body.sort_order) || 0;
+    if (body.is_active !== undefined || !partial) payload.is_active = body.is_active === false ? 0 : parseInt(body.is_active ?? 1) ? 1 : 0;
+    return { ok:true, data:payload };
+}
+
+function ensureOrganizationSchema(db) {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS organization_staff (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            code TEXT UNIQUE NOT NULL,
+            nama TEXT NOT NULL,
+            jabatan TEXT NOT NULL,
+            mapel TEXT,
+            tipe TEXT NOT NULL DEFAULT 'guru',
+            icon TEXT DEFAULT 'fa-user',
+            tier INTEGER NOT NULL DEFAULT 3,
+            nip TEXT,
+            pendidikan TEXT,
+            tugas TEXT,
+            atasan TEXT,
+            foto TEXT,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            created_by TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_org_staff_active ON organization_staff(is_active, tipe, tier, sort_order);
+        CREATE INDEX IF NOT EXISTS idx_org_staff_atasan ON organization_staff(atasan, sort_order);
+    `);
+    const columns = db.prepare('PRAGMA table_info(organization_staff)').all().map(row => row.name);
+    if (!columns.includes('user_id')) db.exec('ALTER TABLE organization_staff ADD COLUMN user_id TEXT');
+    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_org_staff_user ON organization_staff(user_id) WHERE user_id IS NOT NULL');
+}
+
+function wouldCreateOrganizationCycle(db, currentCode, nextParent) {
+    if (!nextParent) return false;
+    let cursor = nextParent;
+    const visited = new Set();
+    while (cursor) {
+        if (cursor === currentCode) return true;
+        if (visited.has(cursor)) return true;
+        visited.add(cursor);
+        cursor = db.prepare('SELECT atasan FROM organization_staff WHERE code = ?').get(cursor)?.atasan || null;
+    }
+    return false;
+}
+
+function orgRowToClient(row) {
+    return {
+        id: row.code,
+        db_id: row.id,
+        user_id: row.user_id || null,
+        code: row.code,
+        nama: row.nama,
+        jabatan: row.jabatan,
+        mapel: row.mapel || '-',
+        tipe: row.tipe,
+        icon: row.icon || 'fa-user',
+        tier: Number(row.tier || 3),
+        nip: row.nip || '',
+        pendidikan: row.pendidikan || '',
+        tugas: String(row.tugas || '').split(/\r?\n/).map(v => v.trim()).filter(Boolean),
+        atasan: row.atasan || null,
+        bawahan: [],
+        foto: row.foto || '',
+        sort_order: Number(row.sort_order || 0),
+        is_active: Number(row.is_active) ? 1 : 0,
+        created_at: row.created_at,
+        updated_at: row.updated_at
+    };
 }
 
 function notifyAllStudents(db, { judul, pesan, tipe = 'info', link = '/LMS.html' }) {
@@ -249,15 +401,251 @@ router.delete('/announcements/:id', authenticate, isContentAdmin, (req, res) => 
 });
 
 /* ════════════════════════════════════════
+   ORGANIZATION STRUCTURE ROUTES
+   ════════════════════════════════════════ */
+
+// GET /api/content/organization — publik: struktur aktif untuk profil.html
+router.get('/organization', (req, res) => {
+    const db = getDB();
+    ensureOrganizationSchema(db);
+    const rows = db.prepare(`
+        SELECT * FROM organization_staff
+        WHERE is_active = 1
+        ORDER BY tier ASC, sort_order ASC, tipe ASC, nama ASC
+    `).all();
+    const data = rows.map(orgRowToClient);
+    const byCode = new Map(data.map(row => [row.code, row]));
+    data.forEach(row => {
+        if (row.atasan && byCode.has(row.atasan)) byCode.get(row.atasan).bawahan.push(row.code);
+    });
+    return res.status(200).json({ success:true, data });
+});
+
+// GET /api/content/organization/all — admin/TU/kepsek/wakasek: semua struktur
+router.get('/organization/all', authenticate, isOrgManager, (req, res) => {
+    const db = getDB();
+    ensureOrganizationSchema(db);
+    const { search = '', tipe = '', status = '' } = req.query;
+    const conds = [];
+    const params = {};
+    if (search) {
+        conds.push('(nama LIKE @search OR jabatan LIKE @search OR mapel LIKE @search OR nip LIKE @search OR code LIKE @search)');
+        params.search = `%${cleanText(search, 120)}%`;
+    }
+    if (tipe && VALID_ORG_TYPES.includes(tipe)) {
+        conds.push('tipe = @tipe');
+        params.tipe = tipe;
+    }
+    if (status === 'active') conds.push('is_active = 1');
+    if (status === 'inactive') conds.push('is_active = 0');
+    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+    const rows = db.prepare(`
+        SELECT * FROM organization_staff
+        ${where}
+        ORDER BY tier ASC, sort_order ASC, tipe ASC, nama ASC
+        LIMIT 300
+    `).all(params);
+    return res.status(200).json({ success:true, data:rows.map(orgRowToClient) });
+});
+
+router.get('/organization/staff-options', authenticate, isOrgManager, (req, res) => {
+    const db = getDB();
+    ensureOrganizationSchema(db);
+    const rows = db.prepare(`
+        SELECT u.id,u.nama_lengkap,u.email,u.role,u.nip,u.no_hp,u.bidang,u.jabatan_detail,u.foto_profil,
+               sp.pendidikan,
+               os.code AS organization_code
+        FROM users u
+        LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+        LEFT JOIN organization_staff os ON os.user_id = u.id
+        WHERE u.role IN ('super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha')
+          AND u.is_active = 1
+        ORDER BY u.nama_lengkap ASC
+    `).all();
+    return res.status(200).json({ success:true, data:rows });
+});
+
+// POST /api/content/organization — tambah personel struktur
+router.post('/organization', authenticate, isOrgManager, (req, res) => {
+    const db = getDB();
+    ensureOrganizationSchema(db);
+    const normalized = normalizeOrgPayload(req.body);
+    if (!normalized.ok) return res.status(400).json({ success:false, message:normalized.message });
+    if (normalized.data.atasan && normalized.data.atasan === normalized.data.code) {
+        return res.status(400).json({ success:false, message:'Atasan tidak boleh dirinya sendiri.' });
+    }
+    if (normalized.data.atasan) {
+        const parent = db.prepare('SELECT code FROM organization_staff WHERE code = ?').get(normalized.data.atasan);
+        if (!parent) return res.status(400).json({ success:false, message:'Kode atasan tidak ditemukan.' });
+    }
+    if (normalized.data.user_id) {
+        const account = db.prepare(`
+            SELECT id FROM users
+            WHERE id = ? AND role IN ('super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha')
+        `).get(normalized.data.user_id);
+        if (!account) return res.status(400).json({ success:false, message:'Akun staff yang dipilih tidak valid.' });
+        const linked = db.prepare('SELECT code FROM organization_staff WHERE user_id = ?').get(normalized.data.user_id);
+        if (linked) return res.status(409).json({ success:false, message:`Akun sudah terhubung ke struktur ${linked.code}.` });
+    }
+    const dup = db.prepare('SELECT id FROM organization_staff WHERE code = ?').get(normalized.data.code);
+    if (dup) return res.status(409).json({ success:false, message:'Kode struktur sudah dipakai.' });
+
+    const id = uuidv4();
+    const now = nowISO();
+    db.prepare(`
+        INSERT INTO organization_staff
+        (id,user_id,code,nama,jabatan,mapel,tipe,icon,tier,nip,pendidikan,tugas,atasan,foto,sort_order,is_active,created_by,created_at,updated_at)
+        VALUES (@id,@user_id,@code,@nama,@jabatan,@mapel,@tipe,@icon,@tier,@nip,@pendidikan,@tugas,@atasan,@foto,@sort_order,@is_active,@created_by,@now,@now)
+    `).run({ id, ...normalized.data, created_by:req.user.sub, now });
+    log(req.user.sub, 'ORGANIZATION_CREATED', 'organization_staff', id, { code:normalized.data.code, nama:normalized.data.nama }, req.ip);
+    return res.status(201).json({ success:true, message:'Struktur sekolah berhasil ditambahkan.', data:{ id, code:normalized.data.code } });
+});
+
+// PUT /api/content/organization/:id — edit personel struktur
+router.put('/organization/:id', authenticate, isOrgManager, (req, res) => {
+    const db = getDB();
+    ensureOrganizationSchema(db);
+    const current = db.prepare('SELECT * FROM organization_staff WHERE id = ? OR code = ?').get(req.params.id, req.params.id);
+    if (!current) return res.status(404).json({ success:false, message:'Data struktur tidak ditemukan.' });
+    const normalized = normalizeOrgPayload(req.body, true);
+    if (!normalized.ok) return res.status(400).json({ success:false, message:normalized.message });
+    const nextCode = normalized.data.code || current.code;
+    const nextParent = normalized.data.atasan === undefined ? current.atasan : normalized.data.atasan;
+    if (nextParent && nextParent === nextCode) {
+        return res.status(400).json({ success:false, message:'Atasan tidak boleh dirinya sendiri.' });
+    }
+    if (wouldCreateOrganizationCycle(db, current.code, nextParent)) {
+        return res.status(400).json({ success:false, message:'Perpindahan ditolak karena akan membuat struktur berputar/saling membawahi.' });
+    }
+    if (normalized.data.code && normalized.data.code !== current.code) {
+        const dup = db.prepare('SELECT id FROM organization_staff WHERE code = ? AND id != ?').get(normalized.data.code, current.id);
+        if (dup) return res.status(409).json({ success:false, message:'Kode struktur sudah dipakai.' });
+    }
+    if (nextParent) {
+        const parent = db.prepare('SELECT code FROM organization_staff WHERE code = ?').get(nextParent);
+        if (!parent) return res.status(400).json({ success:false, message:'Kode atasan tidak ditemukan.' });
+    }
+    if (normalized.data.user_id) {
+        const account = db.prepare(`
+            SELECT id FROM users
+            WHERE id = ? AND role IN ('super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha')
+        `).get(normalized.data.user_id);
+        if (!account) return res.status(400).json({ success:false, message:'Akun staff yang dipilih tidak valid.' });
+        const linked = db.prepare('SELECT code FROM organization_staff WHERE user_id = ? AND id != ?').get(normalized.data.user_id, current.id);
+        if (linked) return res.status(409).json({ success:false, message:`Akun sudah terhubung ke struktur ${linked.code}.` });
+    }
+
+    const fields = [];
+    const vals = { id: current.id, now:nowISO() };
+    for (const [key, value] of Object.entries(normalized.data)) {
+        fields.push(`${key} = @${key}`);
+        vals[key] = value;
+    }
+    if (!fields.length) return res.status(400).json({ success:false, message:'Tidak ada perubahan.' });
+    fields.push('updated_at = @now');
+    db.prepare(`UPDATE organization_staff SET ${fields.join(', ')} WHERE id = @id`).run(vals);
+    if (normalized.data.code && normalized.data.code !== current.code) {
+        db.prepare('UPDATE organization_staff SET atasan = ? WHERE atasan = ?').run(normalized.data.code, current.code);
+    }
+    log(req.user.sub, 'ORGANIZATION_UPDATED', 'organization_staff', current.id, { code:nextCode }, req.ip);
+    return res.status(200).json({ success:true, message:'Struktur sekolah berhasil diperbarui.' });
+});
+
+// POST /api/content/organization/:id/move — geser urutan di dalam parent yang sama
+router.post('/organization/:id/move', authenticate, isOrgManager, (req, res) => {
+    const db = getDB();
+    ensureOrganizationSchema(db);
+    const current = db.prepare('SELECT * FROM organization_staff WHERE id = ? OR code = ?').get(req.params.id, req.params.id);
+    if (!current) return res.status(404).json({ success:false, message:'Data struktur tidak ditemukan.' });
+    const direction = req.body?.direction;
+    if (!['up', 'down'].includes(direction)) {
+        return res.status(400).json({ success:false, message:'Arah perpindahan tidak valid.' });
+    }
+    const siblings = db.prepare(`
+        SELECT id, code, sort_order FROM organization_staff
+        WHERE COALESCE(atasan, '') = COALESCE(?, '')
+        ORDER BY sort_order ASC, nama ASC
+    `).all(current.atasan);
+    const index = siblings.findIndex(row => row.id === current.id);
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (index < 0 || targetIndex < 0 || targetIndex >= siblings.length) {
+        return res.status(200).json({ success:true, message:'Posisi sudah berada di batas urutan.' });
+    }
+    const target = siblings[targetIndex];
+    const currentOrder = Number(current.sort_order || index);
+    const targetOrder = Number(target.sort_order || targetIndex);
+    const tx = db.transaction(() => {
+        db.prepare('UPDATE organization_staff SET sort_order = ?, updated_at = ? WHERE id = ?')
+            .run(targetOrder, nowISO(), current.id);
+        db.prepare('UPDATE organization_staff SET sort_order = ?, updated_at = ? WHERE id = ?')
+            .run(currentOrder, nowISO(), target.id);
+    });
+    tx();
+    log(req.user.sub, 'ORGANIZATION_REORDERED', 'organization_staff', current.id, { direction, parent:current.atasan || null }, req.ip);
+    return res.status(200).json({ success:true, message:`Posisi ${current.nama} berhasil digeser.` });
+});
+
+// POST /api/content/organization/:id/reparent — pindahkan ke atasan lain/root
+router.post('/organization/:id/reparent', authenticate, isOrgManager, (req, res) => {
+    const db = getDB();
+    ensureOrganizationSchema(db);
+    const current = db.prepare('SELECT * FROM organization_staff WHERE id = ? OR code = ?').get(req.params.id, req.params.id);
+    if (!current) return res.status(404).json({ success:false, message:'Data struktur tidak ditemukan.' });
+    const nextParent = cleanText(req.body?.atasan, 24).replace(/\s+/g, '').toUpperCase() || null;
+    if (nextParent) {
+        const parent = db.prepare('SELECT code,tier FROM organization_staff WHERE code = ?').get(nextParent);
+        if (!parent) return res.status(400).json({ success:false, message:'Atasan tujuan tidak ditemukan.' });
+    }
+    if (wouldCreateOrganizationCycle(db, current.code, nextParent)) {
+        return res.status(400).json({ success:false, message:'Perpindahan ditolak karena akan membuat struktur berputar/saling membawahi.' });
+    }
+    const nextTier = nextParent
+        ? Math.min(5, Number(db.prepare('SELECT tier FROM organization_staff WHERE code = ?').get(nextParent)?.tier || 2) + 1)
+        : 1;
+    const maxOrder = db.prepare(`
+        SELECT COALESCE(MAX(sort_order), -1) AS max_order
+        FROM organization_staff WHERE COALESCE(atasan, '') = COALESCE(?, '')
+    `).get(nextParent)?.max_order ?? -1;
+    db.prepare(`
+        UPDATE organization_staff
+        SET atasan = ?, tier = ?, sort_order = ?, updated_at = ?
+        WHERE id = ?
+    `).run(nextParent, nextTier, Number(maxOrder) + 1, nowISO(), current.id);
+    log(req.user.sub, 'ORGANIZATION_REPARENTED', 'organization_staff', current.id, { parent:nextParent }, req.ip);
+    return res.status(200).json({ success:true, message:`${current.nama} berhasil dipindahkan dalam struktur.` });
+});
+
+// DELETE /api/content/organization/:id — hapus personel struktur
+router.delete('/organization/:id', authenticate, isOrgManager, (req, res) => {
+    const db = getDB();
+    ensureOrganizationSchema(db);
+    const current = db.prepare('SELECT * FROM organization_staff WHERE id = ? OR code = ?').get(req.params.id, req.params.id);
+    if (!current) return res.status(404).json({ success:false, message:'Data struktur tidak ditemukan.' });
+    const children = db.prepare('SELECT COUNT(*) as c FROM organization_staff WHERE atasan = ?').get(current.code)?.c || 0;
+    if (children) {
+        return res.status(409).json({ success:false, message:`Tidak bisa dihapus karena masih membawahi ${children} personel. Pindahkan bawahannya dulu.` });
+    }
+    db.prepare('DELETE FROM organization_staff WHERE id = ?').run(current.id);
+    log(req.user.sub, 'ORGANIZATION_DELETED', 'organization_staff', current.id, { code:current.code, nama:current.nama }, req.ip);
+    return res.status(200).json({ success:true, message:'Struktur sekolah berhasil dihapus.' });
+});
+
+/* ════════════════════════════════════════
    WEBSITE CONTENT ROUTES (berita, galeri, PPDB info, info umum)
    ════════════════════════════════════════ */
 
 // GET /api/content/website — publik: konten aktif
 router.get('/website', (req, res) => {
     const db = getDB();
+    ensureWebsiteContentSchema(db);
     const { type, placement, category, limit = 20 } = req.query;
-    const conds = ['is_active = 1'];
-    const params = {};
+    const conds = [
+        'is_active = 1',
+        "status IN ('published','scheduled')",
+        '(publish_at IS NULL OR publish_at <= @now)',
+        '(expires_at IS NULL OR expires_at > @now)'
+    ];
+    const params = { now:nowISO() };
 
     if (type) {
         if (!VALID_CONTENT_TYPES.includes(type)) return res.status(400).json({ success:false, message:'Tipe konten tidak valid.' });
@@ -285,9 +673,10 @@ router.get('/website', (req, res) => {
 });
 
 // GET /api/content/website/all — admin: semua konten
-router.get('/website/all', authenticate, isContentAdmin, (req, res) => {
+router.get('/website/all', authenticate, isWebsiteContentManager, (req, res) => {
     const db = getDB();
-    const { type = '', search = '', page = 1, limit = 30 } = req.query;
+    ensureWebsiteContentSchema(db);
+    const { type = '', placement = '', status = '', search = '', page = 1, limit = 30 } = req.query;
     const pageInt = Math.max(parseInt(page) || 1, 1);
     const limitInt = Math.min(Math.max(parseInt(limit) || 30, 1), 100);
     const offset = (pageInt - 1) * limitInt;
@@ -296,44 +685,62 @@ router.get('/website/all', authenticate, isContentAdmin, (req, res) => {
 
     if (type) {
         if (!VALID_CONTENT_TYPES.includes(type)) return res.status(400).json({ success:false, message:'Tipe konten tidak valid.' });
-        conds.push('type = @type');
+        conds.push('wc.type = @type');
         params.type = type;
     }
+    if (placement) {
+        conds.push('wc.placement = @placement');
+        params.placement = cleanText(placement, 80);
+    }
+    if (status) {
+        if (!VALID_CONTENT_STATUSES.includes(status)) return res.status(400).json({ success:false, message:'Status konten tidak valid.' });
+        conds.push('wc.status = @status');
+        params.status = status;
+    }
     if (search) {
-        conds.push('(title LIKE @search OR excerpt LIKE @search OR body LIKE @search)');
+        conds.push('(wc.title LIKE @search OR wc.excerpt LIKE @search OR wc.body LIKE @search)');
         params.search = `%${cleanText(search, 120)}%`;
     }
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const rows = db.prepare(`
-        SELECT *
-        FROM website_contents
+        SELECT wc.*, creator.nama_lengkap AS created_by_name, updater.nama_lengkap AS updated_by_name
+        FROM website_contents wc
+        LEFT JOIN users creator ON creator.id = wc.created_by
+        LEFT JOIN users updater ON updater.id = wc.updated_by
         ${where}
-        ORDER BY type ASC, sort_order ASC, created_at DESC
+        ORDER BY
+            CASE wc.status WHEN 'scheduled' THEN 1 WHEN 'published' THEN 2 WHEN 'draft' THEN 3 ELSE 4 END,
+            wc.publish_at ASC, wc.sort_order ASC, wc.created_at DESC
         LIMIT @limit OFFSET @offset
     `).all({ ...params, limit:limitInt, offset });
-    const total = db.prepare(`SELECT COUNT(*) as c FROM website_contents ${where}`).get(params)?.c || 0;
-    return res.status(200).json({ success:true, data:{ rows, pagination:{ total, page:pageInt, limit:limitInt, totalPages:Math.ceil(total / limitInt) } } });
+    const total = db.prepare(`SELECT COUNT(*) as c FROM website_contents wc ${where}`).get(params)?.c || 0;
+    const summary = db.prepare(`
+        SELECT status, COUNT(*) AS total FROM website_contents GROUP BY status
+    `).all().reduce((acc, row) => ({ ...acc, [row.status]:row.total }), { draft:0, scheduled:0, published:0, archived:0 });
+    return res.status(200).json({ success:true, data:{ rows, summary, pagination:{ total, page:pageInt, limit:limitInt, totalPages:Math.ceil(total / limitInt) } } });
 });
 
 // POST /api/content/website — admin: tambah konten
-router.post('/website', authenticate, isContentAdmin, (req, res) => {
+router.post('/website', authenticate, isWebsiteContentManager, (req, res) => {
     const db = getDB();
+    ensureWebsiteContentSchema(db);
     const normalized = normalizeContentPayload(req.body);
     if (!normalized.ok) return res.status(400).json({ success:false, message:normalized.message });
     const id = uuidv4();
     const now = nowISO();
     db.prepare(`
         INSERT INTO website_contents
-        (id,type,placement,title,excerpt,body,image_url,link_url,category,icon,is_active,sort_order,created_by,created_at,updated_at)
-        VALUES (@id,@type,@placement,@title,@excerpt,@body,@image_url,@link_url,@category,@icon,@is_active,@sort_order,@created_by,@now,@now)
-    `).run({ id, ...normalized.data, created_by:req.user.sub, now });
+        (id,type,placement,title,excerpt,body,image_url,link_url,category,icon,is_active,status,publish_at,expires_at,sort_order,created_by,updated_by,created_at,updated_at)
+        VALUES (@id,@type,@placement,@title,@excerpt,@body,@image_url,@link_url,@category,@icon,@is_active,@status,@publish_at,@expires_at,@sort_order,@created_by,@updated_by,@now,@now)
+    `).run({ id, ...normalized.data, created_by:req.user.sub, updated_by:req.user.sub, now });
     log(req.user.sub, 'WEBSITE_CONTENT_CREATED', 'website_contents', id, { type:normalized.data.type, title:normalized.data.title }, req.ip);
     return res.status(201).json({ success:true, message:'Konten website berhasil ditambahkan.', data:{ id } });
 });
 
 // PUT /api/content/website/:id — admin: edit konten
-router.put('/website/:id', authenticate, isContentAdmin, (req, res) => {
+router.put('/website/:id', authenticate, isWebsiteContentManager, (req, res) => {
     const db = getDB();
+    ensureWebsiteContentSchema(db);
     const { id } = req.params;
     const exists = db.prepare('SELECT * FROM website_contents WHERE id = ?').get(id);
     if (!exists) return res.status(404).json({ success:false, message:'Konten tidak ditemukan.' });
@@ -348,6 +755,8 @@ router.put('/website/:id', authenticate, isContentAdmin, (req, res) => {
     }
     if (!fields.length) return res.status(400).json({ success:false, message:'Tidak ada perubahan.' });
     fields.push('updated_at = @now');
+    fields.push('updated_by = @updated_by');
+    vals.updated_by = req.user.sub;
 
     db.prepare(`UPDATE website_contents SET ${fields.join(', ')} WHERE id = @id`).run(vals);
     log(req.user.sub, 'WEBSITE_CONTENT_UPDATED', 'website_contents', id, null, req.ip);
@@ -355,8 +764,9 @@ router.put('/website/:id', authenticate, isContentAdmin, (req, res) => {
 });
 
 // DELETE /api/content/website/:id — admin: hapus konten
-router.delete('/website/:id', authenticate, isContentAdmin, (req, res) => {
+router.delete('/website/:id', authenticate, isWebsiteContentManager, (req, res) => {
     const db = getDB();
+    ensureWebsiteContentSchema(db);
     const info = db.prepare('DELETE FROM website_contents WHERE id = ?').run(req.params.id);
     if (!info.changes) return res.status(404).json({ success:false, message:'Konten tidak ditemukan.' });
     log(req.user.sub, 'WEBSITE_CONTENT_DELETED', 'website_contents', req.params.id, null, req.ip);
@@ -398,8 +808,6 @@ router.get('/cbt-results/export', authenticate, isStaff, (req, res) => {
     return res.send('\uFEFF' + header + csv);
 });
 
-module.exports = router;
-
 /* ── POST /api/content/surat — simpan permohonan surat ── */
 router.post('/surat', authenticate, (req, res) => {
     try {
@@ -418,3 +826,5 @@ router.post('/surat', authenticate, (req, res) => {
         res.status(201).json({ success:true, message:'Permohonan surat berhasil diajukan.' });
     } catch(e) { res.status(500).json({ success:false, message:e.message }); }
 });
+
+module.exports = router;

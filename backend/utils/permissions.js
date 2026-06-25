@@ -23,7 +23,7 @@ const ROLE_PERMISSIONS = {
     kepala_sekolah: {
         managePPDB: false,
         manageLMS: false,
-        manageCBT: false,
+        manageCBT: true,
         moderateForum: true,
         manageKantin: false,
         viewAudit: false,
@@ -32,7 +32,7 @@ const ROLE_PERMISSIONS = {
     wakil_kepala_sekolah: {
         managePPDB: false,
         manageLMS: false,
-        manageCBT: false,
+        manageCBT: true,
         moderateForum: true,
         manageKantin: false,
         viewAudit: false,

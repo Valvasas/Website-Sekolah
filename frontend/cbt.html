@@ -4,15 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="CBT Online SMKN 1 Terisi — Ujian Berbasis Komputer">
-    <meta name="auth-required" content="true">
-    <meta name="auth-roles" content="siswa">
     <title>CBT Online | SMK Negeri 1 Terisi</title>
     <link rel="icon" type="image/png" href="asset/Logo SMK.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="/auth-guard.js"></script>
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="cbt.css">
 </head>
 <body>
@@ -220,44 +217,126 @@
     <!-- SCREEN 4: HASIL -->
     <div id="screen-result" class="screen">
         <div class="result-wrap">
-            <div class="result-icon" id="result-icon">
-                <i class="fas fa-trophy"></i>
-            </div>
-            <h2 class="result-title" id="result-title">Selamat, Lulus!</h2>
-            <p class="result-sub" id="result-sub">Hasil ujian kamu berhasil dikumpulkan.</p>
+            <section class="result-sheet" aria-labelledby="result-title">
+                <header class="result-letterhead">
+                    <div class="result-school">
+                        <img src="asset/Logo SMK.png" alt="Logo SMKN 1 Terisi" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
+                        <div class="result-logo-fallback" aria-hidden="true"><i class="fas fa-school"></i></div>
+                        <div>
+                            <span>SMK Negeri 1 Terisi</span>
+                            <strong>Portal CBT Online</strong>
+                        </div>
+                    </div>
+                    <div class="result-doc-meta">
+                        <span>Lembar Hasil Ujian</span>
+                        <strong id="result-date">-</strong>
+                    </div>
+                </header>
 
-            <div class="result-score-ring">
-                <svg viewBox="0 0 120 120" class="ring-svg">
-                    <circle cx="60" cy="60" r="50" class="ring-bg"/>
-                    <circle cx="60" cy="60" r="50" class="ring-fill" id="ring-fill"/>
-                </svg>
-                <div class="ring-label">
-                    <span class="ring-score" id="ring-score">0</span>
-                    <span class="ring-unit">/ 100</span>
-                </div>
-            </div>
+                <div class="result-hero">
+                    <div class="result-status">
+                        <div class="result-icon" id="result-icon">
+                            <i class="fas fa-trophy"></i>
+                        </div>
+                        <div>
+                            <span class="result-kicker" id="result-status-label">Status</span>
+                            <h2 class="result-title" id="result-title">Selamat, Lulus!</h2>
+                            <p class="result-sub" id="result-sub">Hasil ujian kamu berhasil dikumpulkan.</p>
+                        </div>
+                    </div>
 
-            <div class="result-stats">
-                <div class="rs-item correct">
-                    <i class="fas fa-check-circle"></i>
-                    <span id="res-correct">0</span>
-                    <label>Benar</label>
+                    <div class="result-score-ring">
+                        <svg viewBox="0 0 120 120" class="ring-svg" aria-hidden="true">
+                            <circle cx="60" cy="60" r="50" class="ring-bg"/>
+                            <circle cx="60" cy="60" r="50" class="ring-fill" id="ring-fill"/>
+                        </svg>
+                        <div class="ring-label">
+                            <span class="ring-score" id="ring-score">0</span>
+                            <span class="ring-unit">/ 100</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="rs-item wrong">
-                    <i class="fas fa-times-circle"></i>
-                    <span id="res-wrong">0</span>
-                    <label>Salah</label>
+
+                <div class="result-identity">
+                    <div>
+                        <span>Nama Peserta</span>
+                        <strong id="result-student">-</strong>
+                    </div>
+                    <div>
+                        <span>NISN</span>
+                        <strong id="result-nisn">-</strong>
+                    </div>
+                    <div>
+                        <span>Mata Pelajaran</span>
+                        <strong id="result-mapel">-</strong>
+                    </div>
+                    <div>
+                        <span>Sesi Ujian</span>
+                        <strong id="result-exam-title">-</strong>
+                    </div>
                 </div>
-                <div class="rs-item skip">
-                    <i class="fas fa-minus-circle"></i>
-                    <span id="res-skip">0</span>
-                    <label>Kosong</label>
+
+                <div class="result-stats">
+                    <div class="rs-item correct">
+                        <i class="fas fa-check-circle"></i>
+                        <span id="res-correct">0</span>
+                        <label>Benar</label>
+                    </div>
+                    <div class="rs-item wrong">
+                        <i class="fas fa-times-circle"></i>
+                        <span id="res-wrong">0</span>
+                        <label>Salah</label>
+                    </div>
+                    <div class="rs-item skip">
+                        <i class="fas fa-minus-circle"></i>
+                        <span id="res-skip">0</span>
+                        <label>Kosong</label>
+                    </div>
+                    <div class="rs-item total">
+                        <i class="fas fa-list-check"></i>
+                        <span id="res-total">0</span>
+                        <label>Total Soal</label>
+                    </div>
                 </div>
-            </div>
+
+                <div class="result-admin-grid">
+                    <div>
+                        <span>KKM</span>
+                        <strong id="result-kkm">70</strong>
+                    </div>
+                    <div>
+                        <span>Predikat</span>
+                        <strong id="result-predicate">-</strong>
+                    </div>
+                    <div>
+                        <span>Durasi Ujian</span>
+                        <strong id="result-duration">-</strong>
+                    </div>
+                    <div>
+                        <span>Status Sinkron</span>
+                        <strong>Terkirim ke Panitia</strong>
+                    </div>
+                </div>
+
+                <div class="result-note" id="result-note">
+                    Simpan atau cetak lembar ini sebagai bukti pengumpulan jawaban. Nilai final tetap mengacu pada rekap panitia/guru.
+                </div>
+
+                <footer class="result-signature">
+                    <div>
+                        <span>Peserta</span>
+                        <strong id="result-sign-student">-</strong>
+                    </div>
+                    <div>
+                        <span>Panitia CBT</span>
+                        <strong>SMKN 1 Terisi</strong>
+                    </div>
+                </footer>
+            </section>
 
             <div class="result-actions">
                 <a href="LMS.html" class="btn-secondary"><i class="fas fa-home"></i> LMS Siswa</a>
-                <button class="btn-primary-cbt" onclick="window.print()"><i class="fas fa-print"></i> Cetak Hasil</button>
+                <button class="btn-primary-cbt" onclick="window.print()"><i class="fas fa-print"></i> Cetak Lembar Hasil</button>
             </div>
         </div>
     </div>
@@ -455,6 +534,7 @@
         </div>
     </div>
 
+    <script src="/security.js"></script>
     <script src="cbt.js"></script>
 </body>
 </html>

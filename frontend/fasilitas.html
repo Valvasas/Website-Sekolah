@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
     
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     
     <link rel="stylesheet" href="style.css">
 </head>
@@ -32,19 +32,18 @@
     <nav class="navbar">
         <div class="container nav-container">
              <a href="index.html" class="brand">
-               <a href="index.html" class="brand">
-    <img src="asset/Logo SMK.png" alt="Logo SMKN 1 Terisi" class="logo-sekolah">
-    <div class="brand-text">
+                <img src="asset/Logo SMK.png" alt="Logo SMKN 1 Terisi" class="logo-sekolah">
+                <div class="brand-text">
                     <span>SMK NEGERI 1 TERISI</span>
                     <small>TERISI - INDRAMAYU</small>
                 </div>
             </a>
             
-            <div class="menu-toggle" id="mobile-menu">
+            <button class="menu-toggle" id="mobile-menu" type="button" aria-label="Buka menu navigasi">
                 <span class="bar"></span>
                 <span class="bar"></span>
                 <span class="bar"></span>
-            </div>
+            </button>
 
             <ul class="nav-menu">
                 <li><a href="index.html" class="nav-link">Beranda</a></li>
@@ -53,10 +52,10 @@
                 <li><a href="fasilitas.html" class="nav-link active">Fasilitas</a></li>
                 <li><a href="kesiswaan.html" class="nav-link">Kesiswaan</a></li>
                 <li><a href="galeri.html" class="nav-link">Galeri</a></li>
-                <!-- FITUR TAMBAHAN: Tombol Login -->
+                <!-- Login action -->
                 <li><a href="login.html" class="nav-link"><i class="fas fa-sign-in-alt"></i> Login</a></li>
                 <li><a href="ppdb.html" class="btn-nav">PPDB Online</a></li>
-                <!-- FITUR TAMBAHAN: Dark Mode Toggle -->
+                <!-- Theme toggle -->
                 <li>
                     <button id="darkModeToggle" class="dark-mode-btn" aria-label="Aktifkan Dark Mode">
                         <i class="fas fa-moon"></i>
@@ -88,7 +87,7 @@
 
             <div class="bento-grid reveal">
                 <!-- Item 1: Lab Komputer (Besar) -->
-                <div class="bento-item bento-large" style="background-image: url('asset/jurusan\ TKJ.jpg');">
+                <div class="bento-item bento-large" style="background-image: url('asset/jurusan TKJ.jpg');">
                     <div class="bento-overlay"></div>
                     <div class="bento-content">
                         <i class="fas fa-desktop"></i>
@@ -191,7 +190,7 @@
                     </div>
                     <div class="layout-img">
                         <!-- Placeholder Bagan Sekolah -->
-                        <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Bagan Sekolah">
+                        <img src="asset/gedung-web.jpg" alt="Bagan Sekolah">
                         <div class="layout-overlay">
                             <span class="btn btn-outline">Perbesar Bagan <i class="fas fa-expand"></i></span>
                         </div>
@@ -253,7 +252,7 @@
                 <p>&copy; 2026 SMK Negeri 1 Terisi - Indramayu. Dikembangkan dengan <i class="fas fa-heart" style="color:red;"></i> oleh IT Club SMKN 1 Terisi.</p>
             </div>
         </div>
-        <!-- FITUR TAMBAHAN: MODAL LOGIN -->
+        <!-- Login modal -->
     <div class="login-modal-overlay" id="loginModal">
         <div class="login-modal-box">
             <button class="close-modal" id="closeLoginBtn"><i class="fas fa-times"></i></button>
@@ -310,6 +309,7 @@
     </div>
     </footer>
 
+    <script src="/security.js"></script>
     <script src="script.js"></script>
 
     <script>

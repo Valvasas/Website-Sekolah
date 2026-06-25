@@ -1,5 +1,4 @@
-// routes/lms.js — NEW FILE
-// Real API untuk LMS: forum, tugas, submission, materi, notifikasi
+// LMS routes: assignments, materials, forum, messaging, and notifications.
 'use strict';
 
 const express  = require('express');
@@ -12,6 +11,7 @@ const { forumPostLimiter, chatLimiter } = require('../middleware/rateLimiter');
 
 const nowISO = () => new Date().toISOString();
 const STAFF  = ['guru','tata_usaha','kepala_sekolah','wakil_kepala_sekolah','super_admin'];
+const FORUM_STAFF = [...STAFF, 'content_admin'];
 const cleanText = (value, max = 500) => (
     value === undefined || value === null
         ? null
@@ -27,7 +27,7 @@ const cleanUrl = value => {
     if (!text) return null;
     return /^(https?:\/\/|\/uploads\/|uploads\/|asset\/|\/asset\/)/i.test(text) ? text : null;
 };
-const isStaffUser = user => STAFF.includes(user?.role);
+const isStaffUser = user => FORUM_STAFF.includes(user?.role);
 
 function requireEnabled(flag, message) {
     return (_req, res, next) => {
@@ -313,16 +313,24 @@ router.get('/tugas/:id/submissions', authenticate, authorize(...STAFF), (req, re
 // POST /api/lms/tugas/:id/submit — siswa submit tugas
 router.post('/tugas/:id/submit', authenticate, (req, res) => {
     const db = getDB();
-    const { jawaban, file_url } = req.body;
     const { id: tugasId }       = req.params;
     const nisn                  = req.user.nisn;
+    const jawaban = cleanText(req.body.jawaban, 5000);
+    const fileUrl = cleanUrl(req.body.file_url);
 
     if (!nisn) return res.status(400).json({ success: false, message: 'NISN tidak ditemukan di token.' });
-    if (!jawaban && !file_url) return res.status(400).json({ success: false, message: 'Jawaban atau file wajib ada.' });
+    if (!jawaban && !fileUrl) return res.status(400).json({ success: false, message: 'Jawaban atau file wajib ada.' });
 
     try {
         const tugas = db.prepare('SELECT * FROM tugas_kelas WHERE id = ? AND is_active = 1').get(tugasId);
         if (!tugas) return res.status(404).json({ success: false, message: 'Tugas tidak ditemukan.' });
+        const userClass = getUserClass(db, req.user);
+        const assigned = tugas.target_nisn
+            ? tugas.target_nisn === nisn
+            : Boolean(userClass && tugas.kelas === userClass);
+        if (!assigned) {
+            return res.status(403).json({ success: false, message: 'Tugas ini bukan untuk akun atau kelas kamu.' });
+        }
 
         // Cek deadline
         if (tugas.deadline && new Date(tugas.deadline) < new Date()) {
@@ -334,12 +342,12 @@ router.post('/tugas/:id/submit', authenticate, (req, res) => {
             // Update submission yang sudah ada
             db.prepare(`
                 UPDATE submission_tugas SET jawaban = ?, file_url = ?, status = 'submitted', submitted_at = ? WHERE id = ?
-            `).run(jawaban || null, file_url || null, nowISO(), existing.id);
+            `).run(jawaban || null, fileUrl || null, nowISO(), existing.id);
         } else {
             db.prepare(`
                 INSERT INTO submission_tugas (id,tugas_id,nisn,jawaban,file_url,status,submitted_at)
                 VALUES (?,?,?,?,?,'submitted',?)
-            `).run(uuidv4(), tugasId, nisn, jawaban || null, file_url || null, nowISO());
+            `).run(uuidv4(), tugasId, nisn, jawaban || null, fileUrl || null, nowISO());
         }
 
         return res.status(200).json({ success: true, message: 'Tugas berhasil dikumpulkan.' });
@@ -630,7 +638,7 @@ router.post('/forum/:id/like', authenticate, (req, res) => {
     }
 });
 
-router.patch('/forum/:id/pin', authenticate, authorize(...STAFF), (req, res) => {
+router.patch('/forum/:id/pin', authenticate, authorize(...FORUM_STAFF), (req, res) => {
     const db = getDB();
     const postId = req.params.id;
     try {
@@ -718,6 +726,12 @@ router.get('/private-chat/:userId', authenticate, (req, res) => {
         if (!isStaffUser(req.user) && peer.role !== 'siswa') {
             return res.status(403).json({ success: false, message: 'Chat pribadi siswa hanya untuk sesama siswa.' });
         }
+        if (!isStaffUser(req.user) && peer.role === 'siswa') {
+            const myClass = getUserClass(db, req.user);
+            if (!myClass || peer.kelas !== myClass) {
+                return res.status(403).json({ success: false, message: 'Chat siswa hanya tersedia untuk teman satu kelas.' });
+            }
+        }
         db.prepare('UPDATE lms_private_messages SET read_at = ? WHERE sender_id = ? AND receiver_id = ? AND read_at IS NULL')
             .run(nowISO(), peerId, req.user.sub);
         const rows = db.prepare(`
@@ -742,11 +756,22 @@ router.post('/private-chat/:userId', authenticate, chatLimiter, (req, res) => {
     const message = cleanText(req.body.message, 1000);
     if (!message) return res.status(400).json({ success: false, message: 'Pesan wajib diisi.' });
     try {
-        const peer = db.prepare('SELECT id, role FROM users WHERE id = ? AND is_active = 1').get(peerId);
+        const peer = db.prepare(`
+            SELECT u.id, u.role, sp.kelas
+            FROM users u
+            LEFT JOIN siswa_profil sp ON sp.nisn = u.nisn
+            WHERE u.id = ? AND u.is_active = 1
+        `).get(peerId);
         if (!peer) return res.status(404).json({ success: false, message: 'Kontak tidak ditemukan.' });
         if (peer.id === req.user.sub) return res.status(400).json({ success: false, message: 'Tidak bisa mengirim pesan ke diri sendiri.' });
         if (!isStaffUser(req.user) && peer.role !== 'siswa') {
             return res.status(403).json({ success: false, message: 'Chat pribadi siswa hanya untuk sesama siswa.' });
+        }
+        if (!isStaffUser(req.user) && peer.role === 'siswa') {
+            const myClass = getUserClass(db, req.user);
+            if (!myClass || peer.kelas !== myClass) {
+                return res.status(403).json({ success: false, message: 'Chat siswa hanya tersedia untuk teman satu kelas.' });
+            }
         }
         const id = uuidv4();
         db.prepare(`

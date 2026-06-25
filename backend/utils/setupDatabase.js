@@ -8,6 +8,9 @@ function setup() {
     const { v4: uuidv4 } = require('uuid');
     const { ensureCbtFoundationSchema } = require('../modules/cbt/schema');
     require('dotenv').config();
+    const isProduction = process.env.NODE_ENV === 'production';
+    const allowProductionSeed = String(process.env.ALLOW_PRODUCTION_SEED || '').toLowerCase() === 'true';
+    const shouldSeedDemoData = !isProduction || allowProductionSeed;
 
     const Database = require('better-sqlite3');
     const configuredDbPath = (process.env.DB_PATH || './data/smkn1terisi')
@@ -34,6 +37,16 @@ function setup() {
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         );
+        CREATE TABLE IF NOT EXISTS staff_profiles (
+            user_id TEXT PRIMARY KEY,
+            tempat_lahir TEXT,
+            tanggal_lahir TEXT,
+            jenis_kelamin TEXT,
+            alamat TEXT,
+            pendidikan TEXT,
+            bio TEXT,
+            updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
         CREATE TABLE IF NOT EXISTS refresh_tokens (
             id TEXT PRIMARY KEY, user_id TEXT NOT NULL, token TEXT NOT NULL UNIQUE,
             expires_at TEXT NOT NULL,
@@ -49,6 +62,24 @@ function setup() {
             id TEXT PRIMARY KEY, user_id TEXT NOT NULL, token TEXT NOT NULL UNIQUE,
             expires_at TEXT NOT NULL, used INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
+        CREATE TABLE IF NOT EXISTS registration_verifications (
+            id TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            phone TEXT,
+            channel TEXT NOT NULL CHECK(channel IN ('email','phone')),
+            destination TEXT NOT NULL,
+            code_hash TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            resend_available_at TEXT NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            max_attempts INTEGER NOT NULL DEFAULT 5,
+            send_count INTEGER NOT NULL DEFAULT 1,
+            consumed INTEGER NOT NULL DEFAULT 0,
+            ip_address TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS audit_logs (
             id TEXT PRIMARY KEY, user_id TEXT, action TEXT NOT NULL,
@@ -66,6 +97,7 @@ function setup() {
         CREATE TABLE IF NOT EXISTS cbt_results (
             id TEXT PRIMARY KEY, exam_id TEXT, session_id TEXT,
             nisn TEXT NOT NULL, mapel TEXT NOT NULL,
+            nama_siswa TEXT, kelas_siswa TEXT, jurusan_siswa TEXT,
             benar INTEGER DEFAULT 0, salah INTEGER DEFAULT 0,
             kosong INTEGER DEFAULT 0, nilai REAL DEFAULT 0,
             selesai_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
@@ -261,7 +293,32 @@ function setup() {
             category TEXT,
             icon TEXT,
             is_active INTEGER NOT NULL DEFAULT 1,
+            status TEXT NOT NULL DEFAULT 'published',
+            publish_at TEXT,
+            expires_at TEXT,
             sort_order INTEGER NOT NULL DEFAULT 0,
+            created_by TEXT,
+            updated_by TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
+        CREATE TABLE IF NOT EXISTS organization_staff (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            code TEXT UNIQUE NOT NULL,
+            nama TEXT NOT NULL,
+            jabatan TEXT NOT NULL,
+            mapel TEXT,
+            tipe TEXT NOT NULL DEFAULT 'guru',
+            icon TEXT DEFAULT 'fa-user',
+            tier INTEGER NOT NULL DEFAULT 3,
+            nip TEXT,
+            pendidikan TEXT,
+            tugas TEXT,
+            atasan TEXT,
+            foto TEXT,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            is_active INTEGER NOT NULL DEFAULT 1,
             created_by TEXT,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
@@ -385,9 +442,14 @@ function setup() {
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
             UNIQUE(nisn, semester, tahun_ajaran)
         );
+        CREATE TABLE IF NOT EXISTS app_migrations (
+            migration_key TEXT PRIMARY KEY,
+            applied_at TEXT NOT NULL,
+            detail TEXT
+        );
     `);
 
-    console.log('✅ Semua tabel berhasil dibuat/diverifikasi');
+    console.log('Schema database siap.');
 
     const sessionCols = db.pragma('table_info(cbt_sessions)').map(c => c.name);
     if (!sessionCols.includes('exam_id')) db.exec('ALTER TABLE cbt_sessions ADD COLUMN exam_id TEXT');
@@ -413,8 +475,29 @@ function setup() {
     const resultCols = db.pragma('table_info(cbt_results)').map(c => c.name);
     if (!resultCols.includes('exam_id')) db.exec('ALTER TABLE cbt_results ADD COLUMN exam_id TEXT');
     if (!resultCols.includes('session_id')) db.exec('ALTER TABLE cbt_results ADD COLUMN session_id TEXT');
+    if (!resultCols.includes('nama_siswa')) db.exec('ALTER TABLE cbt_results ADD COLUMN nama_siswa TEXT');
+    if (!resultCols.includes('kelas_siswa')) db.exec('ALTER TABLE cbt_results ADD COLUMN kelas_siswa TEXT');
+    if (!resultCols.includes('jurusan_siswa')) db.exec('ALTER TABLE cbt_results ADD COLUMN jurusan_siswa TEXT');
     if (!resultCols.includes('essay_correct')) db.exec('ALTER TABLE cbt_results ADD COLUMN essay_correct INTEGER DEFAULT 0');
     if (!resultCols.includes('essay_pending')) db.exec('ALTER TABLE cbt_results ADD COLUMN essay_pending INTEGER DEFAULT 0');
+    db.exec(`
+        UPDATE cbt_results
+        SET nama_siswa = COALESCE(
+                NULLIF(TRIM(nama_siswa), ''),
+                (SELECT NULLIF(TRIM(u.nama_lengkap), '') FROM users u WHERE u.nisn = cbt_results.nisn LIMIT 1)
+            ),
+            kelas_siswa = COALESCE(
+                NULLIF(TRIM(kelas_siswa), ''),
+                (SELECT NULLIF(TRIM(sp.kelas), '') FROM siswa_profil sp WHERE sp.nisn = cbt_results.nisn LIMIT 1)
+            ),
+            jurusan_siswa = COALESCE(
+                NULLIF(TRIM(jurusan_siswa), ''),
+                (SELECT NULLIF(TRIM(sp.jurusan), '') FROM siswa_profil sp WHERE sp.nisn = cbt_results.nisn LIMIT 1)
+            )
+        WHERE NULLIF(TRIM(nama_siswa), '') IS NULL
+           OR NULLIF(TRIM(kelas_siswa), '') IS NULL
+           OR NULLIF(TRIM(jurusan_siswa), '') IS NULL;
+    `);
 
     const bankCols = db.pragma('table_info(bank_soal)').map(c => c.name);
     if (!bankCols.includes('question_type')) db.exec("ALTER TABLE bank_soal ADD COLUMN question_type TEXT NOT NULL DEFAULT 'multiple_choice'");
@@ -451,6 +534,20 @@ function setup() {
     if (!answerCols.includes('answer_type')) db.exec("ALTER TABLE cbt_answers ADD COLUMN answer_type TEXT DEFAULT 'multiple_choice'");
     if (!answerCols.includes('keyword_hits')) db.exec('ALTER TABLE cbt_answers ADD COLUMN keyword_hits TEXT');
 
+    const websiteContentCols = db.pragma('table_info(website_contents)').map(c => c.name);
+    if (!websiteContentCols.includes('status')) db.exec("ALTER TABLE website_contents ADD COLUMN status TEXT NOT NULL DEFAULT 'published'");
+    if (!websiteContentCols.includes('publish_at')) db.exec('ALTER TABLE website_contents ADD COLUMN publish_at TEXT');
+    if (!websiteContentCols.includes('expires_at')) db.exec('ALTER TABLE website_contents ADD COLUMN expires_at TEXT');
+    if (!websiteContentCols.includes('updated_by')) db.exec('ALTER TABLE website_contents ADD COLUMN updated_by TEXT');
+    db.exec(`
+        UPDATE website_contents
+        SET status = CASE WHEN is_active = 1 THEN 'published' ELSE 'draft' END
+        WHERE status IS NULL OR status = '' OR (status = 'published' AND is_active = 0)
+    `);
+
+    const organizationCols = db.pragma('table_info(organization_staff)').map(c => c.name);
+    if (!organizationCols.includes('user_id')) db.exec('ALTER TABLE organization_staff ADD COLUMN user_id TEXT');
+
     db.exec(`
         CREATE INDEX IF NOT EXISTS idx_cbt_sessions_token   ON cbt_sessions(token);
         CREATE INDEX IF NOT EXISTS idx_cbt_sessions_nisn    ON cbt_sessions(nisn);
@@ -464,6 +561,8 @@ function setup() {
         CREATE INDEX IF NOT EXISTS idx_cbt_messages_student ON cbt_messages(nisn, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_users_nisn           ON users(nisn) WHERE nisn IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_users_email          ON users(email) WHERE email IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_registration_verify  ON registration_verifications(id, consumed, expires_at);
+        CREATE INDEX IF NOT EXISTS idx_registration_dest    ON registration_verifications(destination, created_at DESC);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_siswa_profil_nisn_unique ON siswa_profil(nisn);
         CREATE INDEX IF NOT EXISTS idx_audit_logs_user      ON audit_logs(user_id);
         CREATE INDEX IF NOT EXISTS idx_audit_logs_created   ON audit_logs(created_at DESC);
@@ -480,6 +579,10 @@ function setup() {
         CREATE INDEX IF NOT EXISTS idx_lms_pm_receiver      ON lms_private_messages(receiver_id, read_at, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_submission_tugas     ON submission_tugas(tugas_id, nisn);
         CREATE INDEX IF NOT EXISTS idx_website_contents     ON website_contents(type, placement, is_active, sort_order);
+        CREATE INDEX IF NOT EXISTS idx_website_workflow     ON website_contents(status, placement, publish_at, expires_at);
+        CREATE INDEX IF NOT EXISTS idx_org_staff_active     ON organization_staff(is_active, tipe, tier, sort_order);
+        CREATE INDEX IF NOT EXISTS idx_org_staff_atasan     ON organization_staff(atasan, sort_order);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_org_staff_user ON organization_staff(user_id) WHERE user_id IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_kantin_products      ON kantin_products(status, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_kantin_products_cat  ON kantin_products(status, category, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_kantin_orders_buyer  ON kantin_orders(buyer_id, created_at DESC);
@@ -489,12 +592,120 @@ function setup() {
         CREATE INDEX IF NOT EXISTS idx_kantin_reviews_seller ON kantin_reviews(seller_id, rating DESC);
     `);
 
+    // Migrasi satu kali: pindahkan data struktur hard-coded lama agar bisa di-CRUD dari dashboard.
+    const legacyOrgMigrationKey = '20260625_import_legacy_frontend_organization';
+    const legacyOrgMigrated = db.prepare('SELECT migration_key FROM app_migrations WHERE migration_key = ?').get(legacyOrgMigrationKey);
+    if (!legacyOrgMigrated) {
+        const existingOrgCount = db.prepare('SELECT COUNT(*) AS c FROM organization_staff').get().c;
+        let migrationDetail = `skipped_existing:${existingOrgCount}`;
+        if (existingOrgCount === 0) {
+            try {
+                const vm = require('vm');
+                const legacyScriptPath = path.resolve(__dirname, '..', '..', 'frontend', 'script.js');
+                const source = fs.readFileSync(legacyScriptPath, 'utf8');
+                const declarationStart = source.indexOf('const ORG_DATA =');
+                const objectStart = source.indexOf('{', declarationStart);
+                const objectEnd = source.indexOf('\n};', objectStart);
+                if (declarationStart < 0 || objectStart < 0 || objectEnd < 0) {
+                    throw new Error('Blok ORG_DATA tidak ditemukan.');
+                }
+                const literal = source.slice(objectStart, objectEnd + 2);
+                const legacyData = vm.runInNewContext(`(${literal})`, Object.create(null), { timeout: 500 });
+                const rows = Object.values(legacyData).flat().filter(Boolean);
+                const now = new Date().toISOString();
+                const siblingOrder = new Map();
+                const insertLegacy = db.prepare(`
+                    INSERT OR IGNORE INTO organization_staff
+                    (id,code,nama,jabatan,mapel,tipe,icon,tier,nip,pendidikan,tugas,atasan,foto,sort_order,is_active,created_by,created_at,updated_at)
+                    VALUES (@id,@code,@nama,@jabatan,@mapel,@tipe,@icon,@tier,@nip,@pendidikan,@tugas,@atasan,@foto,@sort_order,1,NULL,@now,@now)
+                `);
+                const importLegacy = db.transaction(() => {
+                    rows.forEach(row => {
+                        const parentKey = row.atasan || '__root__';
+                        const order = siblingOrder.get(parentKey) || 0;
+                        siblingOrder.set(parentKey, order + 1);
+                        insertLegacy.run({
+                            id: uuidv4(),
+                            code: String(row.id || row.code || '').trim().toUpperCase(),
+                            nama: String(row.nama || '').trim(),
+                            jabatan: String(row.jabatan || '').trim(),
+                            mapel: String(row.mapel || '-').trim() || '-',
+                            tipe: ['pimpinan','guru','tu'].includes(row.tipe) ? row.tipe : 'guru',
+                            icon: String(row.icon || 'fa-user').replace(/^fas?\s+/i, ''),
+                            tier: Math.min(Math.max(Number(row.tier || 3), 1), 5),
+                            nip: String(row.nip || '').trim(),
+                            pendidikan: String(row.pendidikan || '').trim(),
+                            tugas: Array.isArray(row.tugas) ? row.tugas.join('\n') : String(row.tugas || ''),
+                            atasan: row.atasan ? String(row.atasan).trim().toUpperCase() : null,
+                            foto: row.foto ? String(row.foto).trim() : null,
+                            sort_order: order,
+                            now,
+                        });
+                    });
+                });
+                importLegacy();
+                migrationDetail = `imported:${rows.length}`;
+                console.log(`Struktur lama website dimigrasikan ke database (${rows.length} personel).`);
+            } catch (error) {
+                console.warn(`Migrasi struktur lama dilewati: ${error.message}`);
+                migrationDetail = `failed:${error.message}`.slice(0, 500);
+            }
+        }
+        if (!migrationDetail.startsWith('failed:')) {
+            db.prepare('INSERT INTO app_migrations (migration_key,applied_at,detail) VALUES (?,?,?)')
+                .run(legacyOrgMigrationKey, new Date().toISOString(), migrationDetail);
+        }
+    }
+
+    // Hubungkan data struktur lama dengan akun staff berdasarkan NIP atau nama.
+    db.exec(`
+        UPDATE organization_staff
+        SET user_id = (
+            SELECT u.id FROM users u
+            WHERE u.role IN ('super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha')
+              AND (
+                (NULLIF(TRIM(organization_staff.nip), '') IS NOT NULL
+                 AND REPLACE(REPLACE(REPLACE(organization_staff.nip,' ',''),'.',''),'-','') = REPLACE(REPLACE(REPLACE(COALESCE(u.nip,''),' ',''),'.',''),'-',''))
+                OR LOWER(TRIM(organization_staff.nama)) = LOWER(TRIM(u.nama_lengkap))
+              )
+            ORDER BY CASE WHEN REPLACE(REPLACE(REPLACE(organization_staff.nip,' ',''),'.',''),'-','') = REPLACE(REPLACE(REPLACE(COALESCE(u.nip,''),' ',''),'.',''),'-','') THEN 0 ELSE 1 END
+            LIMIT 1
+        )
+        WHERE user_id IS NULL
+          AND EXISTS (
+            SELECT 1 FROM users u
+            WHERE u.role IN ('super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha')
+              AND (
+                (NULLIF(TRIM(organization_staff.nip), '') IS NOT NULL
+                 AND REPLACE(REPLACE(REPLACE(organization_staff.nip,' ',''),'.',''),'-','') = REPLACE(REPLACE(REPLACE(COALESCE(u.nip,''),' ',''),'.',''),'-',''))
+                OR LOWER(TRIM(organization_staff.nama)) = LOWER(TRIM(u.nama_lengkap))
+              )
+          );
+    `);
+    const normalizeStaffName = value => String(value || '')
+        .split(',')[0].normalize('NFKD').replace(/[^a-z0-9]/gi, '').toLowerCase();
+    const unlinkedStaffUsers = db.prepare(`
+        SELECT id,nama_lengkap FROM users
+        WHERE role IN ('super_admin','content_admin','kepala_sekolah','wakil_kepala_sekolah','guru','tata_usaha')
+          AND id NOT IN (SELECT user_id FROM organization_staff WHERE user_id IS NOT NULL)
+    `).all();
+    const unlinkedOrganization = db.prepare('SELECT id,nama FROM organization_staff WHERE user_id IS NULL').all();
+    const linkOrganizationUser = db.prepare('UPDATE organization_staff SET user_id = ? WHERE id = ?');
+    const linkByName = db.transaction(() => {
+        for (const user of unlinkedStaffUsers) {
+            const target = normalizeStaffName(user.nama_lengkap);
+            const matches = unlinkedOrganization.filter(row => normalizeStaffName(row.nama) === target);
+            if (matches.length === 1) linkOrganizationUser.run(user.id, matches[0].id);
+        }
+    });
+    linkByName();
+
     ensureCbtFoundationSchema(db);
 
-    console.log('✅ Database indexes created');
+    console.log('Index database siap.');
 
     const bankCnt = db.prepare('SELECT COUNT(*) as c FROM bank_soal').get().c;
-    if (bankCnt === 0) {
+    if (shouldSeedDemoData && bankCnt === 0) {
         const now = new Date().toISOString();
         const demoSoal = [
             ['matematika','Nilai dari 2 pangkat 3 dikali 4 adalah...','16','24','32','40','48','C'],
@@ -538,11 +749,11 @@ function setup() {
             }
         });
         seedBank();
-        console.log('✅ Demo bank soal CBT dibuat untuk testing');
+        console.log('Data demo bank soal CBT dibuat.');
     }
 
     const profilCnt = db.prepare('SELECT COUNT(*) as c FROM siswa_profil').get().c;
-    if (profilCnt === 0) {
+    if (shouldSeedDemoData && profilCnt === 0) {
         const now = new Date().toISOString();
         const demoProfiles = [
             ['0012345678', 'XI TKJ 1', 'Teknik Komputer & Jaringan'],
@@ -562,19 +773,45 @@ function setup() {
             }
         });
         seedProfiles();
-        console.log('✅ Demo profil siswa dibuat untuk testing kelas CBT');
+        console.log('Data demo profil siswa dibuat.');
     }
 
     // ── CEK APAKAH SUDAH ADA DATA ──────────────────────────────────
     const cnt = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
     if (cnt > 0) {
-        console.log(`ℹ️  Database sudah ada (${cnt} user). Skip seed.`);
+        if (!shouldSeedDemoData) {
+            console.log(`Database production sudah berisi ${cnt} user; seed dilewati.`);
+            db.close();
+            return;
+        }
+        const coreHash = bcrypt.hashSync('Smkn1Terisi@2024', 12);
+        const coreNow  = new Date().toISOString();
+        const ensureCoreUser = db.prepare(`
+            INSERT OR IGNORE INTO users
+            (id,nama_lengkap,email,password_hash,role,nisn,nip,no_hp,is_active,is_verified,created_at,updated_at)
+            VALUES (@id,@nama,@email,@hash,@role,@nisn,@nip,@hp,1,1,@now,@now)
+        `);
+        const ensureCoreUsers = db.transaction((users) => {
+            for (const u of users) ensureCoreUser.run(u);
+        });
+        ensureCoreUsers([
+            { id:uuidv4(), nama:'Administrator Sistem', email:'admin@smkn1terisi.sch.id', role:'super_admin', nisn:null, nip:'000000000000000001', hp:'081200000001', hash:coreHash, now:coreNow },
+            { id:uuidv4(), nama:'Admin Konten Website', email:'konten@smkn1terisi.sch.id', role:'content_admin', nisn:null, nip:'000000000000000011', hp:'081200000011', hash:coreHash, now:coreNow },
+        ]);
+        console.log(`Database sudah berisi ${cnt} user; seed lengkap dilewati.`);
+        db.close();
+        return;
+    }
+
+    if (!shouldSeedDemoData) {
+        console.warn('Database production kosong. Schema siap, tetapi seed dilewati.');
+        console.warn('   Buat akun admin secara eksplisit sebelum membuka akses publik.');
         db.close();
         return;
     }
 
     // ── SEED DATA ──────────────────────────────────────────────────
-    console.log('🌱 Mengisi data awal...');
+    console.log('Mengisi data awal...');
     const hash = bcrypt.hashSync('Smkn1Terisi@2024', 12);
     const now  = new Date().toISOString();
 
@@ -671,7 +908,7 @@ function setup() {
     ]);
 
     db.close();
-    console.log('✅ Seed data berhasil.');
+    console.log('Seed data selesai.');
     console.log('\n  Akun testing (password: Smkn1Terisi@2024):');
     console.log('  super_admin    → admin@smkn1terisi.sch.id');
     console.log('  content_admin  → konten@smkn1terisi.sch.id');
