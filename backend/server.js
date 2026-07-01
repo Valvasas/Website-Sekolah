@@ -572,6 +572,24 @@ function setupWebSocket() {
                         );
                         ws.nisn = nisn; ws.mapel = session.mapel; ws.sessionId = session.id; ws.examId = session.exam_id || null;
                         ws.role = 'student'; ws.isAuth = true;
+
+                        // ── DEVICE-LOCK: satu NISN hanya boleh punya SATU koneksi aktif ──
+                        const existingWs = clients.get(nisn);
+                        if (existingWs && existingWs !== ws && existingWs.readyState <= 1) {
+                            console.warn(`[WS CBT] Double-connect NISN ${nisn} — menutup sesi lama.`);
+                            send(existingWs, {
+                                type: 'session_replaced',
+                                message: 'Sesi ujian Anda dibuka di perangkat lain. Tab ini ditutup otomatis.'
+                            });
+                            fwdAdminToExam({
+                                type: 'multi_device_attempt',
+                                nisn,
+                                exam_id: session.exam_id || null,
+                                session_id: session.id
+                            }, session.exam_id || null);
+                            existingWs.close(4001, 'Session replaced by new device');
+                        }
+
                         clients.set(nisn, ws);
                         fwdAdminToExam({ ...msg, mapel: session.mapel, exam_id: session.exam_id || null, session_id: session.id }, session.exam_id || null);
                     } catch(e) {

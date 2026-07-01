@@ -100,6 +100,27 @@
     --transition: var(--transition-base);
 }
 
+/* ── Skip-link aksesibilitas (tersembunyi kecuali saat difokus) ── */
+.skip-link {
+    position: absolute;
+    top: -100%;
+    left: 16px;
+    z-index: 10000;
+    padding: 10px 20px;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+    border-radius: 0 0 8px 8px;
+    text-decoration: none;
+    transition: top 0.2s ease;
+}
+.skip-link:focus {
+    top: 0;
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
 /* === RESET & BASE === */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1361,14 +1382,14 @@ body.dark-theme .g4-overlay {
   background-position: center 40%; /* Geser ke atas agar bagian bawah foto terlihat semua */
 }
 
-/* --- Konfigurasi Dasar --- */
+/* --- Alias login-page — semua nunjuk ke token utama di atas (:root) --- */
 :root {
-    --login-bg: #0f172a; /* Biru Dongker / Slate 900 */
+    --login-bg:   var(--color-navy-900);
     --login-panel: rgba(30, 41, 59, 0.85);
-    --gold: #eab308;
-    --gold-hover: #ca8a04;
-    --text-light: #f8fafc;
-    --text-muted: #94a3b8;
+    --gold:        var(--color-gold-500);
+    --gold-hover:  var(--color-gold-600);
+    --text-light:  #f8fafc;
+    --text-muted:  var(--color-text-muted);
 }
 
 body.login-body {
@@ -3783,13 +3804,14 @@ footer::before {
    dengan CSS yang sudah ada di website.
    ============================================================ */
 
+/* --- Alias org-chart — semua nunjuk ke token utama --- */
 :root {
-  --primary: #002244;          /* Navy Blue */
-  --secondary: #D4AF37;        /* Gold Metallic */
-  --secondary-dark: #B5952F;   /* Darker Gold */
-  --white: #ffffff;
-  --light: #f4f7f6;
-  --text-main: #1e293b;
+    --primary:        var(--color-primary);
+    --secondary:      var(--color-accent);
+    --secondary-dark: var(--color-accent-dark);
+    --white:          var(--color-surface);
+    --light:          var(--color-surface-2);
+    --text-main:      var(--color-text-primary);
 }
 
 /* =============================================

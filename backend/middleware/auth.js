@@ -34,8 +34,13 @@ function authenticate(req, res, next) {
             return res.status(401).json({ success:false, message:'Akun tidak ditemukan atau tidak aktif.' });
         }
     } catch(e) {
-        // DB belum init atau error — tetap izinkan jika token valid
-        console.warn('[Auth] DB check skip:', e.message);
+        // DB error = gagal verifikasi status user = TOLAK akses (fail-closed)
+        // Prinsip: lebih baik user harus login ulang daripada akun banned bisa masuk
+        console.error('[Auth] DB check gagal — menolak request:', e.message);
+        return res.status(503).json({
+            success: false,
+            message: 'Layanan sementara tidak tersedia. Coba lagi dalam beberapa detik.'
+        });
     }
 
     req.user = decoded;

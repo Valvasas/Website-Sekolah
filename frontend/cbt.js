@@ -50,6 +50,8 @@ const emergencyChat = {
     open: false
 };
 
+let sessionReplaced = false;
+
 /* ============================================================
    UTILITAS
    ============================================================ */
@@ -883,6 +885,37 @@ function connectAdminSocket(studentData) {
                     case 'chat_error':
                         addEmergencyMessage(msg.message || 'Pesan tidak terkirim.', 'system');
                         break;
+                    case 'session_replaced':
+                        sessionReplaced = true;
+                        if (typeof examTimer !== 'undefined' && examTimer) {
+                            clearInterval(examTimer);
+                        }
+                        document.body.innerHTML = `
+                            <div style="
+                                position:fixed;inset:0;
+                                background:#0f172a;
+                                display:flex;flex-direction:column;
+                                align-items:center;justify-content:center;
+                                gap:16px;font-family:sans-serif;color:#f8fafc;
+                                z-index:99999;text-align:center;padding:24px;
+                            ">
+                                <div style="font-size:3rem;">⚠️</div>
+                                <h2 style="font-size:1.4rem;font-weight:600;margin:0;color:#fbbf24;">
+                                    Sesi Ujian Terputus
+                                </h2>
+                                <p style="color:#94a3b8;max-width:360px;margin:0;line-height:1.6;">
+                                    ${escHtml(msg.message || 'Sesi ujian Anda dibuka di perangkat lain.')}
+                                </p>
+                                <p style="color:#64748b;font-size:0.85rem;margin:0;">
+                                    Jawaban yang sudah terisi telah tersimpan. Hubungi pengawas jika ini kesalahan.
+                                </p>
+                            </div>
+                        `;
+                        if (adminSocket) {
+                            adminSocket.onclose = null;
+                            adminSocket.close();
+                        }
+                        break;
                     case 'error':
                         console.warn('[CBT WS error]', msg.message);
                         break;
@@ -892,7 +925,7 @@ function connectAdminSocket(studentData) {
 
         adminSocket.onclose = (event) => {
             console.warn('[CBT] Koneksi admin terputus', event.code);
-            if (state.started) {
+            if (state.started && !sessionReplaced) {
                 setTimeout(() => connectAdminSocket(studentData), 5000);
             }
         };
